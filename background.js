@@ -17,6 +17,17 @@ async function findMusicTab() {
   return tabs.find((tab) => tab.audible) ?? tabs[0];
 }
 
+ext.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name !== "sleep-timer") return;
+  const tab = await findMusicTab();
+  if (!tab) return;
+  try {
+    await ext.tabs.sendMessage(tab.id, { type: "command", command: "pause" });
+  } catch {
+    // Content script not reachable; nothing to pause.
+  }
+});
+
 ext.commands.onCommand.addListener(async (name) => {
   const command = SHORTCUT_COMMANDS[name];
   if (!command) return;

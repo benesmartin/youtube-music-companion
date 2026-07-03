@@ -56,6 +56,12 @@ button svg {
   object-fit: cover;
   background: var(--surface);
   flex: none;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+#artwork:hover {
+  filter: brightness(1.12);
 }
 
 #panel {
@@ -258,11 +264,11 @@ input[type="range"]::-moz-range-thumb {
   fill: currentColor;
 }
 
-#copy-link .on-copied,
-#copy-link.copied .on-idle {
+.copy-btn .on-copied,
+.copy-btn.copied .on-idle {
   display: none;
 }
-#copy-link.copied .on-copied {
+.copy-btn.copied .on-copied {
   display: block;
   color: #3ba55d;
 }
@@ -316,6 +322,55 @@ input[type="range"]::-moz-range-thumb {
 #more.open {
   background: var(--surface);
   color: var(--text);
+}
+
+#sleep-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  border-top: 1px solid var(--surface-2);
+  margin-top: 4px;
+}
+
+#sleep-row > svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+#sleep-options {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+#more-menu .sleep-opt,
+#more-menu #sleep-cancel {
+  width: auto;
+  padding: 2px 8px;
+  font-size: 11px;
+  border: 1px solid var(--surface-2);
+  border-radius: 999px;
+  color: var(--text-dim);
+}
+
+#more-menu .sleep-opt:hover,
+#more-menu #sleep-cancel:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+#more-menu #sleep-cancel {
+  margin-left: auto;
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 /* artist/album become links when a target URL is known */

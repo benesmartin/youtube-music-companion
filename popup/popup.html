@@ -23,6 +23,9 @@
         <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
         <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
         <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+        <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></symbol>
+        <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></symbol>
+        <symbol id="i-timer" viewBox="0 0 24 24"><line x1="10" y1="2" x2="14" y2="2"/><line x1="12" y1="14" x2="15" y2="11"/><circle cx="12" cy="14" r="8"/></symbol>
       </defs>
     </svg>
 
@@ -55,11 +58,27 @@
               <button id="more" title="More actions"><svg><use href="#i-more"/></svg></button>
               <div id="more-menu" hidden>
                 <button id="radio"><svg><use href="#i-radio"/></svg>Start radio</button>
-                <button id="copy-link">
+                <button id="library"><svg><use href="#i-bookmark"/></svg>Save / remove from library</button>
+                <button id="copy-link" class="copy-btn">
                   <svg class="on-idle"><use href="#i-link"/></svg>
                   <svg class="on-copied"><use href="#i-check"/></svg>
                   Copy link
                 </button>
+                <button id="copy-info" class="copy-btn">
+                  <svg class="on-idle"><use href="#i-clipboard"/></svg>
+                  <svg class="on-copied"><use href="#i-check"/></svg>
+                  Copy title &amp; artist
+                </button>
+                <div id="sleep-row">
+                  <svg><use href="#i-timer"/></svg>
+                  <span>Sleep timer</span>
+                  <span id="sleep-options">
+                    <button class="sleep-opt" data-min="15">15</button>
+                    <button class="sleep-opt" data-min="30">30</button>
+                    <button class="sleep-opt" data-min="60">60</button>
+                  </span>
+                  <button id="sleep-cancel" hidden></button>
+                </div>
               </div>
             </div>
             <button id="mute" title="Mute">

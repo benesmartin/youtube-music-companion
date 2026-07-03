@@ -55,6 +55,8 @@ function render(state) {
   el("album").classList.toggle("link", Boolean(state.albumUrl));
   el("radio").disabled = !state.videoId;
   el("copy-link").disabled = !state.videoId;
+  el("library").disabled = !state.videoId;
+  el("copy-info").disabled = !state.title;
   if (el("artwork").src !== state.artwork) el("artwork").src = state.artwork;
 
   el("play-pause").classList.toggle("playing", state.playing);
@@ -137,31 +139,75 @@ el("radio").addEventListener("click", () => {
   toggleMenu(false);
 });
 
-el("copy-link").addEventListener("click", async (e) => {
-  e.stopPropagation();
-  const id = lastState?.videoId;
-  if (!id) return;
-  await navigator.clipboard.writeText(`${YTM_BASE}watch?v=${id}`);
-  el("copy-link").classList.add("copied");
-  setTimeout(() => {
-    el("copy-link").classList.remove("copied");
-    toggleMenu(false);
-  }, 900);
+el("library").addEventListener("click", () => {
+  send("toggleLibrary");
+  toggleMenu(false);
 });
 
-// Artist/album navigate via YTM's own byline anchors (SPA, playback keeps
-// running); the popup just brings the tab into view.
-async function goTo(command) {
-  send(command);
-  if (currentTabId !== null) {
-    const tab = await ext.tabs.update(currentTabId, { active: true });
-    await ext.windows.update(tab.windowId, { focused: true });
+async function copyToClipboard(button, text) {
+  await navigator.clipboard.writeText(text);
+  button.classList.add("copied");
+  setTimeout(() => {
+    button.classList.remove("copied");
+    toggleMenu(false);
+  }, 900);
+}
+
+el("copy-link").addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (lastState?.videoId) copyToClipboard(el("copy-link"), `${YTM_BASE}watch?v=${lastState.videoId}`);
+});
+
+el("copy-info").addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (lastState?.title) copyToClipboard(el("copy-info"), `${lastState.artist} – ${lastState.title}`);
+});
+
+// ---- sleep timer ----
+
+async function refreshSleep() {
+  const alarm = await ext.alarms.get("sleep-timer").catch(() => null);
+  el("sleep-options").hidden = Boolean(alarm);
+  el("sleep-cancel").hidden = !alarm;
+  if (alarm) {
+    const minutes = Math.max(1, Math.round((alarm.scheduledTime - Date.now()) / 60000));
+    el("sleep-cancel").textContent = `${minutes} min ✕`;
   }
+}
+
+for (const option of document.querySelectorAll(".sleep-opt")) {
+  option.addEventListener("click", (e) => {
+    e.stopPropagation();
+    ext.alarms.create("sleep-timer", { delayInMinutes: Number(option.dataset.min) });
+    setTimeout(refreshSleep, 100);
+  });
+}
+
+el("sleep-cancel").addEventListener("click", async (e) => {
+  e.stopPropagation();
+  await ext.alarms.clear("sleep-timer");
+  refreshSleep();
+});
+
+// ---- navigation ----
+
+// Focus the YTM tab; navigation itself (if any) happens via YTM's own
+// anchors clicked by the content script, so playback keeps running.
+async function focusYtmTab() {
+  if (currentTabId === null) return;
+  const tab = await ext.tabs.update(currentTabId, { active: true });
+  await ext.windows.update(tab.windowId, { focused: true });
   window.close();
+}
+
+function goTo(command) {
+  send(command);
+  focusYtmTab();
 }
 
 el("artist").addEventListener("click", () => lastState?.artistUrl && goTo("goToArtist"));
 el("album").addEventListener("click", () => lastState?.albumUrl && goTo("goToAlbum"));
+el("artwork").addEventListener("click", focusYtmTab);
 
 async function connect() {
   const tabs = await ext.tabs.query({ url: "https://music.youtube.com/*" });
@@ -187,3 +233,4 @@ async function connect() {
 }
 
 connect();
+refreshSleep();

@@ -175,27 +175,42 @@ function bylineLink(hrefPrefix) {
   );
 }
 
-// Opens the player-bar menu and clicks its "Start mix" item, identified by
-// its radio-playlist href (list=RD…) — label text is localized, hrefs aren't.
-// Clicking YTM's own anchor keeps navigation inside the SPA router, so
-// playback continues and no beforeunload dialog fires.
-async function startRadio() {
+// Opens the player-bar menu and clicks the first item the finder matches.
+// Labels are localized, so finders must key on language-independent traits
+// (hrefs, icon paths). Clicking YTM's own items keeps navigation inside the
+// SPA router, so playback continues and no beforeunload dialog fires.
+async function clickPlayerBarMenuItem(findItem) {
   const menuButton = playerBar()?.querySelector("ytmusic-menu-renderer #button-shape button");
   if (!menuButton) return false;
   menuButton.click();
   for (let attempt = 0; attempt < 20; attempt++) {
     await new Promise((resolve) => setTimeout(resolve, 100));
-    const mixLink = document.querySelector(
-      'ytmusic-menu-navigation-item-renderer a[href*="list=RD"]'
-    );
-    if (mixLink) {
-      mixLink.click();
+    const item = findItem();
+    if (item) {
+      item.click();
       return true;
     }
   }
-  // Menu opened but no mix item appeared — close it again.
+  // Menu opened but the item never appeared — close it again.
   document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   return false;
+}
+
+function startRadio() {
+  return clickPlayerBarMenuItem(() =>
+    document.querySelector('ytmusic-menu-navigation-item-renderer a[href*="list=RD"]')
+  );
+}
+
+function toggleLibrary() {
+  return clickPlayerBarMenuItem(() => {
+    const toggles = [...document.querySelectorAll("ytmusic-toggle-menu-service-item-renderer")];
+    if (!toggles.length) return null;
+    // The save-to-library item carries a bookmark icon; its path is the only
+    // language-independent marker. Fall back to the first toggle item, which
+    // is the library entry in the menu layouts seen so far.
+    return toggles.find((t) => t.querySelector('path[d^="M14.25 1.5"]')) ?? toggles[0];
+  });
 }
 
 function clickIfFound(el) {
@@ -220,8 +235,18 @@ const commands = {
   shuffle: () => clickIfFound(barButton("shuffle", "shuffle")),
   toggleRepeat: () => clickIfFound(barButton("repeat", "repeat")),
   startRadio,
+  toggleLibrary,
   goToArtist: () => clickIfFound(bylineLink("channel/")),
   goToAlbum: () => clickIfFound(bylineLink("browse/")),
+  pause() {
+    // One-way pause (sleep timer): no-op when already paused.
+    const playing =
+      pageStatus?.playerState != null
+        ? pageStatus.playerState === 1 || pageStatus.playerState === 3
+        : Boolean(video() && !video().paused);
+    if (!playing) return true;
+    return commands.playPause();
+  },
   toggleLike: () => clickIfFound(likeButton()),
   toggleDislike: () => clickIfFound(dislikeButton()),
   seek(payload) {
