@@ -167,6 +167,37 @@ function readState() {
 
 // yt-icon-button hosts (e.g. .shuffle, .repeat, .volume) wrap the real
 // <button>; clicking the host doesn't reach its listener.
+function bylineLink(hrefPrefix) {
+  const bylineEl = playerBar()?.querySelector(".byline");
+  if (!bylineEl) return null;
+  return [...bylineEl.querySelectorAll("a")].find((a) =>
+    a.getAttribute("href")?.startsWith(hrefPrefix)
+  );
+}
+
+// Opens the player-bar menu and clicks its "Start mix" item, identified by
+// its radio-playlist href (list=RD…) — label text is localized, hrefs aren't.
+// Clicking YTM's own anchor keeps navigation inside the SPA router, so
+// playback continues and no beforeunload dialog fires.
+async function startRadio() {
+  const menuButton = playerBar()?.querySelector("ytmusic-menu-renderer #button-shape button");
+  if (!menuButton) return false;
+  menuButton.click();
+  for (let attempt = 0; attempt < 20; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const mixLink = document.querySelector(
+      'ytmusic-menu-navigation-item-renderer a[href*="list=RD"]'
+    );
+    if (mixLink) {
+      mixLink.click();
+      return true;
+    }
+  }
+  // Menu opened but no mix item appeared — close it again.
+  document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  return false;
+}
+
 function clickIfFound(el) {
   if (!el) return false;
   (el.querySelector?.("button") ?? el).click();
@@ -188,6 +219,9 @@ const commands = {
   previous: () => clickIfFound(barButton("previous-button", "^previous")),
   shuffle: () => clickIfFound(barButton("shuffle", "shuffle")),
   toggleRepeat: () => clickIfFound(barButton("repeat", "repeat")),
+  startRadio,
+  goToArtist: () => clickIfFound(bylineLink("channel/")),
+  goToAlbum: () => clickIfFound(bylineLink("browse/")),
   toggleLike: () => clickIfFound(likeButton()),
   toggleDislike: () => clickIfFound(dislikeButton()),
   seek(payload) {

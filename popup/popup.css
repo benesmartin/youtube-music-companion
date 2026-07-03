@@ -272,6 +272,52 @@ input[type="range"]::-moz-range-thumb {
   pointer-events: none;
 }
 
+/* ---- more-actions dropdown ---- */
+
+#more-wrap {
+  position: relative;
+}
+
+#more-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 150px;
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+}
+
+#more-menu[hidden] {
+  display: none;
+}
+
+/* menu entries are rows, overriding the round icon-button styling */
+#more-menu button {
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  justify-content: flex-start;
+  gap: 9px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+#more-menu button:hover {
+  background: var(--surface-2);
+}
+
+#more.open {
+  background: var(--surface);
+  color: var(--text);
+}
+
 /* artist/album become links when a target URL is known */
 #artist.link,
 #album.link {

@@ -22,6 +22,7 @@
         <symbol id="i-radio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M4.93 19.07a10 10 0 0 1 0-14.14"/><path d="M7.76 16.24a6 6 0 0 1 0-8.49"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></symbol>
         <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
         <symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+        <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
       </defs>
     </svg>
 
@@ -50,11 +51,17 @@
           <div id="bottom-row">
             <button id="like" title="Like"><svg><use href="#i-thumb-up"/></svg></button>
             <button id="dislike" title="Dislike"><svg><use href="#i-thumb-down"/></svg></button>
-            <button id="radio" title="Start radio from this song"><svg><use href="#i-radio"/></svg></button>
-            <button id="copy-link" title="Copy song link">
-              <svg class="on-idle"><use href="#i-link"/></svg>
-              <svg class="on-copied"><use href="#i-check"/></svg>
-            </button>
+            <div id="more-wrap">
+              <button id="more" title="More actions"><svg><use href="#i-more"/></svg></button>
+              <div id="more-menu" hidden>
+                <button id="radio"><svg><use href="#i-radio"/></svg>Start radio</button>
+                <button id="copy-link">
+                  <svg class="on-idle"><use href="#i-link"/></svg>
+                  <svg class="on-copied"><use href="#i-check"/></svg>
+                  Copy link
+                </button>
+              </div>
+            </div>
             <button id="mute" title="Mute">
               <svg class="on-sound"><use href="#i-volume"/></svg>
               <svg class="on-muted"><use href="#i-volume-muted"/></svg>

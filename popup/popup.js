@@ -114,31 +114,54 @@ el("open-ytm").addEventListener("click", async () => {
   window.close();
 });
 
-// Radio replaces the queue in the existing tab; no need to focus it.
-el("radio").addEventListener("click", () => {
-  const id = lastState?.videoId;
-  if (!id || currentTabId === null) return;
-  ext.tabs.update(currentTabId, { url: `${YTM_BASE}watch?v=${id}&list=RDAMVM${id}` });
+// ---- more-actions dropdown ----
+
+function toggleMenu(open) {
+  const show = open ?? el("more-menu").hidden;
+  el("more-menu").hidden = !show;
+  el("more").classList.toggle("open", show);
+}
+
+el("more").addEventListener("click", (e) => {
+  e.stopPropagation();
+  toggleMenu();
+});
+document.addEventListener("click", (e) => {
+  if (!el("more-menu").hidden && !el("more-menu").contains(e.target)) toggleMenu(false);
 });
 
-el("copy-link").addEventListener("click", async () => {
+// Radio is started by the content script clicking YTM's own "Start mix" menu
+// item — SPA navigation, playback keeps running, no beforeunload dialog.
+el("radio").addEventListener("click", () => {
+  send("startRadio");
+  toggleMenu(false);
+});
+
+el("copy-link").addEventListener("click", async (e) => {
+  e.stopPropagation();
   const id = lastState?.videoId;
   if (!id) return;
   await navigator.clipboard.writeText(`${YTM_BASE}watch?v=${id}`);
   el("copy-link").classList.add("copied");
-  setTimeout(() => el("copy-link").classList.remove("copied"), 1500);
+  setTimeout(() => {
+    el("copy-link").classList.remove("copied");
+    toggleMenu(false);
+  }, 900);
 });
 
-// Artist/album navigate the YTM tab and bring it into view.
-async function openInTab(relativeUrl) {
-  if (!relativeUrl || currentTabId === null) return;
-  const tab = await ext.tabs.update(currentTabId, { url: YTM_BASE + relativeUrl, active: true });
-  await ext.windows.update(tab.windowId, { focused: true });
+// Artist/album navigate via YTM's own byline anchors (SPA, playback keeps
+// running); the popup just brings the tab into view.
+async function goTo(command) {
+  send(command);
+  if (currentTabId !== null) {
+    const tab = await ext.tabs.update(currentTabId, { active: true });
+    await ext.windows.update(tab.windowId, { focused: true });
+  }
   window.close();
 }
 
-el("artist").addEventListener("click", () => openInTab(lastState?.artistUrl));
-el("album").addEventListener("click", () => openInTab(lastState?.albumUrl));
+el("artist").addEventListener("click", () => lastState?.artistUrl && goTo("goToArtist"));
+el("album").addEventListener("click", () => lastState?.albumUrl && goTo("goToAlbum"));
 
 async function connect() {
   const tabs = await ext.tabs.query({ url: "https://music.youtube.com/*" });
