@@ -423,6 +423,26 @@ function renderQueue(queue) {
     }
 
     row.addEventListener("click", () => send("playQueueItem", { index: item.index }));
+
+    // Drag to reorder: the popup previews the move locally; the drop sends
+    // one queueMove and the next queue push confirms (or snaps back).
+    row.draggable = true;
+    row.dataset.qindex = String(item.index);
+    row.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", ""); // Firefox needs data to drag
+      e.dataTransfer.effectAllowed = "move";
+      row.classList.add("dragging");
+    });
+    row.addEventListener("dragend", () => {
+      row.classList.remove("dragging");
+      const rows = [...list.querySelectorAll(".qrow")];
+      const toIndex = rows.indexOf(row);
+      const fromIndex = Number(row.dataset.qindex);
+      if (toIndex !== -1 && toIndex !== fromIndex) {
+        send("queueMove", { fromIndex, toIndex });
+      }
+    });
+
     list.append(row);
   }
 
@@ -433,6 +453,27 @@ function renderQueue(queue) {
     list.querySelector(".now")?.scrollIntoView({ block: "center" });
   }
 }
+
+// Live drag preview: the dragged row follows the pointer through the list.
+function dragRowAfter(container, y) {
+  const rows = [...container.querySelectorAll(".qrow:not(.dragging)")];
+  let closest = { offset: -Infinity, element: null };
+  for (const child of rows) {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) closest = { offset, element: child };
+  }
+  return closest.element;
+}
+
+el("queue-list").addEventListener("dragover", (e) => {
+  const dragging = el("queue-list").querySelector(".qrow.dragging");
+  if (!dragging) return;
+  e.preventDefault();
+  const after = dragRowAfter(el("queue-list"), e.clientY);
+  if (after === null) el("queue-list").append(dragging);
+  else if (after !== dragging) el("queue-list").insertBefore(dragging, after);
+});
 
 // ---- history ----
 // The user's real YouTube Music history (music.youtube.com/history), fetched

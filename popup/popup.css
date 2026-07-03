@@ -813,6 +813,12 @@ input[type="range"]::-moz-range-thumb {
   cursor: default;
 }
 
+/* mid-drag: the row travels with the pointer as a ghost */
+.qrow.dragging {
+  opacity: 0.45;
+  background: var(--surface-2);
+}
+
 .qthumb {
   width: 34px;
   height: 34px;

@@ -260,6 +260,36 @@
     return (store.getState()?.queue?.items?.length ?? 0) > existing.length;
   }
 
+  // Reorder within the queue store. Only the real queue (items) is movable —
+  // autoplay/radio continuations live in automixItems, which MOVE_ITEM
+  // doesn't reach, so indices past the items array are rejected.
+  async function queueMove(fromIndex, toIndex) {
+    const store = document.querySelector("ytmusic-player-queue")?.queue?.store?.store;
+    if (!store?.dispatch || !store?.getState) return false;
+    const q = store.getState()?.queue;
+    const itemCount = q?.items?.length ?? 0;
+    if (
+      !Number.isInteger(fromIndex) ||
+      !Number.isInteger(toIndex) ||
+      fromIndex === toIndex ||
+      fromIndex >= itemCount ||
+      toIndex >= itemCount
+    ) {
+      return false;
+    }
+    const order = (entries) =>
+      (entries ?? []).map((entry) => queueRendererOf(entry)?.videoId ?? "").join();
+    const before = order(q.items);
+    try {
+      store.dispatch({ type: "MOVE_ITEM", payload: { fromIndex, toIndex } });
+    } catch (err) {
+      console.debug("[YTM Companion] queue move failed:", err);
+      return false;
+    }
+    // The dispatch is fire-and-forget; success = the order actually changed.
+    return order(store.getState()?.queue?.items) !== before;
+  }
+
   // The queue element's data store knows every item's thumbnail URL and
   // videoId even when the DOM images haven't lazy-loaded yet.
   function readQueueData() {
@@ -632,6 +662,14 @@
     }
     if (command === "playVideoById") {
       const result = await playVideo(payload);
+      window.postMessage(
+        { source: FROM_BRIDGE, type: "response", requestId, result },
+        window.location.origin
+      );
+      return;
+    }
+    if (command === "queueMove") {
+      const result = await queueMove(payload.fromIndex, payload.toIndex);
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result },
         window.location.origin

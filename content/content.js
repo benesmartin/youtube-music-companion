@@ -465,6 +465,24 @@ const commands = {
   // payload may carry playlistId/params so YTM builds the proper queue
   playVideoById: (payload) => askBridgeAsync("playVideoById", payload),
   playPlaylist: (payload) => askBridgeAsync("playPlaylist", { playlistId: payload.playlistId }),
+  queueMove(payload) {
+    return askBridgeAsync("queueMove", {
+      fromIndex: payload.fromIndex,
+      toIndex: payload.toIndex,
+    }).then((ok) => {
+      if (!ok) {
+        for (const p of ports) {
+          p.postMessage({
+            type: "notice",
+            text: "That row can’t be reordered — autoplay suggestions stay put.",
+          });
+        }
+      }
+      // Re-push either way: confirms the new order or snaps the preview back.
+      setTimeout(pushQueue, 400);
+      return ok;
+    });
+  },
   queueVideoNext(payload) {
     return askBridgeAsync("queueVideoNext", { videoId: payload.videoId }).then((ok) => {
       setTimeout(pushQueue, 700);
