@@ -22,9 +22,13 @@ function likeButton() {
   );
 }
 
-function barButton(labelPattern) {
+// Class selectors first — aria-labels are localized (Czech UI says "Další",
+// not "Next"), so label matching is only a last-resort fallback.
+function barButton(className, labelPattern) {
   const bar = playerBar();
   if (!bar) return null;
+  const byClass = bar.querySelector(`.${className}`);
+  if (byClass) return byClass;
   const re = new RegExp(labelPattern, "i");
   for (const btn of bar.querySelectorAll("button, tp-yt-paper-icon-button")) {
     const label = btn.getAttribute("aria-label") ?? btn.getAttribute("title") ?? "";
@@ -75,13 +79,14 @@ const commands = {
     media.paused ? media.play() : media.pause();
     return true;
   },
-  next: () => clickIfFound(barButton("^next")),
-  previous: () => clickIfFound(barButton("^previous")),
+  next: () => clickIfFound(barButton("next-button", "^next")),
+  previous: () => clickIfFound(barButton("previous-button", "^previous")),
   toggleLike: () => clickIfFound(likeButton()),
   seek(payload) {
     const media = video();
-    if (!media) return false;
-    media.currentTime = payload.position;
+    if (!media || !Number.isFinite(media.duration)) return false;
+    // Clamp inside the track: an out-of-range position makes YTM skip tracks.
+    media.currentTime = Math.min(Math.max(0, payload.position), Math.max(0, media.duration - 0.5));
     return true;
   },
   setVolume(payload) {
