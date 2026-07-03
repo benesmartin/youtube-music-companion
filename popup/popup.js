@@ -509,13 +509,15 @@ function renderHistory(history) {
         });
         actions.append(button);
         row.append(actions);
-        row.addEventListener("click", () =>
+        row.addEventListener("click", () => {
           send("playVideoById", {
             videoId: item.videoId,
             playlistId: item.playlistId,
             params: item.params,
-          })
-        );
+          });
+          // Jump to the queue so the rebuild around the picked song is visible.
+          switchTab("queue");
+        });
       }
       list.append(row);
     }
