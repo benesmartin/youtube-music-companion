@@ -334,6 +334,11 @@ input[type="range"]::-moz-range-thumb {
   flex-direction: column;
 }
 
+/* sized to the main page's height from JS; spread the rows into it */
+#menu-sleep {
+  justify-content: space-evenly;
+}
+
 .menu-page[hidden] {
   display: none;
 }

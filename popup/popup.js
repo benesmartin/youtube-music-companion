@@ -128,6 +128,10 @@ el("open-ytm").addEventListener("click", async () => {
 let sleepTicker = null;
 
 function showSleepPage(show) {
+  if (show) {
+    // Match the main page's height so the submenu's rows can spread out.
+    el("menu-sleep").style.minHeight = `${el("menu-main").offsetHeight}px`;
+  }
   el("menu-main").hidden = show;
   el("menu-sleep").hidden = !show;
   el("more-menu").scrollTop = 0;
