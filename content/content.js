@@ -283,6 +283,58 @@ function clickIfFound(el) {
   return true;
 }
 
+// ---- queue ----
+
+function queueScope() {
+  return document.querySelector("ytmusic-player-queue") ?? document;
+}
+
+function readQueue() {
+  const items = [...queueScope().querySelectorAll("ytmusic-player-queue-item")];
+  return items
+    .map((item, index) => ({
+      index,
+      title: item.querySelector(".song-title")?.textContent?.trim() ?? "",
+      artist: item.querySelector(".byline")?.textContent?.trim() ?? "",
+      duration: item.querySelector(".duration")?.textContent?.trim() ?? "",
+      thumb: item.querySelector("img")?.src ?? "",
+      selected: item.hasAttribute("selected"),
+    }))
+    .filter((entry) => entry.title);
+}
+
+function pushQueue() {
+  if (ports.size === 0) return;
+  const queue = readQueue();
+  for (const port of ports) {
+    port.postMessage({ type: "queue", queue });
+  }
+}
+
+let queueThrottle = null;
+function pushQueueThrottled() {
+  if (queueThrottle) return;
+  queueThrottle = setTimeout(() => {
+    queueThrottle = null;
+    pushQueue();
+  }, 800);
+}
+
+const queueObserver = new MutationObserver(pushQueueThrottled);
+let observedQueue = null;
+
+function watchQueue() {
+  const container = document.querySelector("ytmusic-player-queue");
+  if (!container || container === observedQueue) return;
+  observedQueue = container;
+  queueObserver.observe(container, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["selected"],
+  });
+}
+
 const commands = {
   playPause() {
     // The page button, not the <video> element — the first video in the DOM
@@ -303,6 +355,13 @@ const commands = {
   probeLibrary,
   goToArtist: () => clickIfFound(bylineLink("channel/")),
   goToAlbum: () => clickIfFound(bylineLink("browse/")),
+  playQueueItem(payload) {
+    const items = [...queueScope().querySelectorAll("ytmusic-player-queue-item")];
+    const item = items[payload.index];
+    if (!item || item.hasAttribute("selected")) return false;
+    (item.querySelector("ytmusic-play-button-renderer") ?? item).click();
+    return true;
+  },
   pause() {
     // One-way pause (sleep timer): no-op when already paused.
     const playing =
@@ -398,6 +457,8 @@ ext.runtime.onConnect.addListener((port) => {
       runCommand(msg.command, msg.payload);
       // Reflect the result quickly; button clicks need a beat to apply.
       setTimeout(broadcast, 150);
+    } else if (msg.type === "getQueue") {
+      port.postMessage({ type: "queue", queue: readQueue() });
     }
   });
   port.postMessage({ type: "state", state: readState() });
@@ -428,6 +489,7 @@ function watchMedia() {
 
 const observer = new MutationObserver(() => {
   watchMedia();
+  watchQueue();
   broadcastThrottled();
 });
 
@@ -446,6 +508,7 @@ function start() {
     attributeFilter: ["aria-valuenow", "aria-pressed", "like-status", "repeat-mode_", "repeat-mode"],
   });
   watchMedia();
+  watchQueue();
 }
 
 start();

@@ -307,6 +307,72 @@ el("artist").addEventListener("click", () => lastState?.artistUrl && goTo("goToA
 el("album").addEventListener("click", () => lastState?.albumUrl && goTo("goToAlbum"));
 el("artwork").addEventListener("click", focusYtmTab);
 
+// ---- queue ----
+
+let lastSelectedIndex = null;
+
+function parseDuration(text) {
+  const parts = text.split(":").map(Number);
+  if (!parts.length || parts.some(Number.isNaN)) return null;
+  return parts.reduce((total, part) => total * 60 + part, 0);
+}
+
+function queueMetaText(queue, selectedIndex) {
+  let text = `${queue.length} song${queue.length === 1 ? "" : "s"}`;
+  if (selectedIndex >= 0) {
+    const rest = queue.slice(selectedIndex + 1).map((item) => parseDuration(item.duration));
+    if (rest.length && rest.every((seconds) => seconds !== null)) {
+      const minutes = Math.round(rest.reduce((a, b) => a + b, 0) / 60);
+      text += ` · ${minutes} min left`;
+    }
+  }
+  return text;
+}
+
+function renderQueue(queue) {
+  const list = el("queue-list");
+  list.textContent = "";
+  if (!queue.length) {
+    const note = document.createElement("div");
+    note.id = "queue-note";
+    note.textContent = "Nothing in the queue — try Start radio from the ⋯ menu.";
+    list.append(note);
+    el("queue-meta").textContent = "";
+    lastSelectedIndex = null;
+    return;
+  }
+
+  for (const item of queue) {
+    const row = document.createElement("div");
+    row.className = item.selected ? "qrow now" : "qrow";
+    const thumb = document.createElement("div");
+    thumb.className = "qthumb";
+    if (item.thumb) thumb.style.backgroundImage = `url("${item.thumb}")`;
+    const meta = document.createElement("div");
+    meta.className = "qmeta";
+    const title = document.createElement("div");
+    title.className = "qtitle";
+    title.textContent = item.title;
+    const artist = document.createElement("div");
+    artist.className = "qartist";
+    artist.textContent = item.artist;
+    meta.append(title, artist);
+    const duration = document.createElement("div");
+    duration.className = "qdur";
+    duration.textContent = item.duration;
+    row.append(thumb, meta, duration);
+    row.addEventListener("click", () => send("playQueueItem", { index: item.index }));
+    list.append(row);
+  }
+
+  const selectedIndex = queue.findIndex((item) => item.selected);
+  el("queue-meta").textContent = queueMetaText(queue, selectedIndex);
+  if (selectedIndex !== lastSelectedIndex) {
+    lastSelectedIndex = selectedIndex;
+    list.querySelector(".now")?.scrollIntoView({ block: "center" });
+  }
+}
+
 async function connect() {
   const tabs = await ext.tabs.query({ url: "https://music.youtube.com/*" });
   const tab = tabs.find((t) => t.audible) ?? tabs[0];
@@ -323,7 +389,9 @@ async function connect() {
   }
   port.onMessage.addListener((msg) => {
     if (msg.type === "state") render(msg.state);
+    else if (msg.type === "queue") renderQueue(msg.queue);
   });
+  port.postMessage({ type: "getQueue" });
   port.onDisconnect.addListener(() => {
     port = null;
     showEmpty();
