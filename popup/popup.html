@@ -26,6 +26,9 @@
         <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></symbol>
         <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></symbol>
         <symbol id="i-timer" viewBox="0 0 24 24"><line x1="10" y1="2" x2="14" y2="2"/><line x1="12" y1="14" x2="15" y2="11"/><circle cx="12" cy="14" r="8"/></symbol>
+        <symbol id="i-chevron-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+        <symbol id="i-chevron-left" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
+        <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
       </defs>
     </svg>
 
@@ -57,27 +60,32 @@
             <div id="more-wrap">
               <button id="more" title="More actions"><svg><use href="#i-more"/></svg></button>
               <div id="more-menu" hidden>
-                <button id="radio"><svg><use href="#i-radio"/></svg>Start radio</button>
-                <button id="library" title="Save to / remove from library"><svg><use href="#i-bookmark"/></svg>Library</button>
-                <button id="copy-link" class="copy-btn">
-                  <svg class="on-idle"><use href="#i-link"/></svg>
-                  <svg class="on-copied"><use href="#i-check"/></svg>
-                  Copy link
-                </button>
-                <button id="copy-info" class="copy-btn" title="Copy title and artist">
-                  <svg class="on-idle"><use href="#i-clipboard"/></svg>
-                  <svg class="on-copied"><use href="#i-check"/></svg>
-                  Copy info
-                </button>
-                <div id="sleep-row" title="Pause playback after a delay">
-                  <svg><use href="#i-timer"/></svg>
-                  <span>Sleep</span>
-                  <span id="sleep-options">
-                    <button class="sleep-opt" data-min="15">15</button>
-                    <button class="sleep-opt" data-min="30">30</button>
-                    <button class="sleep-opt" data-min="60">60</button>
-                  </span>
-                  <button id="sleep-cancel" hidden></button>
+                <div id="menu-main" class="menu-page">
+                  <button id="radio"><svg><use href="#i-radio"/></svg><span class="label">Start radio</span></button>
+                  <button id="library"><svg><use href="#i-bookmark"/></svg><span class="label" id="library-label">Add to library</span></button>
+                  <button id="copy-link" class="copy-btn">
+                    <svg class="on-idle"><use href="#i-link"/></svg>
+                    <svg class="on-copied"><use href="#i-check"/></svg>
+                    <span class="label">Copy link</span>
+                  </button>
+                  <button id="copy-info" class="copy-btn">
+                    <svg class="on-idle"><use href="#i-clipboard"/></svg>
+                    <svg class="on-copied"><use href="#i-check"/></svg>
+                    <span class="label">Copy title &amp; artist</span>
+                  </button>
+                  <button id="sleep-open">
+                    <svg><use href="#i-timer"/></svg>
+                    <span class="label">Sleep timer</span>
+                    <span id="sleep-status"></span>
+                    <svg class="chev"><use href="#i-chevron-right"/></svg>
+                  </button>
+                </div>
+                <div id="menu-sleep" class="menu-page" hidden>
+                  <button id="sleep-back"><svg><use href="#i-chevron-left"/></svg><span class="label">Sleep timer</span></button>
+                  <button class="sleep-opt" data-min="15"><span class="label">15 minutes</span></button>
+                  <button class="sleep-opt" data-min="30"><span class="label">30 minutes</span></button>
+                  <button class="sleep-opt" data-min="60"><span class="label">60 minutes</span></button>
+                  <button id="sleep-off" hidden><svg><use href="#i-x"/></svg><span class="label">Turn off</span></button>
                 </div>
               </div>
             </div>

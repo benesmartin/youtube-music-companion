@@ -131,6 +131,12 @@ function readState() {
     links.find((a) => a.getAttribute("href")?.startsWith("browse/"))?.textContent?.trim() ?? "";
   const year = album && bylineParts.length >= 3 ? bylineParts[bylineParts.length - 1] : "";
 
+  // Library membership is per-track; a new title invalidates the last probe.
+  if (title !== libraryTitle) {
+    libraryTitle = title;
+    libraryState = null;
+  }
+
   const artworkSrc = bar?.querySelector("img.image")?.src ?? "";
   // like-status carries LIKE / DISLIKE / INDIFFERENT in one attribute.
   const likeStatus = bar
@@ -162,6 +168,7 @@ function readState() {
       ? likeStatus === "DISLIKE"
       : dislikeButton()?.getAttribute("aria-pressed") === "true",
     repeat: repeatMode(),
+    inLibrary: libraryState,
   };
 }
 
@@ -175,42 +182,82 @@ function bylineLink(hrefPrefix) {
   );
 }
 
-// Opens the player-bar menu and clicks the first item the finder matches.
-// Labels are localized, so finders must key on language-independent traits
-// (hrefs, icon paths). Clicking YTM's own items keeps navigation inside the
-// SPA router, so playback continues and no beforeunload dialog fires.
-async function clickPlayerBarMenuItem(findItem) {
+// Opens the player-bar menu invisibly (popup container hidden via injected
+// CSS) and runs the worker until it reports done. Labels are localized, so
+// workers must key on language-independent traits (hrefs, icon paths).
+// Clicking YTM's own items keeps navigation inside the SPA router, so
+// playback continues and no beforeunload dialog fires.
+async function withHiddenMenu(worker) {
   const menuButton = playerBar()?.querySelector("ytmusic-menu-renderer #button-shape button");
   if (!menuButton) return false;
-  menuButton.click();
-  for (let attempt = 0; attempt < 20; attempt++) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    const item = findItem();
-    if (item) {
-      item.click();
-      return true;
+  const veil = document.createElement("style");
+  veil.textContent =
+    "ytmusic-popup-container { opacity: 0 !important; pointer-events: none !important; }";
+  document.head.append(veil);
+  try {
+    menuButton.click();
+    for (let attempt = 0; attempt < 20; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const result = worker();
+      if (result != null) return result;
     }
+    return false;
+  } finally {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    document.body.click();
+    setTimeout(() => veil.remove(), 250);
   }
-  // Menu opened but the item never appeared — close it again.
-  document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  return false;
 }
+
+// The outline-bookmark icon path marks the "add to library" variant; any
+// other icon on the library toggle means the track is already saved.
+const LIBRARY_ADD_ICON = 'path[d^="M14.25 1.5"]';
+
+function findLibraryToggle() {
+  const toggles = [...document.querySelectorAll("ytmusic-toggle-menu-service-item-renderer")];
+  if (!toggles.length) return null;
+  return toggles.find((t) => t.querySelector(LIBRARY_ADD_ICON)) ?? toggles[0];
+}
+
+// null = unknown (probed lazily when the popup's dropdown opens)
+let libraryState = null;
+let libraryTitle = "";
 
 function startRadio() {
-  return clickPlayerBarMenuItem(() =>
-    document.querySelector('ytmusic-menu-navigation-item-renderer a[href*="list=RD"]')
-  );
+  return withHiddenMenu(() => {
+    const link = document.querySelector('ytmusic-menu-navigation-item-renderer a[href*="list=RD"]');
+    if (!link) return null;
+    // A leftover menu from the previous track carries its radio link;
+    // wait for the re-render matching the current video.
+    const id = pageStatus?.videoId;
+    if (id && !link.getAttribute("href")?.includes(id)) return null;
+    link.click();
+    return true;
+  });
 }
 
-function toggleLibrary() {
-  return clickPlayerBarMenuItem(() => {
-    const toggles = [...document.querySelectorAll("ytmusic-toggle-menu-service-item-renderer")];
-    if (!toggles.length) return null;
-    // The save-to-library item carries a bookmark icon; its path is the only
-    // language-independent marker. Fall back to the first toggle item, which
-    // is the library entry in the menu layouts seen so far.
-    return toggles.find((t) => t.querySelector('path[d^="M14.25 1.5"]')) ?? toggles[0];
+async function probeLibrary() {
+  await withHiddenMenu(() => {
+    const item = findLibraryToggle();
+    if (!item) return null;
+    libraryState = !item.querySelector(LIBRARY_ADD_ICON);
+    return true;
   });
+  broadcast();
+  return true;
+}
+
+async function toggleLibrary() {
+  const result = await withHiddenMenu(() => {
+    const item = findLibraryToggle();
+    if (!item) return null;
+    // If the "add" icon shows now, the click saves it — and vice versa.
+    libraryState = Boolean(item.querySelector(LIBRARY_ADD_ICON));
+    item.click();
+    return true;
+  });
+  broadcast();
+  return result;
 }
 
 function clickIfFound(el) {
@@ -236,6 +283,7 @@ const commands = {
   toggleRepeat: () => clickIfFound(barButton("repeat", "repeat")),
   startRadio,
   toggleLibrary,
+  probeLibrary,
   goToArtist: () => clickIfFound(bylineLink("channel/")),
   goToAlbum: () => clickIfFound(bylineLink("browse/")),
   pause() {

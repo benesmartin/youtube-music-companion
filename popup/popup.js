@@ -57,6 +57,12 @@ function render(state) {
   el("copy-link").disabled = !state.videoId;
   el("library").disabled = !state.videoId;
   el("copy-info").disabled = !state.title;
+
+  // Library reflects the probed state; "Add" is the default until known.
+  el("library").classList.toggle("in", state.inLibrary === true);
+  el("library-label").textContent =
+    state.inLibrary === true ? "Remove from library" : "Add to library";
+  if (!el("more-menu").hidden) updateOverflowTitles();
   if (el("artwork").src !== state.artwork) el("artwork").src = state.artwork;
 
   el("play-pause").classList.toggle("playing", state.playing);
@@ -117,11 +123,36 @@ el("open-ytm").addEventListener("click", async () => {
 });
 
 // ---- more-actions dropdown ----
+// The menu persists until a click lands outside it.
+
+let sleepTicker = null;
+
+function showSleepPage(show) {
+  el("menu-main").hidden = show;
+  el("menu-sleep").hidden = !show;
+}
+
+// Full-text labels get a tooltip only when actually truncated.
+function updateOverflowTitles() {
+  for (const label of document.querySelectorAll("#more-menu .label")) {
+    label.title = label.scrollWidth > label.clientWidth ? label.textContent : "";
+  }
+}
 
 function toggleMenu(open) {
   const show = open ?? el("more-menu").hidden;
   el("more-menu").hidden = !show;
   el("more").classList.toggle("open", show);
+  if (show) {
+    showSleepPage(false);
+    send("probeLibrary");
+    refreshSleep();
+    updateOverflowTitles();
+    sleepTicker = setInterval(refreshSleep, 10000);
+  } else if (sleepTicker) {
+    clearInterval(sleepTicker);
+    sleepTicker = null;
+  }
 }
 
 el("more").addEventListener("click", (e) => {
@@ -134,57 +165,57 @@ document.addEventListener("click", (e) => {
 
 // Radio is started by the content script clicking YTM's own "Start mix" menu
 // item — SPA navigation, playback keeps running, no beforeunload dialog.
-el("radio").addEventListener("click", () => {
-  send("startRadio");
-  toggleMenu(false);
-});
+el("radio").addEventListener("click", () => send("startRadio"));
 
-el("library").addEventListener("click", () => {
-  send("toggleLibrary");
-  toggleMenu(false);
-});
+el("library").addEventListener("click", () => send("toggleLibrary"));
 
 async function copyToClipboard(button, text) {
   await navigator.clipboard.writeText(text);
   button.classList.add("copied");
-  setTimeout(() => {
-    button.classList.remove("copied");
-    toggleMenu(false);
-  }, 900);
+  setTimeout(() => button.classList.remove("copied"), 1200);
 }
 
-el("copy-link").addEventListener("click", (e) => {
-  e.stopPropagation();
+el("copy-link").addEventListener("click", () => {
   if (lastState?.videoId) copyToClipboard(el("copy-link"), `${YTM_BASE}watch?v=${lastState.videoId}`);
 });
 
-el("copy-info").addEventListener("click", (e) => {
-  e.stopPropagation();
+el("copy-info").addEventListener("click", () => {
   if (lastState?.title) copyToClipboard(el("copy-info"), `${lastState.artist} – ${lastState.title}`);
 });
 
 // ---- sleep timer ----
 
 async function refreshSleep() {
-  const alarm = await ext.alarms.get("sleep-timer").catch(() => null);
-  el("sleep-options").hidden = Boolean(alarm);
-  el("sleep-cancel").hidden = !alarm;
-  if (alarm) {
-    const minutes = Math.max(1, Math.round((alarm.scheduledTime - Date.now()) / 60000));
-    el("sleep-cancel").textContent = `${minutes} min ✕`;
+  let alarm = null;
+  try {
+    alarm = await ext.alarms.get("sleep-timer");
+  } catch {
+    // API unavailable; leave the timer UI inert.
   }
+  const active = Boolean(alarm);
+  el("sleep-off").hidden = !active;
+  el("sleep-status").textContent = active
+    ? `${Math.max(1, Math.ceil((alarm.scheduledTime - Date.now()) / 60000))} min`
+    : "";
 }
 
+el("sleep-open").addEventListener("click", () => showSleepPage(true));
+el("sleep-back").addEventListener("click", () => showSleepPage(false));
+
 for (const option of document.querySelectorAll(".sleep-opt")) {
-  option.addEventListener("click", (e) => {
-    e.stopPropagation();
+  option.addEventListener("click", () => {
     ext.alarms.create("sleep-timer", { delayInMinutes: Number(option.dataset.min) });
-    setTimeout(refreshSleep, 100);
+    el("sleep-status").textContent = `${option.dataset.min} min`;
+    el("sleep-off").hidden = false;
+    showSleepPage(false);
+    setTimeout(refreshSleep, 150);
   });
 }
 
-el("sleep-cancel").addEventListener("click", async (e) => {
-  e.stopPropagation();
+el("sleep-off").addEventListener("click", async () => {
+  el("sleep-off").hidden = true;
+  el("sleep-status").textContent = "";
+  showSleepPage(false);
   await ext.alarms.clear("sleep-timer");
   refreshSleep();
 });
