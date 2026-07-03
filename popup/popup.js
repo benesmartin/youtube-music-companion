@@ -65,9 +65,7 @@ function render(state) {
   if (track !== currentTrack) {
     currentTrack = track;
     seeking = false;
-    if (activeTab === "lyrics") renderLyrics();
   }
-  if (activeTab === "lyrics") updateLyricsHighlight(state.position);
 
   el("title").textContent = state.title;
   el("artist").textContent = state.artist;
@@ -78,6 +76,14 @@ function render(state) {
   el("album").title = el("album").scrollWidth > el("album").clientWidth ? state.album : "";
 
   lastState = state;
+  // Lyrics refresh must run AFTER lastState is updated — renderLyrics reads
+  // it, and refreshing from the track-change branch above fed it the OLD
+  // track, which made the pane keep the previous song's lyrics.
+  if (activeTab === "lyrics") {
+    const lyricsStateKey = state.videoId || `${state.title}|${state.artist}`;
+    if (lyricsStateKey !== lyricsRenderKey) renderLyrics();
+    else updateLyricsHighlight(state.position);
+  }
   el("artist").classList.toggle("link", Boolean(state.artistUrl));
   el("album").classList.toggle("link", Boolean(state.albumUrl));
   el("radio").disabled = !state.videoId;
@@ -937,6 +943,7 @@ const LYRICS_TYPES = new Set(["MUSIC_VIDEO_TYPE_ATV", "MUSIC_VIDEO_TYPE_OMV"]);
 
 let lyricsEnabled = null; // null = not read from storage yet
 let lyricsKey = null; // track the pane currently reflects
+let lyricsRenderKey = null; // track renderLyrics last ran for (any outcome)
 let lyricsLines = null; // [{t, text, el}] when synced lyrics are shown
 let lyricsFetchId = 0;
 let lyricsScrollHold = 0; // pause autoscroll until this timestamp
@@ -1075,6 +1082,10 @@ el("lyrics-pane").addEventListener("wheel", () => {
 
 async function renderLyrics() {
   const state = lastState;
+  // Remember what this run reflects, whatever the outcome (note, prompt,
+  // fetch) — render() re-invokes only when this key changes.
+  lyricsRenderKey =
+    state?.available && state.title ? state.videoId || `${state.title}|${state.artist}` : null;
   if (!state?.available || !state.title) {
     lyricsKey = null;
     lyricsLines = null;
