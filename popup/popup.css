@@ -627,12 +627,13 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
 }
 
-.qrow:hover {
+.qrow:not(.now):hover {
   background: var(--surface);
 }
 
 .qrow.now {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
+  cursor: default;
 }
 
 .qthumb {
@@ -646,7 +647,7 @@ input[type="range"]::-moz-range-thumb {
   position: relative;
 }
 
-.qrow:hover .qthumb::after {
+.qrow:not(.now):hover .qthumb::after {
   content: "";
   position: absolute;
   inset: 0;
