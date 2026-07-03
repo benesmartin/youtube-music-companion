@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main id="player" hidden>
+      <div id="artwork-wrap">
+        <img id="artwork" alt="" />
+      </div>
+      <div id="track">
+        <div id="title">—</div>
+        <div id="artist">—</div>
+      </div>
+      <div id="timeline">
+        <span id="position">0:00</span>
+        <input id="seek" type="range" min="0" max="100" step="1" value="0" />
+        <span id="duration">0:00</span>
+      </div>
+      <div id="controls">
+        <button id="like" title="Like">♡</button>
+        <button id="previous" title="Previous">⏮</button>
+        <button id="play-pause" title="Play/Pause">▶</button>
+        <button id="next" title="Next">⏭</button>
+        <button id="mute" title="Mute">🔊</button>
+      </div>
+      <div id="volume-row">
+        <input id="volume" type="range" min="0" max="100" step="1" value="100" />
+      </div>
+    </main>
+
+    <main id="empty" hidden>
+      <p>YouTube Music isn’t open.</p>
+      <button id="open-ytm">Open YouTube Music</button>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

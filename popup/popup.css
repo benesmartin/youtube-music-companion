@@ -1,0 +1,146 @@
+:root {
+  color-scheme: dark;
+  --bg: #121212;
+  --surface: #1e1e1e;
+  --text: #ffffff;
+  --text-dim: #aaaaaa;
+  --accent: #ff4e45;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 320px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+}
+
+main {
+  padding: 16px;
+}
+
+#artwork-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+#artwork {
+  width: 240px;
+  height: 240px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--surface);
+}
+
+#track {
+  text-align: center;
+  margin-top: 12px;
+}
+
+#title {
+  font-weight: 600;
+  font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#artist {
+  color: var(--text-dim);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#timeline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+#timeline span {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  min-width: 34px;
+}
+
+#duration {
+  text-align: right;
+}
+
+input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+#controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+#controls button {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#controls button:hover {
+  background: var(--surface);
+}
+
+#play-pause {
+  font-size: 24px;
+  width: 52px;
+  height: 52px;
+  background: var(--surface) !important;
+}
+
+#like.liked {
+  color: var(--accent);
+}
+
+#volume-row {
+  display: flex;
+  margin-top: 8px;
+  padding: 0 24px;
+}
+
+#empty {
+  text-align: center;
+  padding: 32px 16px;
+}
+
+#empty p {
+  color: var(--text-dim);
+  margin-bottom: 16px;
+}
+
+#open-ytm {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 18px;
+  padding: 10px 20px;
+  font-size: 14px;
+  cursor: pointer;
+}

@@ -1,0 +1,66 @@
+{
+  "manifest_version": 3,
+  "name": "Companion for YouTube Music",
+  "version": "0.1.0",
+  "description": "Control YouTube Music from a compact popup: track info, playback controls, seek, volume, and keyboard shortcuts.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "youtube-music-companion@benesmartin",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  },
+  "permissions": ["storage"],
+  "host_permissions": ["https://music.youtube.com/*"],
+  "background": {
+    "scripts": ["background.js"],
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://music.youtube.com/*"],
+      "js": ["content/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Companion for YouTube Music",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "96": "icons/icon96.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "play-pause": {
+      "suggested_key": { "default": "Alt+Shift+Space" },
+      "description": "Play or pause the current track"
+    },
+    "next-track": {
+      "suggested_key": { "default": "Alt+Shift+N" },
+      "description": "Next track"
+    },
+    "previous-track": {
+      "suggested_key": { "default": "Alt+Shift+P" },
+      "description": "Previous track"
+    },
+    "toggle-like": {
+      "suggested_key": { "default": "Alt+Shift+L" },
+      "description": "Like or unlike the current track"
+    }
+  }
+}
