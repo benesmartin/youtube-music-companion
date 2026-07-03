@@ -379,7 +379,11 @@ function renderQueue(queue) {
       ]) {
         const button = document.createElement("button");
         button.title = title;
-        button.innerHTML = `<svg><use href="${icon}"/></svg>`;
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        use.setAttribute("href", icon);
+        svg.append(use);
+        button.append(svg);
         button.addEventListener("click", (e) => {
           e.stopPropagation();
           send(command, { index: item.index });
