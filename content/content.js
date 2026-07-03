@@ -464,6 +464,7 @@ const commands = {
   goToAlbum: () => clickIfFound(bylineLink("browse/")),
   // payload may carry playlistId/params so YTM builds the proper queue
   playVideoById: (payload) => askBridgeAsync("playVideoById", payload),
+  playPlaylist: (payload) => askBridgeAsync("playPlaylist", { playlistId: payload.playlistId }),
   queueVideoNext(payload) {
     return askBridgeAsync("queueVideoNext", { videoId: payload.videoId }).then((ok) => {
       setTimeout(pushQueue, 700);
@@ -609,6 +610,17 @@ ext.runtime.onConnect.addListener((port) => {
       setTimeout(broadcast, 150);
     } else if (msg.type === "getQueue") {
       queueWithThumbs().then((queue) => port.postMessage({ type: "queue", queue }));
+    } else if (msg.type === "getPlaylists") {
+      askBridgeAsync("getPlaylists", {}, 8000).then((playlists) =>
+        port.postMessage({ type: "playlists", playlists })
+      );
+    } else if (msg.type === "getPlaylistTracks") {
+      askBridgeAsync("getPlaylistTracks", { browseId: msg.browseId }, 8000).then((tracks) =>
+        port.postMessage({ type: "playlistTracks", browseId: msg.browseId, tracks })
+      );
+    } else if (msg.type === "addToPlaylist") {
+      askBridgeAsync("addToPlaylist", { playlistId: msg.playlistId, videoId: msg.videoId }, 8000)
+        .then((ok) => port.postMessage({ type: "addToPlaylistResult", ok, name: msg.name }));
     } else if (msg.type === "search") {
       askBridgeAsync("search", { query: msg.query }, 8000).then((results) =>
         port.postMessage({ type: "searchResults", query: msg.query, results })

@@ -35,6 +35,7 @@
         <symbol id="i-remove" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></symbol>
         <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
         <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
       </defs>
     </svg>
 
@@ -121,6 +122,7 @@
         <div class="tab" data-tab="history">History</div>
         <div class="tab" data-tab="lyrics">Lyrics</div>
         <div class="tab" data-tab="search">Search</div>
+        <div class="tab" data-tab="playlists">Playlists</div>
         <span id="queue-meta"></span>
       </div>
       <div id="queue-list"><div id="queue-note">Loading queue…</div></div>
@@ -136,6 +138,16 @@
           <button class="pill" data-group="videos">Videos</button>
         </div>
         <div id="search-results"></div>
+      </div>
+      <div id="playlists-pane" hidden>
+        <div id="playlists-list"></div>
+        <div id="playlist-detail" hidden>
+          <button id="playlist-back">
+            <svg><use href="#i-chevron-left"/></svg>
+            <span id="playlist-title" class="label">Playlist</span>
+          </button>
+          <div id="playlist-tracks"></div>
+        </div>
       </div>
     </main>
 

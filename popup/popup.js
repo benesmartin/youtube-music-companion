@@ -609,6 +609,133 @@ for (const pill of document.querySelectorAll("#search-filters .pill")) {
   });
 }
 
+// ---- playlists ----
+// Library playlists → drill into tracks. Rows offer "play all" and "add the
+// currently playing song" (edit_playlist via the bridge).
+
+let playlistsLoaded = false;
+let playlistDetailId = null; // browseId the detail view shows (stale guard)
+
+function noteInto(container, text) {
+  container.textContent = "";
+  const note = document.createElement("div");
+  note.className = "list-note";
+  note.textContent = text;
+  container.append(note);
+}
+
+function requestPlaylists() {
+  if (playlistsLoaded || !port) return;
+  noteInto(el("playlists-list"), "Loading playlists…");
+  port.postMessage({ type: "getPlaylists" });
+}
+
+function renderPlaylists(playlists) {
+  playlistsLoaded = Boolean(playlists);
+  const list = el("playlists-list");
+  if (!playlists) {
+    noteInto(list, "Couldn’t load playlists — are you signed in?");
+    return;
+  }
+  if (!playlists.length) {
+    noteInto(list, "No playlists in your library yet.");
+    return;
+  }
+  list.textContent = "";
+  for (const pl of playlists) {
+    const row = document.createElement("div");
+    row.className = "qrow has-actions";
+    const thumb = document.createElement("div");
+    thumb.className = "qthumb";
+    if (pl.thumb) thumb.style.backgroundImage = `url("${pl.thumb}")`;
+    const meta = document.createElement("div");
+    meta.className = "qmeta";
+    const title = document.createElement("div");
+    title.className = "qtitle";
+    title.textContent = pl.title;
+    const subtitle = document.createElement("div");
+    subtitle.className = "qartist";
+    subtitle.textContent = pl.subtitle;
+    meta.append(title, subtitle);
+    row.append(thumb, meta);
+
+    const actions = document.createElement("div");
+    actions.className = "qactions";
+    for (const [label, icon, handler] of [
+      [
+        "Play playlist",
+        "#i-play",
+        () => {
+          send("playPlaylist", { playlistId: pl.id });
+          armQueueSwitch(null); // no videoId to confirm; the fallback switches
+        },
+      ],
+      [
+        "Add current song",
+        "#i-plus",
+        () => {
+          if (!lastState?.videoId) {
+            showToast("Nothing is playing to add.");
+            return;
+          }
+          port?.postMessage({
+            type: "addToPlaylist",
+            playlistId: pl.id,
+            videoId: lastState.videoId,
+            name: pl.title,
+          });
+        },
+      ],
+    ]) {
+      const button = document.createElement("button");
+      button.title = label;
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      use.setAttribute("href", icon);
+      svg.append(use);
+      button.append(svg);
+      button.addEventListener("click", (e) => {
+        e.stopPropagation();
+        handler();
+      });
+      actions.append(button);
+    }
+    row.append(actions);
+    row.addEventListener("click", () => openPlaylist(pl));
+    list.append(row);
+  }
+}
+
+function openPlaylist(pl) {
+  playlistDetailId = pl.id;
+  el("playlists-list").hidden = true;
+  el("playlist-detail").hidden = false;
+  el("playlist-title").textContent = pl.title;
+  noteInto(el("playlist-tracks"), "Loading tracks…");
+  port?.postMessage({ type: "getPlaylistTracks", browseId: pl.id });
+}
+
+function renderPlaylistTracks(msg) {
+  if (msg.browseId !== playlistDetailId) return; // navigated away meanwhile
+  const list = el("playlist-tracks");
+  if (!msg.tracks) {
+    noteInto(list, "Couldn’t load this playlist.");
+    return;
+  }
+  if (!msg.tracks.length) {
+    noteInto(list, "This playlist is empty.");
+    return;
+  }
+  list.textContent = "";
+  for (const item of msg.tracks) list.append(buildTrackRow(item));
+}
+
+el("playlist-back").addEventListener("click", () => {
+  playlistDetailId = null;
+  el("playlist-detail").hidden = true;
+  el("playlists-list").hidden = false;
+});
+
 // ---- lyrics (LRCLIB) ----
 // Opt-in (sends title/artist to lrclib.net), official songs only. Synced
 // entries get a live highlight + click-to-seek; the highlighted line is the
@@ -830,10 +957,12 @@ function switchTab(name) {
   el("history-list").hidden = name !== "history";
   el("lyrics-pane").hidden = name !== "lyrics";
   el("search-pane").hidden = name !== "search";
+  el("playlists-pane").hidden = name !== "playlists";
   el("queue-meta").hidden = name !== "queue";
   if (name === "history") requestHistory();
   if (name === "lyrics") renderLyrics();
   if (name === "search") el("search-input").focus();
+  if (name === "playlists") requestPlaylists();
 }
 
 for (const tab of document.querySelectorAll(".tab")) {
@@ -865,6 +994,10 @@ async function connect() {
       if (queueSwitchLoaded && msg.queue.some((item) => item.selected)) doQueueSwitch();
     } else if (msg.type === "history") renderHistory(msg.history);
     else if (msg.type === "searchResults") renderSearchResults(msg);
+    else if (msg.type === "playlists") renderPlaylists(msg.playlists);
+    else if (msg.type === "playlistTracks") renderPlaylistTracks(msg);
+    else if (msg.type === "addToPlaylistResult")
+      showToast(msg.ok ? `Added to ${msg.name}.` : "Couldn’t add to that playlist.");
     else if (msg.type === "notice") showToast(msg.text);
   });
   port.postMessage({ type: "getQueue" });

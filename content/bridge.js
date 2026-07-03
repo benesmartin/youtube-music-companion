@@ -493,6 +493,95 @@
     }
   }
 
+  // ---- playlists (library list, tracks, play, add-current) ----
+
+  async function getPlaylists() {
+    try {
+      const data = await innertubeRequest("browse", { browseId: "FEmusic_liked_playlists" });
+      if (!data) return null;
+      const sections =
+        data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content
+          ?.sectionListRenderer?.contents ??
+        data?.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer
+          ?.contents ??
+        [];
+      const grid = sections.find((s) => s.gridRenderer)?.gridRenderer;
+      const playlists = [];
+      for (const item of grid?.items ?? []) {
+        const renderer = item?.musicTwoRowItemRenderer;
+        const browseId = renderer?.navigationEndpoint?.browseEndpoint?.browseId ?? "";
+        // Skips the "New playlist" tile and non-playlist entries.
+        if (!browseId.startsWith("VL")) continue;
+        const thumbs =
+          renderer.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? [];
+        playlists.push({
+          id: browseId,
+          title: (renderer.title?.runs ?? []).map((run) => run.text).join(""),
+          subtitle: (renderer.subtitle?.runs ?? []).map((run) => run.text).join(""),
+          thumb: thumbs.length ? thumbs[thumbs.length - 1].url : "",
+        });
+      }
+      return playlists;
+    } catch (err) {
+      console.debug("[YTM Companion] playlists fetch failed:", err);
+      return null;
+    }
+  }
+
+  async function getPlaylistTracks(browseId) {
+    try {
+      const data = await innertubeRequest("browse", { browseId });
+      if (!data) return null;
+      const sections =
+        data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content
+          ?.sectionListRenderer?.contents ??
+        data?.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer
+          ?.contents ??
+        [];
+      const shelf = sections.find((s) => s.musicPlaylistShelfRenderer)
+        ?.musicPlaylistShelfRenderer;
+      if (!shelf) return null;
+      return (shelf.contents ?? []).map(parseListItem).filter((t) => t?.title);
+    } catch (err) {
+      console.debug("[YTM Companion] playlist tracks fetch failed:", err);
+      return null;
+    }
+  }
+
+  // Play a whole playlist through the app router, same as clicking its
+  // play button on the library page.
+  async function playPlaylist(playlistId) {
+    const app = document.querySelector("ytmusic-app");
+    if (!app || !playlistId) return false;
+    const pid = playlistId.replace(/^VL/, "");
+    app.dispatchEvent(
+      new CustomEvent("yt-navigate", {
+        bubbles: true,
+        composed: true,
+        detail: { endpoint: { watchPlaylistEndpoint: { playlistId: pid } } },
+      })
+    );
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await wait(200);
+      if (player()?.getPlaylistId?.() === pid) return true;
+    }
+    return false;
+  }
+
+  async function addToPlaylist(playlistId, videoId) {
+    if (!playlistId || !videoId) return false;
+    try {
+      const data = await innertubeRequest("browse/edit_playlist", {
+        playlistId: playlistId.replace(/^VL/, ""),
+        actions: [{ action: "ACTION_ADD_VIDEO", addedVideoId: videoId }],
+      });
+      return data?.status === "STATUS_SUCCEEDED";
+    } catch (err) {
+      console.debug("[YTM Companion] add to playlist failed:", err);
+      return false;
+    }
+  }
+
   window.addEventListener("message", async (e) => {
     if (!isCurrent()) return;
     if (e.source !== window || e.data?.source !== FROM_CONTENT) return;
@@ -523,6 +612,25 @@
     }
     if (command === "search") {
       const result = await searchMusic(payload.query);
+      window.postMessage(
+        { source: FROM_BRIDGE, type: "response", requestId, result },
+        window.location.origin
+      );
+      return;
+    }
+    if (
+      command === "getPlaylists" ||
+      command === "getPlaylistTracks" ||
+      command === "playPlaylist" ||
+      command === "addToPlaylist"
+    ) {
+      const handlers = {
+        getPlaylists: () => getPlaylists(),
+        getPlaylistTracks: () => getPlaylistTracks(payload.browseId),
+        playPlaylist: () => playPlaylist(payload.playlistId),
+        addToPlaylist: () => addToPlaylist(payload.playlistId, payload.videoId),
+      };
+      const result = await handlers[command]();
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result },
         window.location.origin
