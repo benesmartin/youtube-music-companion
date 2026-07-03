@@ -771,6 +771,63 @@ input[type="range"]::-moz-range-thumb {
   left: 16px;
 }
 
+/* ---- keyboard shortcut rows ---- */
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 0;
+}
+
+.shortcut-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#settings-pane .shortcut-chip {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+#settings-pane .shortcut-chip:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+#settings-pane .shortcut-chip:disabled {
+  cursor: default;
+}
+
+#settings-pane .shortcut-chip.capturing {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+}
+
+#settings-pane .shortcut-manage {
+  margin-top: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--surface-2);
+  color: var(--text-dim);
+  font-size: 11.5px;
+  align-self: flex-start;
+}
+
+#settings-pane .shortcut-manage:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
 #queue-list,
 #history-list,
 #lyrics-pane {

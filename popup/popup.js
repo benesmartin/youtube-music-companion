@@ -469,14 +469,7 @@ function renderQueue(queue) {
 
 // ---- settings (theme) ----
 
-const DEFAULT_SETTINGS = {
-  theme: "dark",
-  accent: "red",
-  rememberTab: false,
-  jumpToQueue: true,
-  statusDot: true,
-  lastTab: "queue",
-};
+const DEFAULT_SETTINGS = { theme: "dark", accent: "red", statusDot: true };
 // Each accent is a named hue with a per-theme variant: bright enough to read
 // on near-black, deep enough to hold contrast on light grey.
 const ACCENTS = [
@@ -505,8 +498,6 @@ function applySettings() {
     if (def) swatch.style.background = light ? def.light : def.dark;
     swatch.classList.toggle("active", swatch.dataset.accent === accent.name);
   }
-  el("set-remember-tab").classList.toggle("on", settings.rememberTab === true);
-  el("set-jump-queue").classList.toggle("on", settings.jumpToQueue !== false);
   el("set-status-dot").classList.toggle("on", settings.statusDot !== false);
 }
 
@@ -536,9 +527,6 @@ async function loadSettings() {
   }
   el("set-lyrics").classList.toggle("on", lyricsEnabled);
   applySettings();
-  if (settings.rememberTab && settings.lastTab && settings.lastTab !== "queue") {
-    switchTab(settings.lastTab);
-  }
 }
 
 for (const def of ACCENTS) {
@@ -560,16 +548,10 @@ for (const option of document.querySelectorAll(".theme-opt")) {
   });
 }
 
-for (const [id, key, defaultOn] of [
-  ["set-remember-tab", "rememberTab", false],
-  ["set-jump-queue", "jumpToQueue", true],
-  ["set-status-dot", "statusDot", true],
-]) {
-  el(id).addEventListener("click", () => {
-    settings[key] = !(settings[key] ?? defaultOn);
-    saveSettings();
-  });
-}
+el("set-status-dot").addEventListener("click", () => {
+  settings.statusDot = settings.statusDot === false;
+  saveSettings();
+});
 
 // Lyrics opt-in lives under its own storage key (the content script's
 // prefetch reads it too); this switch and the in-tab Enable button are two
@@ -579,6 +561,122 @@ el("set-lyrics").addEventListener("click", () => setLyricsEnabled(!lyricsEnabled
 el("settings-open").addEventListener("click", () => {
   switchTab(activeTab === "settings" ? "queue" : "settings");
 });
+
+// ---- keyboard shortcuts ----
+// Firefox supports commands.update(), so shortcuts are editable right here:
+// click a chip, press a combo. Chrome only allows editing on its own page.
+
+const canEditShortcuts = typeof ext.commands?.update === "function";
+let shortcutCapture = null; // cleanup fn of the active capture, if any
+
+function comboFromEvent(e) {
+  const mods = [];
+  if (e.ctrlKey) mods.push("Ctrl");
+  if (e.altKey) mods.push("Alt");
+  if (e.metaKey) mods.push("Command");
+  if (e.shiftKey) mods.push("Shift");
+  if (!mods.length) return null; // a plain key can't be a global shortcut
+  const SPECIAL = {
+    " ": "Space",
+    ArrowUp: "Up",
+    ArrowDown: "Down",
+    ArrowLeft: "Left",
+    ArrowRight: "Right",
+    ",": "Comma",
+    ".": "Period",
+  };
+  let key = SPECIAL[e.key] ?? e.key;
+  if (/^[a-z]$/i.test(key)) key = key.toUpperCase();
+  const valid =
+    /^[A-Z0-9]$/.test(key) ||
+    /^F([1-9]|1[0-2])$/.test(key) ||
+    ["Space", "Up", "Down", "Left", "Right", "Comma", "Period", "Home", "End", "PageUp", "PageDown", "Insert"].includes(key);
+  return valid ? [...mods, key].join("+") : null;
+}
+
+function beginShortcutCapture(name, chip) {
+  shortcutCapture?.();
+  chip.classList.add("capturing");
+  chip.textContent = "Press keys…";
+  const onKey = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.key === "Escape") {
+      cleanup();
+      renderShortcuts();
+      return;
+    }
+    if (e.key === "Backspace" || e.key === "Delete") {
+      try {
+        await ext.commands.update({ name, shortcut: "" });
+      } catch {
+        // some platforms refuse clearing; leave as-is
+      }
+      cleanup();
+      renderShortcuts();
+      return;
+    }
+    if (["Control", "Alt", "Shift", "Meta"].includes(e.key)) return; // wait for the real key
+    const combo = comboFromEvent(e);
+    if (combo) {
+      try {
+        await ext.commands.update({ name, shortcut: combo });
+      } catch {
+        showToast(`${combo} isn’t allowed as a shortcut — try Ctrl/Alt (+Shift) + a key.`);
+      }
+    } else {
+      showToast("Shortcuts need Ctrl, Alt or Command plus a regular key.");
+    }
+    cleanup();
+    renderShortcuts();
+  };
+  const cleanup = () => {
+    window.removeEventListener("keydown", onKey, true);
+    shortcutCapture = null;
+  };
+  shortcutCapture = cleanup;
+  window.addEventListener("keydown", onKey, true);
+}
+
+async function renderShortcuts() {
+  const wrap = el("shortcut-rows");
+  wrap.textContent = "";
+  let commandList = [];
+  try {
+    commandList = await ext.commands.getAll();
+  } catch {
+    // commands API unavailable
+  }
+  for (const command of commandList) {
+    const row = document.createElement("div");
+    row.className = "shortcut-row";
+    const label = document.createElement("div");
+    label.className = "shortcut-name";
+    label.textContent = command.description || command.name;
+    const chip = document.createElement("button");
+    chip.className = "shortcut-chip";
+    chip.textContent = command.shortcut || "Not set";
+    if (canEditShortcuts) {
+      chip.title = "Click, then press a combination. Backspace clears, Esc cancels.";
+      chip.addEventListener("click", () => beginShortcutCapture(command.name, chip));
+    } else {
+      chip.disabled = true;
+    }
+    row.append(label, chip);
+    wrap.append(row);
+  }
+  if (!canEditShortcuts) {
+    // Chrome: rebinding only works on its own settings page.
+    const note = document.createElement("button");
+    note.className = "shortcut-manage";
+    note.textContent = "Edit in browser shortcut settings";
+    note.addEventListener("click", () => {
+      ext.tabs.create({ url: "chrome://extensions/shortcuts" });
+      window.close();
+    });
+    wrap.append(note);
+  }
+}
 
 // ---- autoplay toggle (mirrors YTM's queue-header switch) ----
 
@@ -1139,7 +1237,6 @@ let queueSwitchLoaded = false;
 let queueSwitchFallback = null;
 
 function armQueueSwitch(videoId) {
-  if (settings.jumpToQueue === false) return;
   queueSwitchVideoId = videoId;
   queueSwitchLoaded = false;
   clearTimeout(queueSwitchFallback);
@@ -1173,15 +1270,7 @@ function switchTab(name) {
   if (name === "lyrics") renderLyrics();
   if (name === "search") el("search-input").focus();
   if (name === "playlists") requestPlaylists();
-  // Remember where the user was (settings itself isn't a destination).
-  if (settings.rememberTab && name !== "settings" && settings.lastTab !== name) {
-    settings.lastTab = name;
-    try {
-      ext.storage.local.set({ settings });
-    } catch {
-      // session-only
-    }
-  }
+  if (name === "settings") renderShortcuts();
 }
 
 for (const tab of document.querySelectorAll(".tab")) {
@@ -1230,10 +1319,6 @@ async function connect() {
     else if (msg.type === "notice") showToast(msg.text);
   });
   port.postMessage({ type: "getQueue" });
-  // A restored tab (reopen-last-tab setting) may have asked for data before
-  // the port existed — re-trigger now that it does.
-  if (activeTab === "history") requestHistory();
-  else if (activeTab === "playlists") requestPlaylists();
   port.onDisconnect.addListener(() => {
     port = null;
     showEmpty();
