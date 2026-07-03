@@ -8,6 +8,10 @@ const SHORTCUT_COMMANDS = {
   "next-track": "next",
   "previous-track": "previous",
   "toggle-like": "toggleLike",
+  // No default keys (browsers cap suggested keys at four) — users bind them
+  // via Manage Extension Shortcuts / chrome://extensions/shortcuts.
+  "volume-up": "volumeUp",
+  "volume-down": "volumeDown",
 };
 
 async function findMusicTab() {

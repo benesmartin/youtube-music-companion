@@ -443,6 +443,11 @@ async function queueItemMenuAction(index, iconSelector) {
   }
 }
 
+function currentVolume() {
+  const media = video();
+  return sliderVolume() ?? pageStatus?.volume ?? (media ? Math.round(media.volume * 100) : 100);
+}
+
 const commands = {
   async playPause() {
     const playing =
@@ -548,6 +553,8 @@ const commands = {
     media.currentTime = Math.min(Math.max(0, payload.position), Math.max(0, media.duration - 1));
     return true;
   },
+  volumeUp: () => commands.setVolume({ volume: Math.min(100, currentVolume() + 10) }),
+  volumeDown: () => commands.setVolume({ volume: Math.max(0, currentVolume() - 10) }),
   setVolume(payload) {
     if (pageStatus || sliderVolume() !== null) {
       askBridge("setVolume", { volume: payload.volume });

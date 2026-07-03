@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Companion for YouTube Music",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Control YouTube Music from a compact popup: track info, playback controls, seek, volume, and keyboard shortcuts.",
   "browser_specific_settings": {
     "gecko": {
@@ -67,6 +67,12 @@
     "toggle-like": {
       "suggested_key": { "default": "Alt+Shift+L" },
       "description": "Like or unlike the current track"
+    },
+    "volume-up": {
+      "description": "Volume up"
+    },
+    "volume-down": {
+      "description": "Volume down"
     }
   }
 }
