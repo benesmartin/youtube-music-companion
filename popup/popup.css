@@ -624,15 +624,8 @@ input[type="range"]::-moz-range-thumb {
 
 .lyr-line {
   padding: 3px 8px;
-  border-radius: 6px;
   color: var(--text-dim);
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-}
-
-.lyr-line:hover {
-  background: var(--surface);
-  color: var(--text);
+  transition: color 0.15s;
 }
 
 .lyr-line.cur {

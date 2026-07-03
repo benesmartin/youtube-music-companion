@@ -527,7 +527,8 @@ function renderHistory(history) {
 
 // ---- lyrics (LRCLIB) ----
 // Opt-in (sends title/artist to lrclib.net), official songs only, synced
-// lyrics get a live highlight driven by the position stream + click-to-seek.
+// lyrics get a live highlight driven by the position stream. No click-to-seek:
+// community timings can be offset from YTM's version of a track.
 
 const LYRICS_TYPES = new Set(["MUSIC_VIDEO_TYPE_ATV", "MUSIC_VIDEO_TYPE_OMV"]);
 
@@ -617,7 +618,6 @@ function showLyricsEntry(entry) {
         const div = document.createElement("div");
         div.className = "lyr-line";
         div.textContent = line.text;
-        div.addEventListener("click", () => send("seek", { position: line.t }));
         line.el = div;
         pane.append(div);
       }
