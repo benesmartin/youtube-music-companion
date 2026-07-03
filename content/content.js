@@ -165,8 +165,9 @@ function readState() {
     setTimeout(pushQueue, 500);
     setTimeout(pushQueue, 1600);
     setTimeout(pushQueue, 3500);
-    // Warm the lyrics cache once duration/videoType have settled, so the
-    // popup's Lyrics tab is an instant cache hit.
+    // Warm the lyrics cache as soon as possible; the early attempt bails if
+    // duration hasn't settled yet and the later one picks it up.
+    setTimeout(prefetchLyrics, 800);
     setTimeout(prefetchLyrics, 2500);
   }
 

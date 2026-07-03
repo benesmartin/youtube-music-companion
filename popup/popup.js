@@ -67,7 +67,6 @@ function render(state) {
     seeking = false;
     if (activeTab === "lyrics") renderLyrics();
   }
-  if (activeTab === "lyrics") updateLyricsHighlight(state.position);
 
   el("title").textContent = state.title;
   el("artist").textContent = state.artist;
@@ -526,17 +525,15 @@ function renderHistory(history) {
 }
 
 // ---- lyrics (LRCLIB) ----
-// Opt-in (sends title/artist to lrclib.net), official songs only, synced
-// lyrics get a live highlight driven by the position stream. No click-to-seek:
-// community timings can be offset from YTM's version of a track.
+// Opt-in (sends title/artist to lrclib.net), official songs only, printed as
+// plain text. No synced highlight or click-to-seek: community timings can be
+// offset from YTM's version of a track, so nothing time-based is trustworthy.
 
 const LYRICS_TYPES = new Set(["MUSIC_VIDEO_TYPE_ATV", "MUSIC_VIDEO_TYPE_OMV"]);
 
 let lyricsEnabled = null; // null = not read from storage yet
 let lyricsKey = null; // track the pane currently reflects
-let lyricsLines = null; // [{t, text, el}] when synced lyrics are shown
 let lyricsFetchId = 0;
-let lyricsScrollHold = 0; // pause autoscroll until this timestamp
 
 function lyricsEligible(state) {
   if (!state?.available || !state.title) return false;
@@ -588,94 +585,54 @@ function renderLyricsOptIn() {
   pane.append(note, button);
 }
 
-// LRC format: one or more [mm:ss.xx] stamps per line.
-function parseLrc(text) {
-  const lines = [];
-  for (const raw of text.split("\n")) {
-    const stamps = [...raw.matchAll(/\[(\d+):(\d+(?:\.\d+)?)\]/g)];
-    if (!stamps.length) continue;
-    const content = raw.replace(/\[\d+:\d+(?:\.\d+)?\]/g, "").trim();
-    if (!content) continue;
-    for (const stamp of stamps) {
-      lines.push({ t: Number(stamp[1]) * 60 + Number(stamp[2]), text: content });
-    }
-  }
-  return lines.sort((a, b) => a.t - b.t);
+// Synced entries carry [mm:ss.xx] stamps; drop them and keep the text.
+function stripLrc(text) {
+  return (text ?? "")
+    .split("\n")
+    .map((line) => line.replace(/\[\d+:\d+(?:\.\d+)?\]/g, "").trim())
+    .join("\n")
+    .trim();
 }
 
 function showLyricsEntry(entry) {
   const pane = el("lyrics-pane");
   pane.textContent = "";
-  lyricsLines = null;
   if (entry.instrumental) {
     lyricsNote("Instrumental track.");
     return;
   }
-  if (entry.synced) {
-    const lines = parseLrc(entry.synced);
-    if (lines.length) {
-      for (const line of lines) {
-        const div = document.createElement("div");
-        div.className = "lyr-line";
-        div.textContent = line.text;
-        line.el = div;
-        pane.append(div);
-      }
-      lyricsLines = lines;
-      updateLyricsHighlight(lastState?.position ?? 0, true);
-      return;
-    }
-  }
-  if (entry.plain) {
+  const text = entry.plain?.trim() || stripLrc(entry.synced);
+  if (text) {
     const div = document.createElement("div");
     div.className = "lyr-plain";
-    div.textContent = entry.plain;
+    div.textContent = text;
     pane.append(div);
+    pane.scrollTop = 0;
     return;
   }
   lyricsNote("No lyrics found for this track.");
-}
-
-function updateLyricsHighlight(position, force = false) {
-  if (!lyricsLines || el("lyrics-pane").hidden) return;
-  let current = -1;
-  for (let i = 0; i < lyricsLines.length; i++) {
-    if (lyricsLines[i].t <= position + 0.3) current = i;
-    else break;
-  }
-  lyricsLines.forEach((line, i) => line.el.classList.toggle("cur", i === current));
-  if (current >= 0 && (force || Date.now() > lyricsScrollHold)) {
-    lyricsLines[current].el.scrollIntoView({
-      block: "center",
-      behavior: force ? "auto" : "smooth",
-    });
-  }
 }
 
 async function renderLyrics() {
   const state = lastState;
   if (!state?.available || !state.title) {
     lyricsKey = null;
-    lyricsLines = null;
     lyricsNote("Nothing is playing.");
     return;
   }
   if (!lyricsEligible(state)) {
     lyricsKey = null;
-    lyricsLines = null;
     lyricsNote("Lyrics are available for official songs only.");
     return;
   }
   if (!(await getLyricsEnabled())) {
     lyricsKey = null;
-    lyricsLines = null;
     renderLyricsOptIn();
     return;
   }
   const key = state.videoId || `${state.title}|${state.artist}`;
   if (key === lyricsKey) return; // pane already reflects this track
   lyricsKey = key;
-  lyricsLines = null;
   lyricsNote("Looking up lyrics…");
   const fetchId = ++lyricsFetchId;
   // The background script fetches and caches; usually the content script has
@@ -698,11 +655,6 @@ async function renderLyrics() {
   if (fetchId !== lyricsFetchId) return; // a newer track superseded this fetch
   showLyricsEntry(entry ?? { synced: "", plain: "", instrumental: false });
 }
-
-// Manual scrolling pauses the autoscroll so it doesn't fight the user.
-el("lyrics-pane").addEventListener("wheel", () => {
-  lyricsScrollHold = Date.now() + 4000;
-});
 
 // After a history play, jump to the Queue tab only once the picked song is
 // confirmed playing (state echoes its videoId) AND a fresh queue push landed —

@@ -10,7 +10,7 @@ A browser extension for Firefox and Chrome that lets you control YouTube Music p
 - Keyboard shortcuts (play/pause, next, previous, like)
 - Queue: view, jump, play next, remove, reorder
 - Playback history — your real YouTube Music history, grouped by day
-- Lyrics via [LRCLIB](https://lrclib.net) — time-synced highlight, opt-in, official songs only
+- Lyrics via [LRCLIB](https://lrclib.net) — plain text, opt-in, official songs only
 - Search and playlists
 - Themes
 - Works on both Firefox (MV3 background scripts) and Chrome (MV3 service worker)

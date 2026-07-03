@@ -89,8 +89,20 @@ async function lrclibLookup(track) {
   return Math.abs((hits[0].duration ?? 0) - track.duration) <= 10 ? hits[0] : null;
 }
 
-async function getLyrics(track) {
-  if (!track?.title) return null;
+// One lookup per track at a time: the popup joins the content script's
+// in-flight prefetch instead of racing a duplicate (slow) request.
+const lyricsInflight = new Map();
+
+function getLyrics(track) {
+  if (!track?.title) return Promise.resolve(null);
+  const key = track.videoId || `${track.title}|${track.artist}`;
+  if (lyricsInflight.has(key)) return lyricsInflight.get(key);
+  const pending = doGetLyrics(track).finally(() => lyricsInflight.delete(key));
+  lyricsInflight.set(key, pending);
+  return pending;
+}
+
+async function doGetLyrics(track) {
   try {
     if (track.videoId) {
       const cache = (await ext.storage.local.get("lyricsCache")).lyricsCache ?? {};
