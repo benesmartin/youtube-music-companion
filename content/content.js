@@ -318,9 +318,27 @@ function readQueue() {
     .filter((entry) => entry.title);
 }
 
-function pushQueue() {
-  if (ports.size === 0) return;
+// Fill placeholder thumbnails from the page's queue data store (via the
+// bridge) — DOM images only load when YTM's own panel scrolls near them.
+async function queueWithThumbs() {
   const queue = readQueue();
+  if (queue.length && queue.some((item) => !item.thumb)) {
+    const data = await askBridgeAsync("getQueueData", {}, 2000);
+    if (Array.isArray(data)) {
+      const thumbByTitle = new Map(
+        data.filter((entry) => entry.thumb).map((entry) => [entry.title, entry.thumb])
+      );
+      for (const item of queue) {
+        if (!item.thumb) item.thumb = thumbByTitle.get(item.title) ?? "";
+      }
+    }
+  }
+  return queue;
+}
+
+async function pushQueue() {
+  if (ports.size === 0) return;
+  const queue = await queueWithThumbs();
   for (const port of ports) {
     port.postMessage({ type: "queue", queue });
   }
@@ -519,7 +537,7 @@ ext.runtime.onConnect.addListener((port) => {
       // Reflect the result quickly; button clicks need a beat to apply.
       setTimeout(broadcast, 150);
     } else if (msg.type === "getQueue") {
-      port.postMessage({ type: "queue", queue: readQueue() });
+      queueWithThumbs().then((queue) => port.postMessage({ type: "queue", queue }));
     }
   });
   port.postMessage({ type: "state", state: readState() });

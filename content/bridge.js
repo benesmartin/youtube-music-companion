@@ -149,9 +149,51 @@
       };
     });
 
+  // The queue element's data store knows every item's thumbnail URL and
+  // videoId even when the DOM images haven't lazy-loaded yet.
+  function readQueueData() {
+    const queueEl = document.querySelector("ytmusic-player-queue");
+    let items = null;
+    try {
+      items = queueEl?.queue?.getItems?.() ?? null;
+    } catch {
+      // fall through to store access
+    }
+    if (!Array.isArray(items)) {
+      try {
+        items = queueEl?.queue?.store?.store?.getState?.()?.queue?.items ?? null;
+      } catch {
+        items = null;
+      }
+    }
+    if (!Array.isArray(items)) {
+      console.debug("[YTM Companion] queue data store unreadable");
+      return null;
+    }
+    return items.map((entry) => {
+      const renderer =
+        entry?.playlistPanelVideoRenderer ??
+        entry?.playlistPanelVideoWrapperRenderer?.primaryRenderer?.playlistPanelVideoRenderer ??
+        null;
+      const thumbs = renderer?.thumbnail?.thumbnails ?? [];
+      return {
+        videoId: renderer?.videoId ?? null,
+        title: (renderer?.title?.runs ?? []).map((run) => run.text).join(""),
+        thumb: thumbs.length ? thumbs[thumbs.length - 1].url : "",
+      };
+    });
+  }
+
   window.addEventListener("message", async (e) => {
     if (e.source !== window || e.data?.source !== FROM_CONTENT) return;
     const { command, payload, requestId } = e.data;
+    if (command === "getQueueData") {
+      window.postMessage(
+        { source: FROM_BRIDGE, type: "response", requestId, result: readQueueData() },
+        window.location.origin
+      );
+      return;
+    }
     if (command === "setVolume") {
       setVolume(payload.volume);
     } else if (command === "toggleMute") {
