@@ -62,6 +62,26 @@ ext.runtime.onMessage.addListener((msg) => {
 // starts and the popup's Lyrics tab gets an instant cache hit.
 
 const LYRICS_CACHE_LIMIT = 40;
+// Bump when matching logic changes — drops previously cached (possibly
+// mismatched) entries in one go.
+const LYRICS_CACHE_VERSION = 2;
+
+async function readLyricsCache() {
+  const stored = await ext.storage.local.get(["lyricsCache", "lyricsCacheVersion"]);
+  return stored.lyricsCacheVersion === LYRICS_CACHE_VERSION ? stored.lyricsCache ?? {} : {};
+}
+
+// Lowercase, strip diacritics and parenthesized suffixes ("(Remastered)"),
+// collapse punctuation — so cosmetic differences don't block a match.
+function normalizeName(name) {
+  return (name ?? "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\(.*?\)|\[.*?\]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
 
 async function lrclibLookup(track) {
   // Exact lookup first — duration (±2s server-side) is what makes it precise.
@@ -82,11 +102,22 @@ async function lrclibLookup(track) {
   if (!res.ok) return null;
   const hits = await res.json();
   if (!Array.isArray(hits) || !hits.length) return null;
-  hits.sort(
+  // The search is fuzzy and happily returns a different song by a similarly
+  // named artist ("Milky" → Milky Chance). Demand a real title match and
+  // artist overlap; only then does closest-duration pick among versions.
+  const title = normalizeName(track.title);
+  const artist = normalizeName(track.artist);
+  const candidates = hits.filter((hit) => {
+    if (normalizeName(hit.trackName) !== title) return false;
+    const hitArtist = normalizeName(hit.artistName);
+    return hitArtist === artist || hitArtist.includes(artist) || artist.includes(hitArtist);
+  });
+  if (!candidates.length) return null;
+  candidates.sort(
     (a, b) =>
       Math.abs((a.duration ?? 0) - track.duration) - Math.abs((b.duration ?? 0) - track.duration)
   );
-  return Math.abs((hits[0].duration ?? 0) - track.duration) <= 10 ? hits[0] : null;
+  return Math.abs((candidates[0].duration ?? 0) - track.duration) <= 10 ? candidates[0] : null;
 }
 
 // One lookup per track at a time: the popup joins the content script's
@@ -105,7 +136,7 @@ function getLyrics(track) {
 async function doGetLyrics(track) {
   try {
     if (track.videoId) {
-      const cache = (await ext.storage.local.get("lyricsCache")).lyricsCache ?? {};
+      const cache = await readLyricsCache();
       if (cache[track.videoId]) return cache[track.videoId];
     }
     let data = null;
@@ -121,14 +152,17 @@ async function doGetLyrics(track) {
       at: Date.now(),
     };
     if (track.videoId) {
-      const cache = (await ext.storage.local.get("lyricsCache")).lyricsCache ?? {};
+      const cache = await readLyricsCache();
       cache[track.videoId] = entry;
       const keys = Object.keys(cache);
       if (keys.length > LYRICS_CACHE_LIMIT) {
         keys.sort((a, b) => (cache[a].at ?? 0) - (cache[b].at ?? 0));
         for (const key of keys.slice(0, keys.length - LYRICS_CACHE_LIMIT)) delete cache[key];
       }
-      await ext.storage.local.set({ lyricsCache: cache });
+      await ext.storage.local.set({
+        lyricsCache: cache,
+        lyricsCacheVersion: LYRICS_CACHE_VERSION,
+      });
     }
     return entry;
   } catch {
