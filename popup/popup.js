@@ -480,7 +480,29 @@ function renderHistory(history) {
       duration.textContent = item.duration;
       row.append(thumb, meta, duration);
       if (item.videoId) {
-        row.addEventListener("click", () => send("playVideoById", { videoId: item.videoId }));
+        row.classList.add("has-actions");
+        const actions = document.createElement("div");
+        actions.className = "qactions";
+        const button = document.createElement("button");
+        button.title = "Play next";
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        use.setAttribute("href", "#i-play-next");
+        svg.append(use);
+        button.append(svg);
+        button.addEventListener("click", (e) => {
+          e.stopPropagation();
+          send("queueVideoNext", { videoId: item.videoId });
+        });
+        actions.append(button);
+        row.append(actions);
+        row.addEventListener("click", () =>
+          send("playVideoById", {
+            videoId: item.videoId,
+            playlistId: item.playlistId,
+            params: item.params,
+          })
+        );
       }
       list.append(row);
     }

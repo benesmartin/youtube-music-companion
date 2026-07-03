@@ -180,6 +180,77 @@
     return true;
   }
 
+  // Play through the app router (yt-navigate) so the whole UI — player bar,
+  // queue, watch page — follows along; loadVideoById alone switches the audio
+  // but leaves the app frozen on the previous track.
+  async function playVideo({ videoId, playlistId, params } = {}) {
+    if (!videoId) return false;
+    const app = document.querySelector("ytmusic-app");
+    if (app) {
+      const watchEndpoint = { videoId };
+      if (playlistId) watchEndpoint.playlistId = playlistId;
+      if (params) watchEndpoint.params = params;
+      app.dispatchEvent(
+        new CustomEvent("yt-navigate", {
+          bubbles: true,
+          composed: true,
+          detail: { endpoint: { watchEndpoint } },
+        })
+      );
+      for (let attempt = 0; attempt < 10; attempt++) {
+        await wait(150);
+        if (player()?.getVideoData?.()?.video_id === videoId) return true;
+      }
+    }
+    // Fallback: raw player API — at least the audio switches.
+    const p = player();
+    if (!p?.loadVideoById) return false;
+    p.loadVideoById(videoId);
+    return true;
+  }
+
+  function queueRendererOf(entry) {
+    return (
+      entry?.playlistPanelVideoRenderer ??
+      entry?.playlistPanelVideoWrapperRenderer?.primaryRenderer?.playlistPanelVideoRenderer ??
+      null
+    );
+  }
+
+  // "Play next" for a track that is NOT in the queue (history rows): there is
+  // no per-row menu to click, so resolve the track's queue renderer via the
+  // internal get_queue endpoint and insert it after the current item straight
+  // into the app's queue store.
+  async function queueVideoNext(videoId) {
+    if (!videoId) return false;
+    const store = document.querySelector("ytmusic-player-queue")?.queue?.store?.store;
+    if (!store?.dispatch || !store?.getState) return false;
+    const data = await innertubeRequest("music/get_queue", { videoIds: [videoId] });
+    const items = (data?.queueDatas ?? []).map((d) => d?.content).filter(Boolean);
+    if (!items.length) return false;
+    const state = store.getState()?.queue;
+    const existing = state?.items ?? [];
+    const currentId = player()?.getVideoData?.()?.video_id ?? null;
+    const currentIndex = existing.findIndex((e) => queueRendererOf(e)?.videoId === currentId);
+    try {
+      store.dispatch({
+        type: "ADD_ITEMS",
+        payload: {
+          nextQueueItemId: state?.nextQueueItemId,
+          index: currentIndex >= 0 ? currentIndex + 1 : existing.length,
+          items,
+          shuffleEnabled: false,
+          shouldAssignIds: true,
+        },
+      });
+    } catch (err) {
+      console.debug("[YTM Companion] queue insert failed:", err);
+      return false;
+    }
+    // The dispatch is fire-and-forget; report success only if the queue grew.
+    return (store.getState()?.queue?.items?.length ?? 0) > existing.length;
+  }
+
   // The queue element's data store knows every item's thumbnail URL and
   // videoId even when the DOM images haven't lazy-loaded yet.
   function readQueueData() {
@@ -202,10 +273,7 @@
       return null;
     }
     return items.map((entry) => {
-      const renderer =
-        entry?.playlistPanelVideoRenderer ??
-        entry?.playlistPanelVideoWrapperRenderer?.primaryRenderer?.playlistPanelVideoRenderer ??
-        null;
+      const renderer = queueRendererOf(entry);
       const thumbs = renderer?.thumbnail?.thumbnails ?? [];
       return {
         videoId: renderer?.videoId ?? null,
@@ -215,12 +283,12 @@
     });
   }
 
-  // ---- account history (the real music.youtube.com/history data) ----
+  // ---- internal API plumbing ----
 
-  // The history page is fed by the internal "browse" endpoint. Calling it
-  // from the page context reuses YTM's own config (ytcfg) and cookies; the
-  // only extra requirement is the SAPISIDHASH Authorization header Google
-  // demands on cookie-authenticated API requests.
+  // Internal ("InnerTube") endpoints are called from the page context so they
+  // reuse YTM's own config (ytcfg) and cookies; the only extra requirement is
+  // the SAPISIDHASH Authorization header Google demands on
+  // cookie-authenticated API requests.
   const cfgGet = (key) => window.ytcfg?.get?.(key) ?? window.ytcfg?.data_?.[key];
 
   async function sapisidHash() {
@@ -233,6 +301,30 @@
     return `SAPISIDHASH ${ts}_${hex}`;
   }
 
+  async function innertubeRequest(path, body) {
+    const context = cfgGet("INNERTUBE_CONTEXT");
+    if (!context) return null;
+    const headers = { "content-type": "application/json", "x-origin": location.origin };
+    const auth = await sapisidHash();
+    if (auth) {
+      headers.authorization = auth;
+      // multi-account sessions break without the right account index
+      headers["x-goog-authuser"] = String(cfgGet("SESSION_INDEX") ?? "0");
+    }
+    const key = cfgGet("INNERTUBE_API_KEY");
+    const url = `/youtubei/v1/${path}?prettyPrint=false${key ? `&key=${encodeURIComponent(key)}` : ""}`;
+    const res = await fetch(url, {
+      method: "POST",
+      credentials: "include",
+      headers,
+      body: JSON.stringify({ context, ...body }),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  }
+
+  // ---- account history (the real music.youtube.com/history data) ----
+
   const columnText = (column) =>
     (column?.musicResponsiveListItemFlexColumnRenderer?.text?.runs ?? [])
       .map((run) => run.text)
@@ -242,12 +334,15 @@
     const renderer = entry?.musicResponsiveListItemRenderer;
     if (!renderer) return null;
     const thumbs = renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? [];
+    // The play overlay carries the full watch endpoint; playlistId/params make
+    // playback build the same autoplay queue as clicking the history page.
+    const endpoint =
+      renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer
+        ?.playNavigationEndpoint?.watchEndpoint ?? null;
     return {
-      videoId:
-        renderer.playlistItemData?.videoId ??
-        renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer
-          ?.playNavigationEndpoint?.watchEndpoint?.videoId ??
-        null,
+      videoId: renderer.playlistItemData?.videoId ?? endpoint?.videoId ?? null,
+      playlistId: endpoint?.playlistId ?? null,
+      params: endpoint?.params ?? null,
       title: columnText(renderer.flexColumns?.[0]),
       artist: columnText(renderer.flexColumns?.[1]),
       duration:
@@ -259,26 +354,9 @@
 
   async function fetchHistory() {
     try {
-      const context = cfgGet("INNERTUBE_CONTEXT");
-      if (!context) return null;
-      const auth = await sapisidHash();
-      if (!auth) return { signedOut: true, sections: [] };
-      const key = cfgGet("INNERTUBE_API_KEY");
-      const url = `/youtubei/v1/browse?prettyPrint=false${key ? `&key=${encodeURIComponent(key)}` : ""}`;
-      const res = await fetch(url, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "content-type": "application/json",
-          authorization: auth,
-          // multi-account sessions break without the right account index
-          "x-goog-authuser": String(cfgGet("SESSION_INDEX") ?? "0"),
-          "x-origin": location.origin,
-        },
-        body: JSON.stringify({ context, browseId: "FEmusic_history" }),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
+      if (!(await sapisidHash())) return { signedOut: true, sections: [] };
+      const data = await innertubeRequest("browse", { browseId: "FEmusic_history" });
+      if (!data) return null;
       const shelves =
         data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content
           ?.sectionListRenderer?.contents ?? [];
@@ -313,10 +391,17 @@
       return;
     }
     if (command === "playVideoById") {
-      const ok = Boolean(player()?.loadVideoById);
-      if (ok) player().loadVideoById(payload.videoId);
+      const result = await playVideo(payload);
       window.postMessage(
-        { source: FROM_BRIDGE, type: "response", requestId, result: ok },
+        { source: FROM_BRIDGE, type: "response", requestId, result },
+        window.location.origin
+      );
+      return;
+    }
+    if (command === "queueVideoNext") {
+      const result = await queueVideoNext(payload.videoId);
+      window.postMessage(
+        { source: FROM_BRIDGE, type: "response", requestId, result },
         window.location.origin
       );
       return;

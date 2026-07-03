@@ -449,7 +449,14 @@ const commands = {
   probeLibrary,
   goToArtist: () => clickIfFound(bylineLink("channel/")),
   goToAlbum: () => clickIfFound(bylineLink("browse/")),
-  playVideoById: (payload) => askBridgeAsync("playVideoById", { videoId: payload.videoId }),
+  // payload may carry playlistId/params so YTM builds the proper queue
+  playVideoById: (payload) => askBridgeAsync("playVideoById", payload),
+  queueVideoNext(payload) {
+    return askBridgeAsync("queueVideoNext", { videoId: payload.videoId }).then((ok) => {
+      setTimeout(pushQueue, 700);
+      return ok;
+    });
+  },
   queuePlayNext: (payload) => queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.playNext),
   queueRemove: (payload) => queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.removeFromQueue),
   playQueueItem(payload) {
