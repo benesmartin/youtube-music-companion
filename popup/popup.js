@@ -346,24 +346,6 @@ el("artwork").addEventListener("click", focusYtmTab);
 
 let lastSelectedIndex = null;
 
-function parseDuration(text) {
-  const parts = text.split(":").map(Number);
-  if (!parts.length || parts.some(Number.isNaN)) return null;
-  return parts.reduce((total, part) => total * 60 + part, 0);
-}
-
-function queueMetaText(queue, selectedIndex) {
-  let text = `${queue.length} song${queue.length === 1 ? "" : "s"}`;
-  if (selectedIndex >= 0) {
-    const rest = queue.slice(selectedIndex + 1).map((item) => parseDuration(item.duration));
-    if (rest.length && rest.every((seconds) => seconds !== null)) {
-      const minutes = Math.round(rest.reduce((a, b) => a + b, 0) / 60);
-      text += ` · ${minutes} min left`;
-    }
-  }
-  return text;
-}
-
 function renderQueue(queue) {
   const list = el("queue-list");
   list.textContent = "";
@@ -372,7 +354,6 @@ function renderQueue(queue) {
     note.id = "queue-note";
     note.textContent = "Nothing in the queue — try Start radio from the ⋯ menu.";
     list.append(note);
-    el("queue-meta").textContent = "";
     lastSelectedIndex = null;
     return;
   }
@@ -459,7 +440,6 @@ function renderQueue(queue) {
   }
 
   const selectedIndex = queue.findIndex((item) => item.selected);
-  el("queue-meta").textContent = queueMetaText(queue, selectedIndex);
   if (selectedIndex !== lastSelectedIndex) {
     lastSelectedIndex = selectedIndex;
     list.querySelector(".now")?.scrollIntoView({ block: "center" });
@@ -1041,7 +1021,6 @@ function switchTab(name) {
   el("lyrics-pane").hidden = name !== "lyrics";
   el("search-pane").hidden = name !== "search";
   el("playlists-pane").hidden = name !== "playlists";
-  el("queue-meta").hidden = name !== "queue";
   el("autoplay-toggle").hidden = name !== "queue" || lastAutoplay === null;
   if (name === "history") requestHistory();
   if (name === "lyrics") renderLyrics();
