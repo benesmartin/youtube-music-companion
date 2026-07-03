@@ -463,27 +463,34 @@ function renderQueue(queue) {
 
 // ---- settings (theme) ----
 
-const DEFAULT_SETTINGS = { theme: "dark", accent: "#ff4e45" };
+const DEFAULT_SETTINGS = { theme: "dark", accent: "red" };
+// Each accent is a named hue with a per-theme variant: bright enough to read
+// on near-black, deep enough to hold contrast on light grey.
 const ACCENTS = [
-  "#ff4e45", // red (default)
-  "#ff9f43", // orange
-  "#f7c948", // yellow
-  "#34c759", // green
-  "#2bb8c4", // teal
-  "#4a9eff", // blue
-  "#a78bfa", // purple
-  "#ff6bb0", // pink
+  { name: "red", dark: "#ff4e45", light: "#d93a32" },
+  { name: "orange", dark: "#ff9f43", light: "#e07b1a" },
+  { name: "yellow", dark: "#f7c948", light: "#c99b06" },
+  { name: "green", dark: "#34c759", light: "#1e9e44" },
+  { name: "teal", dark: "#2bb8c4", light: "#0f8a96" },
+  { name: "blue", dark: "#4a9eff", light: "#2673d4" },
+  { name: "purple", dark: "#a78bfa", light: "#7c5ce0" },
+  { name: "pink", dark: "#ff6bb0", light: "#d94a8c" },
 ];
 let settings = { ...DEFAULT_SETTINGS };
 
 function applySettings() {
-  document.body.classList.toggle("light", settings.theme === "light");
-  document.documentElement.style.setProperty("--accent", settings.accent);
+  const light = settings.theme === "light";
+  const accent = ACCENTS.find((a) => a.name === settings.accent) ?? ACCENTS[0];
+  document.body.classList.toggle("light", light);
+  document.documentElement.style.setProperty("--accent", light ? accent.light : accent.dark);
   for (const option of document.querySelectorAll(".theme-opt")) {
     option.classList.toggle("active", option.dataset.theme === settings.theme);
   }
   for (const swatch of document.querySelectorAll(".accent-swatch")) {
-    swatch.classList.toggle("active", swatch.dataset.accent === settings.accent);
+    const def = ACCENTS.find((a) => a.name === swatch.dataset.accent);
+    // Swatches preview the variant the current theme would actually use.
+    if (def) swatch.style.background = light ? def.light : def.dark;
+    swatch.classList.toggle("active", swatch.dataset.accent === accent.name);
   }
 }
 
@@ -502,17 +509,20 @@ async function loadSettings() {
   } catch {
     // defaults stand
   }
+  // Migrate pre-palette settings that stored a raw hex instead of a name.
+  if (settings.accent.startsWith("#")) {
+    settings.accent = ACCENTS.find((a) => a.dark === settings.accent)?.name ?? "red";
+  }
   applySettings();
 }
 
-for (const color of ACCENTS) {
+for (const def of ACCENTS) {
   const swatch = document.createElement("button");
   swatch.className = "accent-swatch";
-  swatch.dataset.accent = color;
-  swatch.style.background = color;
-  swatch.title = color;
+  swatch.dataset.accent = def.name;
+  swatch.title = def.name;
   swatch.addEventListener("click", () => {
-    settings.accent = color;
+    settings.accent = def.name;
     saveSettings();
   });
   el("accent-options").append(swatch);
