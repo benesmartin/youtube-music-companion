@@ -360,6 +360,9 @@ function renderQueue(queue) {
 
   let automixHeaderAdded = false;
   for (const item of queue) {
+    // Belt and suspenders: with autoplay off, suggestions never render —
+    // even if a stale push still carries them.
+    if (item.automix && lastAutoplay === false) continue;
     // Everything below this line is YTM's suggestions, not the real queue.
     if (item.automix && !automixHeaderAdded) {
       automixHeaderAdded = true;
@@ -1053,8 +1056,9 @@ async function connect() {
       }
       render(msg.state);
     } else if (msg.type === "queue") {
-      renderQueue(msg.queue);
+      // Autoplay state first — renderQueue keys the suggestions section on it.
       updateAutoplayToggle(msg.autoplay);
+      renderQueue(msg.queue);
       if (queueSwitchLoaded && msg.queue.some((item) => item.selected)) doQueueSwitch();
     } else if (msg.type === "history") renderHistory(msg.history);
     else if (msg.type === "searchResults") renderSearchResults(msg);

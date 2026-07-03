@@ -361,6 +361,8 @@ async function queueWithThumbs() {
 function autoplayState() {
   const toggle = document.querySelector("tp-yt-paper-toggle-button#automix");
   if (!toggle) return null;
+  // The live property beats attribute reflection, which can lag a re-render.
+  if (typeof toggle.checked === "boolean") return toggle.checked;
   return toggle.hasAttribute("checked") || toggle.getAttribute("aria-pressed") === "true";
 }
 
