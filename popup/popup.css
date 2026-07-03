@@ -289,9 +289,9 @@ input[type="range"]::-moz-range-thumb {
 #more-menu {
   position: fixed;
   right: 10px;
-  bottom: 44px;
+  bottom: 42px;
   width: 208px;
-  max-height: calc(100vh - 54px);
+  max-height: calc(100vh - 48px);
   overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--surface-2);
@@ -356,14 +356,15 @@ input[type="range"]::-moz-range-thumb {
   opacity: 0.6;
 }
 
-#sleep-status {
+#sleep-status,
+#sleep-remaining {
   color: var(--text-dim);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
 /* armed timer: letters bob in a gentle wave */
-#sleep-status span {
+.wave span {
   display: inline-block;
   white-space: pre;
   animation: sleep-wave 1.4s ease-in-out infinite;
@@ -381,7 +382,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #sleep-status span {
+  .wave span {
     animation: none;
   }
 }
@@ -392,7 +393,7 @@ input[type="range"]::-moz-range-thumb {
   gap: 6px;
   width: 70%;
   margin: 0 auto;
-  padding: 2px 0 4px;
+  padding: 1px 0 3px;
 }
 
 #sleep-custom input {
@@ -433,46 +434,9 @@ input[type="range"]::-moz-range-thumb {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 9px;
+  padding: 1px 9px;
   font-size: 12px;
-}
-
-/* trailing dots light up one after another while the timer runs */
-#sleep-active .dots {
-  display: inline-flex;
-  letter-spacing: 1px;
-  font-weight: 700;
-}
-
-#sleep-active .dots span {
-  opacity: 0.2;
-  animation: dot-pulse 1.4s infinite;
-}
-
-#sleep-active .dots span:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-#sleep-active .dots span:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes dot-pulse {
-  0%,
-  60%,
-  100% {
-    opacity: 0.2;
-  }
-  30% {
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #sleep-active .dots span {
-    animation: none;
-    opacity: 1;
-  }
+  color: var(--text-dim);
 }
 
 #sleep-active[hidden] {
@@ -493,10 +457,15 @@ input[type="range"]::-moz-range-thumb {
   width: 24px;
   height: 24px;
   padding: 0;
-  border-radius: 50%;
+  border-radius: 6px;
   justify-content: center;
   color: var(--accent);
   margin-left: auto;
+}
+
+#sleep-off svg {
+  fill: currentColor;
+  stroke: none;
 }
 
 #more-menu #sleep-off:hover {
@@ -506,7 +475,7 @@ input[type="range"]::-moz-range-thumb {
 #sleep-presets {
   display: flex;
   gap: 6px;
-  padding: 2px 9px;
+  padding: 1px 9px;
 }
 
 #more-menu .sleep-opt {

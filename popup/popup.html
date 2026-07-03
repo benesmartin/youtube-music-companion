@@ -29,6 +29,7 @@
         <symbol id="i-chevron-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
         <symbol id="i-chevron-left" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
         <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+        <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></symbol>
       </defs>
     </svg>
 
@@ -64,7 +65,7 @@
                   <button id="sleep-open">
                     <svg><use href="#i-timer"/></svg>
                     <span class="label">Sleep timer</span>
-                    <span id="sleep-status"></span>
+                    <span id="sleep-status" class="wave"></span>
                     <svg class="chev"><use href="#i-chevron-right"/></svg>
                   </button>
                   <button id="radio"><svg><use href="#i-radio"/></svg><span class="label">Start radio</span></button>
@@ -84,9 +85,8 @@
                   <button id="sleep-back"><svg><use href="#i-chevron-left"/></svg><span class="label">Sleep timer</span></button>
                   <div id="sleep-active" hidden>
                     <svg><use href="#i-timer"/></svg>
-                    <span id="sleep-remaining"></span>
-                    <span class="dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>
-                    <button id="sleep-off" title="Stop timer"><svg><use href="#i-x"/></svg></button>
+                    <span id="sleep-remaining" class="wave"></span>
+                    <button id="sleep-off" title="Stop timer"><svg><use href="#i-stop"/></svg></button>
                   </div>
                   <div id="sleep-presets">
                     <button class="sleep-opt" data-min="15">15m</button>

@@ -187,16 +187,17 @@ el("copy-info").addEventListener("click", () => {
 // ---- sleep timer ----
 
 // Each character in its own span so the wave animation can stagger them.
-function setSleepStatus(text) {
-  const status = el("sleep-status");
-  status.textContent = "";
+function waveText(element, text) {
+  element.textContent = "";
   [...text].forEach((char, i) => {
     const span = document.createElement("span");
     span.textContent = char;
     span.style.animationDelay = `${i * 0.12}s`;
-    status.append(span);
+    element.append(span);
   });
 }
+
+const setSleepStatus = (text) => waveText(el("sleep-status"), text);
 
 async function refreshSleep() {
   let alarm = null;
@@ -209,7 +210,7 @@ async function refreshSleep() {
     ? Math.max(1, Math.ceil((alarm.scheduledTime - Date.now()) / 60000))
     : 0;
   el("sleep-active").hidden = !alarm;
-  if (alarm) el("sleep-remaining").textContent = `Pausing in ${minutes} min`;
+  if (alarm) waveText(el("sleep-remaining"), `Pausing in ${minutes} min`);
   setSleepStatus(alarm ? `${minutes} min` : "");
 }
 
@@ -221,7 +222,7 @@ function armSleep(minutes) {
   const clamped = Math.min(720, Math.round(minutes));
   ext.alarms.create("sleep-timer", { delayInMinutes: clamped });
   setSleepStatus(`${clamped} min`);
-  el("sleep-remaining").textContent = `Pausing in ${clamped} min`;
+  waveText(el("sleep-remaining"), `Pausing in ${clamped} min`);
   el("sleep-active").hidden = false;
   showSleepPage(false);
   setTimeout(refreshSleep, 150);
