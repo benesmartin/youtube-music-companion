@@ -83,19 +83,21 @@
                 </div>
                 <div id="menu-sleep" class="menu-page" hidden>
                   <button id="sleep-back"><svg><use href="#i-chevron-left"/></svg><span class="label">Sleep timer</span></button>
-                  <div id="sleep-active" hidden>
-                    <svg><use href="#i-timer"/></svg>
-                    <span id="sleep-remaining"></span>
-                    <button id="sleep-off" title="Stop timer"><svg><use href="#i-stop"/></svg></button>
-                  </div>
-                  <div id="sleep-presets">
-                    <button class="sleep-opt" data-min="15">15m</button>
-                    <button class="sleep-opt" data-min="30">30m</button>
-                    <button class="sleep-opt" data-min="60">60m</button>
-                  </div>
-                  <div id="sleep-custom">
-                    <input id="sleep-custom-min" type="number" min="1" max="720" placeholder="Custom…" />
-                    <button id="sleep-set">Set</button>
+                  <div id="sleep-body">
+                    <div id="sleep-active">
+                      <svg><use href="#i-timer"/></svg>
+                      <span id="sleep-remaining">No timer running</span>
+                      <button id="sleep-off" title="Stop timer" hidden><svg><use href="#i-stop"/></svg></button>
+                    </div>
+                    <div id="sleep-presets">
+                      <button class="sleep-opt" data-min="15">15m</button>
+                      <button class="sleep-opt" data-min="30">30m</button>
+                      <button class="sleep-opt" data-min="60">60m</button>
+                    </div>
+                    <div id="sleep-custom">
+                      <input id="sleep-custom-min" type="number" min="1" max="720" placeholder="Custom…" />
+                      <button id="sleep-set">Set</button>
+                    </div>
                   </div>
                 </div>
               </div>

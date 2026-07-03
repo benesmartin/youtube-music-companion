@@ -314,7 +314,7 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 6px;
   justify-content: flex-start;
   gap: 8px;
-  padding: 4px 9px;
+  padding: 3px 9px;
   font-size: 12px;
   color: var(--text);
   white-space: nowrap;
@@ -334,8 +334,12 @@ input[type="range"]::-moz-range-thumb {
   flex-direction: column;
 }
 
-/* sized to the main page's height from JS; spread the rows into it */
-#menu-sleep {
+/* page is sized to the main menu's height from JS; the back row stays put
+   like a normal first row and the body spreads into the rest */
+#sleep-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   justify-content: space-evenly;
 }
 
@@ -443,10 +447,6 @@ input[type="range"]::-moz-range-thumb {
   padding: 1px 9px;
   font-size: 12px;
   color: var(--text-dim);
-}
-
-#sleep-active[hidden] {
-  display: none;
 }
 
 #sleep-active > svg {
