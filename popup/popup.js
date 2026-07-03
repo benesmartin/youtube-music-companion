@@ -515,8 +515,9 @@ function renderHistory(history) {
             playlistId: item.playlistId,
             params: item.params,
           });
-          // Jump to the queue so the rebuild around the picked song is visible.
-          switchTab("queue");
+          // Jump to the queue once YTM has had a moment to rebuild it —
+          // switching instantly would show the stale queue mid-teardown.
+          setTimeout(() => switchTab("queue"), 1200);
         });
       }
       list.append(row);
