@@ -25,10 +25,30 @@ async function findMusicTab() {
 
 const DOT_COLORS = { playing: "#22c55e", paused: "#eab308", none: "#9ca3af" };
 let currentIndicator = null;
+let requestedIndicator = "none";
+
+async function statusDotEnabled() {
+  try {
+    return (await ext.storage.local.get("settings")).settings?.statusDot !== false;
+  } catch {
+    return true;
+  }
+}
 
 async function setIndicator(indicator) {
-  if (indicator === currentIndicator) return;
-  currentIndicator = indicator;
+  requestedIndicator = indicator;
+  // Setting off → plain icon, no dot at all.
+  const target = (await statusDotEnabled()) ? indicator : "plain";
+  if (target === currentIndicator) return;
+  currentIndicator = target;
+  if (target === "plain") {
+    try {
+      await ext.action.setIcon({ path: { 16: "icons/icon16.png", 32: "icons/icon32.png" } });
+    } catch {
+      // leave whatever icon is currently set
+    }
+    return;
+  }
   try {
     const imageData = {};
     for (const size of [16, 32]) {
@@ -59,6 +79,11 @@ async function setIndicator(indicator) {
 
 ext.runtime.onMessage.addListener((msg) => {
   if (msg?.type === "playbackState") setIndicator(msg.indicator);
+});
+
+// React to the status-dot setting flipping while we're running.
+ext.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.settings) setIndicator(requestedIndicator);
 });
 
 // ---- lyrics (LRCLIB) ----

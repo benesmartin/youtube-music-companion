@@ -463,7 +463,14 @@ function renderQueue(queue) {
 
 // ---- settings (theme) ----
 
-const DEFAULT_SETTINGS = { theme: "dark", accent: "red" };
+const DEFAULT_SETTINGS = {
+  theme: "dark",
+  accent: "red",
+  rememberTab: false,
+  jumpToQueue: true,
+  statusDot: true,
+  lastTab: "queue",
+};
 // Each accent is a named hue with a per-theme variant: bright enough to read
 // on near-black, deep enough to hold contrast on light grey.
 const ACCENTS = [
@@ -492,6 +499,9 @@ function applySettings() {
     if (def) swatch.style.background = light ? def.light : def.dark;
     swatch.classList.toggle("active", swatch.dataset.accent === accent.name);
   }
+  el("set-remember-tab").classList.toggle("on", settings.rememberTab === true);
+  el("set-jump-queue").classList.toggle("on", settings.jumpToQueue !== false);
+  el("set-status-dot").classList.toggle("on", settings.statusDot !== false);
 }
 
 function saveSettings() {
@@ -513,7 +523,16 @@ async function loadSettings() {
   if (settings.accent.startsWith("#")) {
     settings.accent = ACCENTS.find((a) => a.dark === settings.accent)?.name ?? "red";
   }
+  try {
+    lyricsEnabled = Boolean((await ext.storage.local.get("lyricsEnabled")).lyricsEnabled);
+  } catch {
+    lyricsEnabled = false;
+  }
+  el("set-lyrics").classList.toggle("on", lyricsEnabled);
   applySettings();
+  if (settings.rememberTab && settings.lastTab && settings.lastTab !== "queue") {
+    switchTab(settings.lastTab);
+  }
 }
 
 for (const def of ACCENTS) {
@@ -534,6 +553,22 @@ for (const option of document.querySelectorAll(".theme-opt")) {
     saveSettings();
   });
 }
+
+for (const [id, key, defaultOn] of [
+  ["set-remember-tab", "rememberTab", false],
+  ["set-jump-queue", "jumpToQueue", true],
+  ["set-status-dot", "statusDot", true],
+]) {
+  el(id).addEventListener("click", () => {
+    settings[key] = !(settings[key] ?? defaultOn);
+    saveSettings();
+  });
+}
+
+// Lyrics opt-in lives under its own storage key (the content script's
+// prefetch reads it too); this switch and the in-tab Enable button are two
+// faces of the same flag.
+el("set-lyrics").addEventListener("click", () => setLyricsEnabled(!lyricsEnabled));
 
 el("settings-open").addEventListener("click", () => {
   switchTab(activeTab === "settings" ? "queue" : "settings");
@@ -944,16 +979,21 @@ function renderLyricsOptIn() {
   const button = document.createElement("button");
   button.id = "lyrics-enable";
   button.textContent = "Enable lyrics";
-  button.addEventListener("click", async () => {
-    lyricsEnabled = true;
-    try {
-      await ext.storage.local.set({ lyricsEnabled: true });
-    } catch {
-      // session-only enable
-    }
-    renderLyrics();
-  });
+  button.addEventListener("click", () => setLyricsEnabled(true));
   pane.append(note, button);
+}
+
+// Single switch behind both the in-tab Enable button and the settings toggle.
+function setLyricsEnabled(value) {
+  lyricsEnabled = value;
+  el("set-lyrics").classList.toggle("on", value);
+  try {
+    ext.storage.local.set({ lyricsEnabled: value });
+  } catch {
+    // session-only preference
+  }
+  lyricsKey = null; // force the pane to re-evaluate (fetch or opt-in prompt)
+  if (activeTab === "lyrics") renderLyrics();
 }
 
 // LRC format: one or more [mm:ss.xx] stamps per line.
@@ -1088,6 +1128,7 @@ let queueSwitchLoaded = false;
 let queueSwitchFallback = null;
 
 function armQueueSwitch(videoId) {
+  if (settings.jumpToQueue === false) return;
   queueSwitchVideoId = videoId;
   queueSwitchLoaded = false;
   clearTimeout(queueSwitchFallback);
@@ -1121,6 +1162,15 @@ function switchTab(name) {
   if (name === "lyrics") renderLyrics();
   if (name === "search") el("search-input").focus();
   if (name === "playlists") requestPlaylists();
+  // Remember where the user was (settings itself isn't a destination).
+  if (settings.rememberTab && name !== "settings" && settings.lastTab !== name) {
+    settings.lastTab = name;
+    try {
+      ext.storage.local.set({ settings });
+    } catch {
+      // session-only
+    }
+  }
 }
 
 for (const tab of document.querySelectorAll(".tab")) {
@@ -1169,6 +1219,10 @@ async function connect() {
     else if (msg.type === "notice") showToast(msg.text);
   });
   port.postMessage({ type: "getQueue" });
+  // A restored tab (reopen-last-tab setting) may have asked for data before
+  // the port existed — re-trigger now that it does.
+  if (activeTab === "history") requestHistory();
+  else if (activeTab === "playlists") requestPlaylists();
   port.onDisconnect.addListener(() => {
     port = null;
     showEmpty();

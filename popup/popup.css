@@ -719,6 +719,58 @@ input[type="range"]::-moz-range-thumb {
   border-color: var(--text);
 }
 
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.setting-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-name {
+  font-size: 12.5px;
+}
+
+.setting-sub {
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+
+/* pill switch */
+.switch {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  flex: none;
+  transition: background 0.15s;
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.15s;
+}
+
+.switch.on {
+  background: var(--accent);
+}
+
+.switch.on::after {
+  left: 16px;
+}
+
 #queue-list,
 #history-list,
 #lyrics-pane {
