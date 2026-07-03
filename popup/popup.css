@@ -290,8 +290,7 @@ input[type="range"]::-moz-range-thumb {
   position: fixed;
   right: 10px;
   bottom: 44px;
-  min-width: 150px;
-  max-width: 220px;
+  width: 208px;
   max-height: calc(100vh - 54px);
   overflow-y: auto;
   background: var(--surface);
@@ -361,6 +360,67 @@ input[type="range"]::-moz-range-thumb {
   color: var(--text-dim);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+}
+
+/* armed timer: letters bob in a gentle wave */
+#sleep-status span {
+  display: inline-block;
+  white-space: pre;
+  animation: sleep-wave 1.4s ease-in-out infinite;
+}
+
+@keyframes sleep-wave {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #sleep-status span {
+    animation: none;
+  }
+}
+
+#sleep-custom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px 4px 32px;
+}
+
+#sleep-custom input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-2);
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  padding: 5px 8px;
+  outline: none;
+}
+
+#sleep-custom input::placeholder {
+  color: var(--text-dim);
+}
+
+#more-menu #sleep-set {
+  width: auto;
+  padding: 4px 10px;
+  font-size: 11px;
+  border: 1px solid var(--surface-2);
+  border-radius: 6px;
+  color: var(--text-dim);
+}
+
+#more-menu #sleep-set:hover {
+  color: var(--text);
+  background: var(--surface-2);
 }
 
 #library.in svg {

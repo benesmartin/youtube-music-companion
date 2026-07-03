@@ -42,9 +42,68 @@
     postStatus();
   }
 
-  window.addEventListener("message", (e) => {
+  // ---- library toggle (needs Polymer element data, page-context only) ----
+
+  async function withHiddenMenu(worker) {
+    const menuButton = document.querySelector(
+      "ytmusic-player-bar ytmusic-menu-renderer #button-shape button"
+    );
+    if (!menuButton) return null;
+    const veil = document.createElement("style");
+    veil.textContent =
+      "ytmusic-popup-container { opacity: 0 !important; pointer-events: none !important; }";
+    document.head.append(veil);
+    try {
+      menuButton.click();
+      for (let attempt = 0; attempt < 20; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const result = worker();
+        if (result != null) return result;
+      }
+      return null;
+    } finally {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      document.body.click();
+      setTimeout(() => veil.remove(), 250);
+    }
+  }
+
+  // The add/remove library menu items share one icon; only the localized text
+  // differs. The Polymer data object carries language-independent iconTypes
+  // (e.g. LIBRARY_ADD) plus both text variants — comparing the rendered text
+  // against defaultText reveals which state is currently shown.
+  function findLibrary() {
+    for (const item of document.querySelectorAll("ytmusic-toggle-menu-service-item-renderer")) {
+      const data = item.data;
+      const defaultIcon = data?.defaultIcon?.iconType ?? "";
+      const toggledIcon = data?.toggledIcon?.iconType ?? "";
+      if (!defaultIcon.includes("LIBRARY") && !toggledIcon.includes("LIBRARY")) continue;
+      const shownText = item.querySelector("yt-formatted-string.text")?.textContent?.trim() ?? "";
+      const defaultText = (data?.defaultText?.runs ?? []).map((r) => r.text).join("").trim();
+      const showingDefault = shownText !== "" && shownText === defaultText;
+      const defaultIsAdd = defaultIcon.includes("ADD");
+      return { item, inLibrary: showingDefault ? !defaultIsAdd : defaultIsAdd };
+    }
+    return null;
+  }
+
+  const probeLibrary = () =>
+    withHiddenMenu(() => {
+      const found = findLibrary();
+      return found ? { inLibrary: found.inLibrary } : null;
+    });
+
+  const toggleLibrary = () =>
+    withHiddenMenu(() => {
+      const found = findLibrary();
+      if (!found) return null;
+      found.item.click();
+      return { inLibrary: !found.inLibrary };
+    });
+
+  window.addEventListener("message", async (e) => {
     if (e.source !== window || e.data?.source !== FROM_CONTENT) return;
-    const { command, payload } = e.data;
+    const { command, payload, requestId } = e.data;
     if (command === "setVolume") {
       setVolume(payload.volume);
     } else if (command === "toggleMute") {
@@ -54,6 +113,12 @@
       postStatus();
     } else if (command === "seekTo") {
       player()?.seekTo?.(payload.position, true);
+    } else if (command === "probeLibrary" || command === "toggleLibrary") {
+      const result = command === "probeLibrary" ? await probeLibrary() : await toggleLibrary();
+      window.postMessage(
+        { source: FROM_BRIDGE, type: "response", requestId, result: result ?? null },
+        window.location.origin
+      );
     }
   });
 

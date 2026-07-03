@@ -185,6 +185,18 @@ el("copy-info").addEventListener("click", () => {
 
 // ---- sleep timer ----
 
+// Each character in its own span so the wave animation can stagger them.
+function setSleepStatus(text) {
+  const status = el("sleep-status");
+  status.textContent = "";
+  [...text].forEach((char, i) => {
+    const span = document.createElement("span");
+    span.textContent = char;
+    span.style.animationDelay = `${i * 0.12}s`;
+    status.append(span);
+  });
+}
+
 async function refreshSleep() {
   let alarm = null;
   try {
@@ -192,29 +204,36 @@ async function refreshSleep() {
   } catch {
     // API unavailable; leave the timer UI inert.
   }
-  const active = Boolean(alarm);
-  el("sleep-off").hidden = !active;
-  el("sleep-status").textContent = active
-    ? `${Math.max(1, Math.ceil((alarm.scheduledTime - Date.now()) / 60000))} min`
-    : "";
+  el("sleep-off").hidden = !alarm;
+  setSleepStatus(
+    alarm ? `${Math.max(1, Math.ceil((alarm.scheduledTime - Date.now()) / 60000))} min` : ""
+  );
 }
 
 el("sleep-open").addEventListener("click", () => showSleepPage(true));
 el("sleep-back").addEventListener("click", () => showSleepPage(false));
 
-for (const option of document.querySelectorAll(".sleep-opt")) {
-  option.addEventListener("click", () => {
-    ext.alarms.create("sleep-timer", { delayInMinutes: Number(option.dataset.min) });
-    el("sleep-status").textContent = `${option.dataset.min} min`;
-    el("sleep-off").hidden = false;
-    showSleepPage(false);
-    setTimeout(refreshSleep, 150);
-  });
+function armSleep(minutes) {
+  if (!Number.isFinite(minutes) || minutes < 1) return;
+  ext.alarms.create("sleep-timer", { delayInMinutes: Math.min(720, Math.round(minutes)) });
+  setSleepStatus(`${Math.min(720, Math.round(minutes))} min`);
+  el("sleep-off").hidden = false;
+  showSleepPage(false);
+  setTimeout(refreshSleep, 150);
 }
+
+for (const option of document.querySelectorAll(".sleep-opt")) {
+  option.addEventListener("click", () => armSleep(Number(option.dataset.min)));
+}
+
+el("sleep-set").addEventListener("click", () => armSleep(Number(el("sleep-custom-min").value)));
+el("sleep-custom-min").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") armSleep(Number(el("sleep-custom-min").value));
+});
 
 el("sleep-off").addEventListener("click", async () => {
   el("sleep-off").hidden = true;
-  el("sleep-status").textContent = "";
+  setSleepStatus("");
   showSleepPage(false);
   await ext.alarms.clear("sleep-timer");
   refreshSleep();

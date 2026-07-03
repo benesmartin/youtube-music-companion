@@ -17,6 +17,9 @@ function injectBridge() {
   (document.head ?? document.documentElement).append(script);
 }
 
+const pendingBridgeRequests = new Map();
+let bridgeRequestCounter = 0;
+
 window.addEventListener("message", (e) => {
   if (e.source !== window || e.data?.source !== "ytmc-bridge") return;
   if (e.data.type === "status") {
@@ -27,11 +30,30 @@ window.addEventListener("message", (e) => {
       videoId: e.data.videoId,
     };
     broadcastThrottled();
+  } else if (e.data.type === "response" && pendingBridgeRequests.has(e.data.requestId)) {
+    pendingBridgeRequests.get(e.data.requestId)(e.data.result);
+    pendingBridgeRequests.delete(e.data.requestId);
   }
 });
 
 function askBridge(command, payload = {}) {
   window.postMessage({ source: "ytmc-content", command, payload }, window.location.origin);
+}
+
+// Fire a bridge command and await its response (null on timeout).
+function askBridgeAsync(command, payload = {}, timeoutMs = 6000) {
+  return new Promise((resolve) => {
+    const requestId = ++bridgeRequestCounter;
+    const timer = setTimeout(() => {
+      pendingBridgeRequests.delete(requestId);
+      resolve(null);
+    }, timeoutMs);
+    pendingBridgeRequests.set(requestId, (result) => {
+      clearTimeout(timer);
+      resolve(result);
+    });
+    window.postMessage({ source: "ytmc-content", command, payload, requestId }, window.location.origin);
+  });
 }
 
 // YTM ships no public API, so state comes from scraping the player bar.
@@ -209,16 +231,6 @@ async function withHiddenMenu(worker) {
   }
 }
 
-// The outline-bookmark icon path marks the "add to library" variant; any
-// other icon on the library toggle means the track is already saved.
-const LIBRARY_ADD_ICON = 'path[d^="M14.25 1.5"]';
-
-function findLibraryToggle() {
-  const toggles = [...document.querySelectorAll("ytmusic-toggle-menu-service-item-renderer")];
-  if (!toggles.length) return null;
-  return toggles.find((t) => t.querySelector(LIBRARY_ADD_ICON)) ?? toggles[0];
-}
-
 // null = unknown (probed lazily when the popup's dropdown opens)
 let libraryState = null;
 let libraryTitle = "";
@@ -236,28 +248,20 @@ function startRadio() {
   });
 }
 
+// Library state lives in Polymer element data only the page context can
+// read (both menu variants share one icon), so the bridge does the work.
 async function probeLibrary() {
-  await withHiddenMenu(() => {
-    const item = findLibraryToggle();
-    if (!item) return null;
-    libraryState = !item.querySelector(LIBRARY_ADD_ICON);
-    return true;
-  });
+  const result = await askBridgeAsync("probeLibrary");
+  if (typeof result?.inLibrary === "boolean") libraryState = result.inLibrary;
   broadcast();
   return true;
 }
 
 async function toggleLibrary() {
-  const result = await withHiddenMenu(() => {
-    const item = findLibraryToggle();
-    if (!item) return null;
-    // If the "add" icon shows now, the click saves it — and vice versa.
-    libraryState = Boolean(item.querySelector(LIBRARY_ADD_ICON));
-    item.click();
-    return true;
-  });
+  const result = await askBridgeAsync("toggleLibrary");
+  if (typeof result?.inLibrary === "boolean") libraryState = result.inLibrary;
   broadcast();
-  return result;
+  return true;
 }
 
 function clickIfFound(el) {
