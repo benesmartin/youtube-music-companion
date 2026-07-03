@@ -580,14 +580,18 @@ input[type="range"]::-moz-range-thumb {
 
 /* ---- tabs + queue ---- */
 
-/* chip tabs — deliberately not the underlined paper-tab look */
+/* chip tabs — deliberately not the underlined paper-tab look. The row sits
+   on its own tinted band so it reads as a divider between player and lists. */
 #tabs {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 10px 4px;
+  padding: 7px 10px;
   font-size: 12px;
   color: var(--text-dim);
+  background: color-mix(in srgb, var(--surface) 55%, var(--bg));
+  border-top: 1px solid var(--surface-2);
+  border-bottom: 1px solid var(--surface-2);
 }
 
 .tab {
@@ -597,7 +601,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .tab:hover {
-  background: var(--surface);
+  background: var(--surface-2);
   color: var(--text);
 }
 
@@ -619,7 +623,7 @@ input[type="range"]::-moz-range-thumb {
 
 #autoplay-toggle:hover,
 #settings-open:hover {
-  background: var(--surface);
+  background: var(--surface-2);
   color: var(--text);
 }
 
@@ -648,7 +652,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 #settings-open.active {
-  background: var(--surface);
+  background: var(--surface-2);
   color: var(--text);
 }
 
