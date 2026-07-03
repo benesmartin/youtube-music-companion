@@ -72,6 +72,14 @@ function barButton(className, labelPattern) {
   return null;
 }
 
+// The app's volume slider is the authoritative volume state; its value is
+// reflected into an attribute, which the isolated world can read directly.
+function sliderVolume() {
+  const slider = playerBar()?.querySelector("#volume-slider");
+  const value = Number(slider?.getAttribute("aria-valuenow"));
+  return Number.isFinite(value) ? value : null;
+}
+
 // Album art URLs carry a size suffix (=w60-h60 or =s60); request a larger one.
 function upscaleArtwork(url) {
   return url.replace(/=w\d+-h\d+.*$/, "=w544-h544-l90-rj").replace(/=s\d+.*$/, "=s544");
@@ -95,7 +103,7 @@ function readState() {
     playing: Boolean(media && !media.paused && media.readyState > 0),
     position: media?.currentTime ?? 0,
     duration: Number.isFinite(media?.duration) ? media.duration : 0,
-    volume: pageVolume?.volume ?? (media ? Math.round(media.volume * 100) : 100),
+    volume: sliderVolume() ?? pageVolume?.volume ?? (media ? Math.round(media.volume * 100) : 100),
     muted: pageVolume?.muted ?? media?.muted ?? false,
     liked: like?.getAttribute("aria-pressed") === "true",
     disliked: dislikeButton()?.getAttribute("aria-pressed") === "true",
@@ -127,7 +135,7 @@ const commands = {
     return true;
   },
   setVolume(payload) {
-    if (pageVolume) {
+    if (pageVolume || sliderVolume() !== null) {
       askBridge("setVolume", { volume: payload.volume });
       return true;
     }
@@ -220,7 +228,14 @@ function start() {
     setTimeout(start, 1000);
     return;
   }
-  observer.observe(bar, { childList: true, subtree: true, characterData: true });
+  // attributeFilter also catches volume-slider drags and like-state changes
+  observer.observe(bar, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: ["aria-valuenow", "aria-pressed"],
+  });
   watchMedia();
 }
 

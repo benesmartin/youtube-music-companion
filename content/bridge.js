@@ -8,6 +8,7 @@
   const FROM_CONTENT = "ytmc-content";
 
   const player = () => document.getElementById("movie_player");
+  const volumeSlider = () => document.querySelector("ytmusic-player-bar #volume-slider");
 
   function postVolume() {
     const p = player();
@@ -18,15 +19,29 @@
     );
   }
 
+  // YTM's app state lives in its volume slider, not in the movie_player API —
+  // setVolume() alone changes the audio but the app overwrites it later. Drive
+  // the slider like a user would and let YTM propagate it everywhere itself.
+  function setVolume(value) {
+    const clamped = Math.min(100, Math.max(0, value));
+    const slider = volumeSlider();
+    if (slider) {
+      slider.value = clamped;
+      slider.dispatchEvent(new CustomEvent("change", { bubbles: true, composed: true }));
+    } else {
+      player()?.setVolume?.(clamped);
+    }
+    postVolume();
+  }
+
   window.addEventListener("message", (e) => {
     if (e.source !== window || e.data?.source !== FROM_CONTENT) return;
-    const p = player();
-    if (!p) return;
     const { command, payload } = e.data;
     if (command === "setVolume") {
-      p.setVolume(Math.min(100, Math.max(0, payload.volume)));
-      postVolume();
+      setVolume(payload.volume);
     } else if (command === "toggleMute") {
+      const p = player();
+      if (!p) return;
       p.isMuted() ? p.unMute() : p.mute();
       postVolume();
     }
