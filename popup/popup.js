@@ -42,6 +42,9 @@ function render(state) {
   el("title").textContent = state.title;
   el("title").title = state.title;
   el("artist").textContent = state.artist;
+  const album = state.album ? `${state.album}${state.year ? ` • ${state.year}` : ""}` : "";
+  el("album").textContent = album;
+  el("album").hidden = !album;
   if (el("artwork").src !== state.artwork) el("artwork").src = state.artwork;
 
   el("play-pause").classList.toggle("playing", state.playing);

@@ -98,24 +98,45 @@ function readState() {
   const bar = playerBar();
   const media = video();
   const title = bar?.querySelector(".title")?.textContent?.trim() ?? "";
-  // The byline runs "Artist • Album • Year"; the first segment is the artist.
-  const byline = bar?.querySelector(".byline")?.textContent?.trim() ?? "";
-  const artist = byline.split("•")[0]?.trim() ?? "";
+
+  // Byline is "Artist • Album • Year" where artist is a channel/ link and the
+  // album a browse/ link. Music videos have no album link — only view counts
+  // as plain text — so the album is trusted only when its link exists.
+  const bylineEl = bar?.querySelector(".byline");
+  const links = bylineEl ? [...bylineEl.querySelectorAll("a")] : [];
+  const bylineParts = (bylineEl?.getAttribute("title") ?? bylineEl?.textContent ?? "")
+    .split("•")
+    .map((part) => part.trim());
+  const artist =
+    links.find((a) => a.getAttribute("href")?.startsWith("channel/"))?.textContent?.trim() ??
+    bylineParts[0] ??
+    "";
+  const album =
+    links.find((a) => a.getAttribute("href")?.startsWith("browse/"))?.textContent?.trim() ?? "";
+  const year = album && bylineParts.length >= 3 ? bylineParts[bylineParts.length - 1] : "";
+
   const artworkSrc = bar?.querySelector("img.image")?.src ?? "";
-  const like = likeButton();
+  // like-status carries LIKE / DISLIKE / INDIFFERENT in one attribute.
+  const likeStatus = bar
+    ?.querySelector("ytmusic-like-button-renderer")
+    ?.getAttribute("like-status");
 
   return {
     available: Boolean(bar && title),
     title,
     artist,
+    album,
+    year,
     artwork: artworkSrc ? upscaleArtwork(artworkSrc) : "",
     playing: Boolean(media && !media.paused && media.readyState > 0),
     position: media?.currentTime ?? 0,
     duration: Number.isFinite(media?.duration) ? media.duration : 0,
     volume: sliderVolume() ?? pageVolume?.volume ?? (media ? Math.round(media.volume * 100) : 100),
     muted: pageVolume?.muted ?? media?.muted ?? false,
-    liked: like?.getAttribute("aria-pressed") === "true",
-    disliked: dislikeButton()?.getAttribute("aria-pressed") === "true",
+    liked: likeStatus ? likeStatus === "LIKE" : likeButton()?.getAttribute("aria-pressed") === "true",
+    disliked: likeStatus
+      ? likeStatus === "DISLIKE"
+      : dislikeButton()?.getAttribute("aria-pressed") === "true",
     repeat: repeatMode(),
   };
 }
@@ -252,7 +273,7 @@ function start() {
     subtree: true,
     characterData: true,
     attributes: true,
-    attributeFilter: ["aria-valuenow", "aria-pressed", "repeat-mode_", "repeat-mode"],
+    attributeFilter: ["aria-valuenow", "aria-pressed", "like-status", "repeat-mode_", "repeat-mode"],
   });
   watchMedia();
 }

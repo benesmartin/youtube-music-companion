@@ -83,6 +83,16 @@ button svg {
   white-space: nowrap;
 }
 
+#album {
+  color: var(--text-dim);
+  opacity: 0.75;
+  font-size: 11.5px;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ---- transport controls ---- */
 
 #controls {
