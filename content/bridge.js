@@ -263,16 +263,20 @@
   function readQueueData() {
     const queueEl = document.querySelector("ytmusic-player-queue");
     let items = null;
+    // Read the raw store state first: radio queues (playing from history)
+    // keep the generated part in automixItems, which getItems() omits —
+    // it reports a single item for a 50-row queue.
     try {
-      items = queueEl?.queue?.getItems?.() ?? null;
+      const state =
+        queueEl?.queue?.store?.store?.getState?.() ?? queueEl?.queue?.store?.getState?.();
+      const q = state?.queue;
+      if (q) items = [...(q.items ?? []), ...(q.automixItems ?? [])];
     } catch {
-      // fall through to store access
+      // fall through to getItems
     }
-    if (!Array.isArray(items)) {
+    if (!Array.isArray(items) || !items.length) {
       try {
-        const state =
-          queueEl?.queue?.store?.store?.getState?.() ?? queueEl?.queue?.store?.getState?.();
-        items = state?.queue?.items ?? null;
+        items = queueEl?.queue?.getItems?.() ?? null;
       } catch {
         items = null;
       }

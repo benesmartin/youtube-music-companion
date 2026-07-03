@@ -35,11 +35,27 @@ function formatTime(totalSeconds) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+let emptyTimer = null;
+
 function render(state) {
   if (!state.available) {
-    showEmpty();
+    // SPA navigation (e.g. playing from history) blanks the player bar for
+    // a moment; only fall back to the empty view if it stays unavailable.
+    if (lastState?.available) {
+      if (!emptyTimer) {
+        emptyTimer = setTimeout(() => {
+          emptyTimer = null;
+          lastState = null;
+          showEmpty();
+        }, 1500);
+      }
+    } else {
+      showEmpty();
+    }
     return;
   }
+  clearTimeout(emptyTimer);
+  emptyTimer = null;
   playerView.hidden = false;
   emptyView.hidden = true;
 
