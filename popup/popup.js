@@ -130,6 +130,7 @@ let sleepTicker = null;
 function showSleepPage(show) {
   el("menu-main").hidden = show;
   el("menu-sleep").hidden = !show;
+  el("more-menu").scrollTop = 0;
 }
 
 // Full-text labels get a tooltip only when actually truncated.

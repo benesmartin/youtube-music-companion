@@ -71,6 +71,9 @@
       }
       return null;
     } finally {
+      // Give YTM a beat to process the clicked item before closing the menu;
+      // an instant close can cancel the service action.
+      await new Promise((resolve) => setTimeout(resolve, 200));
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
       document.body.click();
       setTimeout(() => veil.remove(), 250);
@@ -81,26 +84,42 @@
   // differs. The Polymer data object carries language-independent iconTypes
   // (e.g. LIBRARY_ADD) plus both text variants — comparing the rendered text
   // against defaultText reveals which state is currently shown.
+  // Both library states render the SAME bookmark icon (path M14.25 1.5…), so
+  // the icon identifies the item but not the state. Polymer data is
+  // unreadable on current builds, so the state comes from keyword-matching
+  // the localized label.
+  const LIBRARY_ICON = 'path[d^="M14.25 1.5"]';
+  const REMOVE_WORDS =
+    /odstranit|odebrat|remove|entfernen|supprimer|retirer|eliminar|quitar|rimuovi|remover|usuń|verwijder|ta bort|poista|fjern|удалить|убрать|削除|삭제|移除|删除/i;
+  const ADD_WORDS =
+    /uložit|přidat|save|add|speichern|hinzufügen|enregistrer|ajouter|guardar|añadir|agregar|salva|aggiungi|salvar|adicionar|zapisz|dodaj|opslaan|toevoegen|spara|lägg till|tallenna|lisää|lagre|legg til|сохранить|добавить|保存|追加|저장|추가/i;
+
+  function libraryStateFromText(text) {
+    if (REMOVE_WORDS.test(text)) return true;
+    if (ADD_WORDS.test(text)) return false;
+    return null;
+  }
+
   function findLibrary() {
     const toggles = [...document.querySelectorAll("ytmusic-toggle-menu-service-item-renderer")];
-    for (const item of toggles) {
-      const data = item.data ?? item.__data?.data ?? null;
-      const defaultIcon = data?.defaultIcon?.iconType ?? "";
-      const toggledIcon = data?.toggledIcon?.iconType ?? "";
-      if (!defaultIcon.includes("LIBRARY") && !toggledIcon.includes("LIBRARY")) continue;
-      const shownText = item.querySelector("yt-formatted-string.text")?.textContent?.trim() ?? "";
+    const item = toggles.find((t) => t.querySelector(LIBRARY_ICON)) ?? toggles[0] ?? null;
+    if (!item) return null;
+    const shownText = item.querySelector("yt-formatted-string.text")?.textContent?.trim() ?? "";
+
+    // Prefer Polymer data when a build exposes it; fall back to keywords.
+    let inLibrary = null;
+    const data = item.data ?? item.__data?.data ?? null;
+    const defaultIcon = data?.defaultIcon?.iconType ?? "";
+    if (defaultIcon.includes("LIBRARY")) {
       const defaultText = (data?.defaultText?.runs ?? []).map((r) => r.text).join("").trim();
       const showingDefault = shownText !== "" && shownText === defaultText;
       const defaultIsAdd = defaultIcon.includes("ADD");
-      return { item, inLibrary: showingDefault ? !defaultIsAdd : defaultIsAdd };
+      inLibrary = showingDefault ? !defaultIsAdd : defaultIsAdd;
+    } else {
+      inLibrary = libraryStateFromText(shownText);
     }
-    if (toggles.length) {
-      // Data unreadable on this build: assume the first toggle is the library
-      // entry (holds in all observed menus) but report the state as unknown.
-      console.debug("[YTM Companion] library data unreadable, using first toggle of", toggles.length);
-      return { item: toggles[0], inLibrary: null };
-    }
-    return null;
+    console.debug("[YTM Companion] library item:", JSON.stringify(shownText), "→ inLibrary:", inLibrary);
+    return { item, inLibrary };
   }
 
   const probeLibrary = () =>
