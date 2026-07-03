@@ -67,6 +67,7 @@ function render(state) {
     seeking = false;
     if (activeTab === "lyrics") renderLyrics();
   }
+  if (activeTab === "lyrics") updateLyricsHighlight(state.position);
 
   el("title").textContent = state.title;
   el("artist").textContent = state.artist;
@@ -525,15 +526,18 @@ function renderHistory(history) {
 }
 
 // ---- lyrics (LRCLIB) ----
-// Opt-in (sends title/artist to lrclib.net), official songs only, printed as
-// plain text. No synced highlight or click-to-seek: community timings can be
-// offset from YTM's version of a track, so nothing time-based is trustworthy.
+// Opt-in (sends title/artist to lrclib.net), official songs only. Synced
+// entries get a live highlight + click-to-seek; the highlighted line is the
+// one with the CLOSEST timestamp, which halves the average error when the
+// community timing is offset from YTM's version of a track.
 
 const LYRICS_TYPES = new Set(["MUSIC_VIDEO_TYPE_ATV", "MUSIC_VIDEO_TYPE_OMV"]);
 
 let lyricsEnabled = null; // null = not read from storage yet
 let lyricsKey = null; // track the pane currently reflects
+let lyricsLines = null; // [{t, text, el}] when synced lyrics are shown
 let lyricsFetchId = 0;
+let lyricsScrollHold = 0; // pause autoscroll until this timestamp
 
 function lyricsEligible(state) {
   if (!state?.available || !state.title) return false;
@@ -585,27 +589,49 @@ function renderLyricsOptIn() {
   pane.append(note, button);
 }
 
-// Synced entries carry [mm:ss.xx] stamps; drop them and keep the text.
-function stripLrc(text) {
-  return (text ?? "")
-    .split("\n")
-    .map((line) => line.replace(/\[\d+:\d+(?:\.\d+)?\]/g, "").trim())
-    .join("\n")
-    .trim();
+// LRC format: one or more [mm:ss.xx] stamps per line.
+function parseLrc(text) {
+  const lines = [];
+  for (const raw of (text ?? "").split("\n")) {
+    const stamps = [...raw.matchAll(/\[(\d+):(\d+(?:\.\d+)?)\]/g)];
+    if (!stamps.length) continue;
+    const content = raw.replace(/\[\d+:\d+(?:\.\d+)?\]/g, "").trim();
+    if (!content) continue;
+    for (const stamp of stamps) {
+      lines.push({ t: Number(stamp[1]) * 60 + Number(stamp[2]), text: content });
+    }
+  }
+  return lines.sort((a, b) => a.t - b.t);
 }
 
 function showLyricsEntry(entry) {
   const pane = el("lyrics-pane");
   pane.textContent = "";
+  lyricsLines = null;
   if (entry.instrumental) {
     lyricsNote("Instrumental track.");
     return;
   }
-  const text = entry.plain?.trim() || stripLrc(entry.synced);
-  if (text) {
+  if (entry.synced) {
+    const lines = parseLrc(entry.synced);
+    if (lines.length) {
+      for (const line of lines) {
+        const div = document.createElement("div");
+        div.className = "lyr-line";
+        div.textContent = line.text;
+        div.addEventListener("click", () => send("seek", { position: line.t }));
+        line.el = div;
+        pane.append(div);
+      }
+      lyricsLines = lines;
+      updateLyricsHighlight(lastState?.position ?? 0, true);
+      return;
+    }
+  }
+  if (entry.plain?.trim()) {
     const div = document.createElement("div");
     div.className = "lyr-plain";
-    div.textContent = text;
+    div.textContent = entry.plain.trim();
     pane.append(div);
     pane.scrollTop = 0;
     return;
@@ -613,20 +639,50 @@ function showLyricsEntry(entry) {
   lyricsNote("No lyrics found for this track.");
 }
 
+function updateLyricsHighlight(position, force = false) {
+  if (!lyricsLines || el("lyrics-pane").hidden) return;
+  // Closest timestamp wins — not "last line started" — so a constant timing
+  // offset in the source is only ever half a line-gap wrong.
+  let current = -1;
+  let best = Infinity;
+  for (let i = 0; i < lyricsLines.length; i++) {
+    const distance = Math.abs(lyricsLines[i].t - position);
+    if (distance < best) {
+      best = distance;
+      current = i;
+    }
+  }
+  lyricsLines.forEach((line, i) => line.el.classList.toggle("cur", i === current));
+  if (current >= 0 && (force || Date.now() > lyricsScrollHold)) {
+    lyricsLines[current].el.scrollIntoView({
+      block: "center",
+      behavior: force ? "auto" : "smooth",
+    });
+  }
+}
+
+// Manual scrolling pauses the autoscroll so it doesn't fight the user.
+el("lyrics-pane").addEventListener("wheel", () => {
+  lyricsScrollHold = Date.now() + 4000;
+});
+
 async function renderLyrics() {
   const state = lastState;
   if (!state?.available || !state.title) {
     lyricsKey = null;
+    lyricsLines = null;
     lyricsNote("Nothing is playing.");
     return;
   }
   if (!lyricsEligible(state)) {
     lyricsKey = null;
+    lyricsLines = null;
     lyricsNote("Lyrics are available for official songs only.");
     return;
   }
   if (!(await getLyricsEnabled())) {
     lyricsKey = null;
+    lyricsLines = null;
     renderLyricsOptIn();
     return;
   }

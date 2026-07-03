@@ -622,6 +622,24 @@ input[type="range"]::-moz-range-thumb {
   line-height: 1.55;
 }
 
+.lyr-line {
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.lyr-line:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.lyr-line.cur {
+  color: var(--text);
+  font-weight: 600;
+}
+
 .lyr-plain {
   white-space: pre-wrap;
   color: var(--text-dim);
