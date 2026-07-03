@@ -7,12 +7,19 @@
   const FROM_BRIDGE = "ytmc-bridge";
   const FROM_CONTENT = "ytmc-content";
 
+  // Extension reloads inject a fresh copy of this script while older copies
+  // keep their listeners alive in the page. Only the newest generation may
+  // act, or the content script races duplicate (stale-code) responses.
+  const generation = (window.__ytmcBridgeGeneration =
+    (window.__ytmcBridgeGeneration ?? 0) + 1);
+  const isCurrent = () => window.__ytmcBridgeGeneration === generation;
+
   const player = () => document.getElementById("movie_player");
   const volumeSlider = () => document.querySelector("ytmusic-player-bar #volume-slider");
 
   function postStatus() {
     const p = player();
-    if (!p?.getVolume) return;
+    if (!isCurrent() || !p?.getVolume) return;
     window.postMessage(
       {
         source: FROM_BRIDGE,
@@ -263,7 +270,9 @@
     }
     if (!Array.isArray(items)) {
       try {
-        items = queueEl?.queue?.store?.store?.getState?.()?.queue?.items ?? null;
+        const state =
+          queueEl?.queue?.store?.store?.getState?.() ?? queueEl?.queue?.store?.getState?.();
+        items = state?.queue?.items ?? null;
       } catch {
         items = null;
       }
@@ -281,10 +290,18 @@
           ?.playlistPanelVideoRenderer ?? null;
       const thumbs =
         renderer?.thumbnail?.thumbnails ?? counterpart?.thumbnail?.thumbnails ?? [];
+      const videoId = renderer?.videoId ?? counterpart?.videoId ?? null;
       return {
-        videoId: renderer?.videoId ?? null,
+        videoId,
         title: (renderer?.title?.runs ?? []).map((run) => run.text).join(""),
-        thumb: thumbs.length ? thumbs[thumbs.length - 1].url : "",
+        // Every YouTube video has a guaranteed static thumbnail URL; use it
+        // when the store entry carries no thumbnail of its own (common right
+        // after a queue rebuild).
+        thumb: thumbs.length
+          ? thumbs[thumbs.length - 1].url
+          : videoId
+            ? `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`
+            : "",
       };
     });
   }
@@ -396,6 +413,7 @@
   }
 
   window.addEventListener("message", async (e) => {
+    if (!isCurrent()) return;
     if (e.source !== window || e.data?.source !== FROM_CONTENT) return;
     const { command, payload, requestId } = e.data;
     if (command === "forcePlay") {
@@ -457,6 +475,10 @@
 
   // The player element may not exist yet at document_idle.
   const poll = setInterval(() => {
+    if (!isCurrent()) {
+      clearInterval(poll);
+      return;
+    }
     const p = player();
     if (!p?.addEventListener) return;
     clearInterval(poll);
