@@ -614,6 +614,59 @@ input[type="range"]::-moz-range-thumb {
   scrollbar-color: var(--surface-2) transparent;
 }
 
+/* ---- search ---- */
+
+#search-pane {
+  max-height: 264px;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+#search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  margin: 4px 10px 6px;
+  padding: 6px 10px;
+  background: var(--surface);
+  border-radius: 8px;
+}
+
+#search-box svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--text-dim);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+#search-box input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 12.5px;
+}
+
+#search-box input::placeholder {
+  color: var(--text-dim);
+}
+
+#search-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 6px 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-2) transparent;
+}
+
 /* ---- lyrics ---- */
 
 #lyrics-pane {

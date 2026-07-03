@@ -609,6 +609,10 @@ ext.runtime.onConnect.addListener((port) => {
       setTimeout(broadcast, 150);
     } else if (msg.type === "getQueue") {
       queueWithThumbs().then((queue) => port.postMessage({ type: "queue", queue }));
+    } else if (msg.type === "search") {
+      askBridgeAsync("search", { query: msg.query }, 8000).then((results) =>
+        port.postMessage({ type: "searchResults", query: msg.query, results })
+      );
     } else if (msg.type === "getHistory") {
       // The user's real YTM history, fetched by the bridge via the page's
       // own internal API (needs page context for ytcfg + auth cookies).

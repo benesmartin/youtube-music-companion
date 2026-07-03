@@ -375,29 +375,37 @@
     return res.json();
   }
 
-  // ---- account history (the real music.youtube.com/history data) ----
+  // ---- shared list-item parsing (history + search rows) ----
 
   const columnText = (column) =>
     (column?.musicResponsiveListItemFlexColumnRenderer?.text?.runs ?? [])
       .map((run) => run.text)
       .join("");
 
-  // For plain YouTube videos the artist column carries extra runs
-  // ("Channel • 1.4M views • today") — keep the linked artist/channel runs
-  // and drop the stats; fall back to the text before the first bullet.
+  // The byline column mixes artists with albums, view counts and dates
+  // ("Channel • 1.4M views • today", "Artist • Album • 3:14"). Prefer runs
+  // that link to an artist/channel page, then any linked run, then the text
+  // before the first bullet.
   function artistText(column) {
     const runs = column?.musicResponsiveListItemFlexColumnRenderer?.text?.runs ?? [];
+    const pageTypeOf = (run) =>
+      run.navigationEndpoint?.browseEndpoint?.browseEndpointContextSupportedConfigs
+        ?.browseEndpointContextMusicConfig?.pageType ?? "";
+    const artists = runs
+      .filter((run) => /ARTIST|USER_CHANNEL/.test(pageTypeOf(run)))
+      .map((run) => run.text);
+    if (artists.length) return artists.join(", ");
     const linked = runs.filter((run) => run.navigationEndpoint).map((run) => run.text);
     if (linked.length) return linked.join(", ");
     return runs.map((run) => run.text).join("").split("•")[0].trim();
   }
 
-  function parseHistoryItem(entry) {
+  function parseListItem(entry) {
     const renderer = entry?.musicResponsiveListItemRenderer;
     if (!renderer) return null;
     const thumbs = renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? [];
     // The play overlay carries the full watch endpoint; playlistId/params make
-    // playback build the same autoplay queue as clicking the history page.
+    // playback build the same autoplay queue as clicking the item on the page.
     const endpoint =
       renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer
         ?.playNavigationEndpoint?.watchEndpoint ?? null;
@@ -409,10 +417,15 @@
       artist: artistText(renderer.flexColumns?.[1]),
       duration:
         renderer.fixedColumns?.[0]?.musicResponsiveListItemFixedColumnRenderer?.text?.runs?.[0]
-          ?.text ?? "",
+          ?.text ??
+        // Search rows keep the duration at the end of the byline instead.
+        columnText(renderer.flexColumns?.[1]).match(/(\d+:\d{2})\s*$/)?.[1] ??
+        "",
       thumb: thumbs.length ? thumbs[thumbs.length - 1].url : "",
     };
   }
+
+  // ---- account history (the real music.youtube.com/history data) ----
 
   async function fetchHistory() {
     try {
@@ -426,7 +439,7 @@
       for (const shelf of shelves) {
         const renderer = shelf?.musicShelfRenderer;
         if (!renderer) continue;
-        const items = (renderer.contents ?? []).map(parseHistoryItem).filter((i) => i?.title);
+        const items = (renderer.contents ?? []).map(parseListItem).filter((i) => i?.title);
         if (!items.length) continue;
         sections.push({
           // localized period header: "Today", "Yesterday", month names, …
@@ -437,6 +450,35 @@
       return { signedOut: false, sections };
     } catch (err) {
       console.debug("[YTM Companion] history fetch failed:", err);
+      return null;
+    }
+  }
+
+  // ---- search (internal search API, same row shape as history) ----
+
+  // Songs-only filter — the protobuf params YTM's own "Songs" chip sends.
+  const SEARCH_SONGS_PARAMS = "EgWKAQIIAWoMEA4QChADEAQQCRAF";
+
+  async function searchMusic(query) {
+    try {
+      const data = await innertubeRequest("search", {
+        query,
+        params: SEARCH_SONGS_PARAMS,
+      });
+      if (!data) return null;
+      const shelves =
+        data?.contents?.tabbedSearchResultsRenderer?.tabs?.[0]?.tabRenderer?.content
+          ?.sectionListRenderer?.contents ?? [];
+      const items = [];
+      for (const shelf of shelves) {
+        for (const entry of shelf?.musicShelfRenderer?.contents ?? []) {
+          const item = parseListItem(entry);
+          if (item?.title && item.videoId) items.push(item);
+        }
+      }
+      return items;
+    } catch (err) {
+      console.debug("[YTM Companion] search failed:", err);
       return null;
     }
   }
@@ -463,6 +505,14 @@
     }
     if (command === "queueVideoNext") {
       const result = await queueVideoNext(payload.videoId);
+      window.postMessage(
+        { source: FROM_BRIDGE, type: "response", requestId, result },
+        window.location.origin
+      );
+      return;
+    }
+    if (command === "search") {
+      const result = await searchMusic(payload.query);
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result },
         window.location.origin

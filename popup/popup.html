@@ -34,6 +34,7 @@
         <symbol id="i-play-next" viewBox="0 0 24 24"><path d="M16 12H3"/><path d="M16 18H3"/><path d="M10 6H3"/><path d="M21 18V8a2 2 0 0 0-2-2h-5"/><path d="m16 8-2-2 2-2"/></symbol>
         <symbol id="i-remove" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></symbol>
         <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
       </defs>
     </svg>
 
@@ -119,11 +120,19 @@
         <div class="tab active" data-tab="queue">Queue</div>
         <div class="tab" data-tab="history">History</div>
         <div class="tab" data-tab="lyrics">Lyrics</div>
+        <div class="tab" data-tab="search">Search</div>
         <span id="queue-meta"></span>
       </div>
       <div id="queue-list"><div id="queue-note">Loading queue…</div></div>
       <div id="history-list" hidden></div>
       <div id="lyrics-pane" hidden></div>
+      <div id="search-pane" hidden>
+        <div id="search-box">
+          <svg><use href="#i-search"/></svg>
+          <input id="search-input" type="text" placeholder="Search songs…" />
+        </div>
+        <div id="search-results"></div>
+      </div>
     </main>
 
     <main id="empty" hidden>

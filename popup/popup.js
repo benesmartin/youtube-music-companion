@@ -475,54 +475,110 @@ function renderHistory(history) {
   // Period headers ("Today", …) come with the data but aren't rendered —
   // one flat, uncluttered list reads better in a popup this size.
   for (const section of history.sections) {
-    for (const item of section.items) {
-      const row = document.createElement("div");
-      row.className = "qrow";
-      const thumb = document.createElement("div");
-      thumb.className = "qthumb";
-      if (item.thumb) thumb.style.backgroundImage = `url("${item.thumb}")`;
-      const meta = document.createElement("div");
-      meta.className = "qmeta";
-      const title = document.createElement("div");
-      title.className = "qtitle";
-      title.textContent = item.title;
-      const artist = document.createElement("div");
-      artist.className = "qartist";
-      artist.textContent = item.artist;
-      meta.append(title, artist);
-      const duration = document.createElement("div");
-      duration.className = "qdur";
-      duration.textContent = item.duration;
-      row.append(thumb, meta, duration);
-      if (item.videoId) {
-        row.classList.add("has-actions");
-        const actions = document.createElement("div");
-        actions.className = "qactions";
-        const button = document.createElement("button");
-        button.title = "Play next";
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-        use.setAttribute("href", "#i-play-next");
-        svg.append(use);
-        button.append(svg);
-        button.addEventListener("click", (e) => {
-          e.stopPropagation();
-          send("queueVideoNext", { videoId: item.videoId });
-        });
-        actions.append(button);
-        row.append(actions);
-        row.addEventListener("click", () => {
-          send("playVideoById", {
-            videoId: item.videoId,
-            playlistId: item.playlistId,
-            params: item.params,
-          });
-          armQueueSwitch(item.videoId);
-        });
-      }
-      list.append(row);
-    }
+    for (const item of section.items) list.append(buildTrackRow(item));
   }
+}
+
+// Track row shared by the History and Search tabs: click plays (with the
+// item's own queue context), hover exposes Play next.
+function buildTrackRow(item) {
+  const row = document.createElement("div");
+  row.className = "qrow";
+  const thumb = document.createElement("div");
+  thumb.className = "qthumb";
+  if (item.thumb) thumb.style.backgroundImage = `url("${item.thumb}")`;
+  const meta = document.createElement("div");
+  meta.className = "qmeta";
+  const title = document.createElement("div");
+  title.className = "qtitle";
+  title.textContent = item.title;
+  const artist = document.createElement("div");
+  artist.className = "qartist";
+  artist.textContent = item.artist;
+  meta.append(title, artist);
+  const duration = document.createElement("div");
+  duration.className = "qdur";
+  duration.textContent = item.duration;
+  row.append(thumb, meta, duration);
+  if (item.videoId) {
+    row.classList.add("has-actions");
+    const actions = document.createElement("div");
+    actions.className = "qactions";
+    const button = document.createElement("button");
+    button.title = "Play next";
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttribute("href", "#i-play-next");
+    svg.append(use);
+    button.append(svg);
+    button.addEventListener("click", (e) => {
+      e.stopPropagation();
+      send("queueVideoNext", { videoId: item.videoId });
+    });
+    actions.append(button);
+    row.append(actions);
+    row.addEventListener("click", () => {
+      send("playVideoById", {
+        videoId: item.videoId,
+        playlistId: item.playlistId,
+        params: item.params,
+      });
+      armQueueSwitch(item.videoId);
+    });
+  }
+  return row;
+}
+
+// ---- search (songs only) ----
+
+let searchTimer = null;
+
+function searchNote(text) {
+  const list = el("search-results");
+  list.textContent = "";
+  const note = document.createElement("div");
+  note.className = "list-note";
+  note.textContent = text;
+  list.append(note);
+}
+
+function runSearch() {
+  const query = el("search-input").value.trim();
+  if (query.length < 2) {
+    el("search-results").textContent = "";
+    return;
+  }
+  if (!port) return;
+  searchNote("Searching…");
+  port.postMessage({ type: "search", query });
+}
+
+el("search-input").addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(runSearch, 400);
+});
+el("search-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    clearTimeout(searchTimer);
+    runSearch();
+  }
+});
+
+function renderSearchResults(msg) {
+  // Only render the response matching what's in the box right now.
+  if (msg.query !== el("search-input").value.trim()) return;
+  if (!msg.results) {
+    searchNote("Search failed — try again.");
+    return;
+  }
+  if (!msg.results.length) {
+    searchNote("No songs found.");
+    return;
+  }
+  const list = el("search-results");
+  list.textContent = "";
+  for (const item of msg.results) list.append(buildTrackRow(item));
+  list.scrollTop = 0;
 }
 
 // ---- lyrics (LRCLIB) ----
@@ -745,9 +801,11 @@ function switchTab(name) {
   el("queue-list").hidden = name !== "queue";
   el("history-list").hidden = name !== "history";
   el("lyrics-pane").hidden = name !== "lyrics";
+  el("search-pane").hidden = name !== "search";
   el("queue-meta").hidden = name !== "queue";
   if (name === "history") requestHistory();
   if (name === "lyrics") renderLyrics();
+  if (name === "search") el("search-input").focus();
 }
 
 for (const tab of document.querySelectorAll(".tab")) {
@@ -778,6 +836,7 @@ async function connect() {
       renderQueue(msg.queue);
       if (queueSwitchLoaded && msg.queue.some((item) => item.selected)) doQueueSwitch();
     } else if (msg.type === "history") renderHistory(msg.history);
+    else if (msg.type === "searchResults") renderSearchResults(msg);
     else if (msg.type === "notice") showToast(msg.text);
   });
   port.postMessage({ type: "getQueue" });
