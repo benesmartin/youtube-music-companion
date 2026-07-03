@@ -120,9 +120,11 @@ function readState() {
   };
 }
 
+// yt-icon-button hosts (e.g. .shuffle, .repeat, .volume) wrap the real
+// <button>; clicking the host doesn't reach its listener.
 function clickIfFound(el) {
   if (!el) return false;
-  el.click();
+  (el.querySelector?.("button") ?? el).click();
   return true;
 }
 
@@ -158,6 +160,9 @@ const commands = {
     return true;
   },
   toggleMute() {
+    // YTM's own mute button keeps the app state consistent, same as the slider.
+    const pageMute = barButton("volume", "^mute");
+    if (pageMute) return clickIfFound(pageMute);
     if (pageVolume) {
       askBridge("toggleMute");
       return true;
