@@ -367,6 +367,28 @@ function renderQueue(queue) {
     duration.className = "qdur";
     duration.textContent = item.duration;
     row.append(thumb, meta, duration);
+
+    // Hover actions — not on the playing row, where they make no sense.
+    if (!item.selected) {
+      row.classList.add("has-actions");
+      const actions = document.createElement("div");
+      actions.className = "qactions";
+      for (const [title, icon, command] of [
+        ["Play next", "#i-play-next", "queuePlayNext"],
+        ["Remove from queue", "#i-remove", "queueRemove"],
+      ]) {
+        const button = document.createElement("button");
+        button.title = title;
+        button.innerHTML = `<svg><use href="${icon}"/></svg>`;
+        button.addEventListener("click", (e) => {
+          e.stopPropagation();
+          send(command, { index: item.index });
+        });
+        actions.append(button);
+      }
+      row.append(actions);
+    }
+
     row.addEventListener("click", () => send("playQueueItem", { index: item.index }));
     list.append(row);
   }

@@ -689,6 +689,44 @@ input[type="range"]::-moz-range-thumb {
   flex: none;
 }
 
+/* hover swaps the duration for row actions (rows with actions only) */
+.qactions {
+  display: none;
+  gap: 2px;
+  flex: none;
+}
+
+.qrow.has-actions:hover .qactions {
+  display: flex;
+}
+
+.qrow.has-actions:hover .qdur {
+  display: none;
+}
+
+.qactions button {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--text-dim);
+  justify-content: center;
+}
+
+.qactions button:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.qactions svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* ---- empty state ---- */
 
 #empty {

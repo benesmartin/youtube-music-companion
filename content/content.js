@@ -348,6 +348,46 @@ function watchQueue() {
   });
 }
 
+// Per-row menu actions: open the row's own menu invisibly and click the
+// matching item, identified by its icon path (labels are localized).
+const QUEUE_MENU_ICONS = {
+  playNext: 'path[d^="M6 2.86"]',
+  removeFromQueue: 'path[d*="Zm3 6H6"]',
+};
+
+async function queueItemMenuAction(index, iconSelector) {
+  const item = queueItemElements()[index];
+  const menuButton = item?.querySelector("ytmusic-menu-renderer #button-shape button");
+  if (!menuButton) return false;
+  const veil = document.createElement("style");
+  veil.textContent =
+    "ytmusic-popup-container { opacity: 0 !important; pointer-events: none !important; }";
+  document.head.append(veil);
+  try {
+    menuButton.click();
+    for (let attempt = 0; attempt < 20; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Scope to the OPEN dropdown — stale menus from earlier opens linger
+      // in the popup container and would match too.
+      const path = document.querySelector(
+        `ytmusic-popup-container tp-yt-iron-dropdown:not([aria-hidden="true"]) ${iconSelector}`
+      );
+      const target = path?.closest("ytmusic-menu-service-item-renderer");
+      if (target) {
+        target.click();
+        return true;
+      }
+    }
+    return false;
+  } finally {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    document.body.click();
+    setTimeout(() => veil.remove(), 250);
+    setTimeout(pushQueue, 700);
+  }
+}
+
 const commands = {
   playPause() {
     // The page button, not the <video> element — the first video in the DOM
@@ -368,6 +408,8 @@ const commands = {
   probeLibrary,
   goToArtist: () => clickIfFound(bylineLink("channel/")),
   goToAlbum: () => clickIfFound(bylineLink("browse/")),
+  queuePlayNext: (payload) => queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.playNext),
+  queueRemove: (payload) => queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.removeFromQueue),
   playQueueItem(payload) {
     const items = queueItemElements();
     const item = items[payload.index];
