@@ -416,57 +416,74 @@ function renderQueue(queue) {
 }
 
 // ---- history ----
+// The user's real YouTube Music history (music.youtube.com/history), fetched
+// through the page's own internal API by the bridge. Loaded once per popup;
+// a failed load retries the next time the tab is opened.
 
-function relativeTime(timestamp) {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return days === 1 ? "yesterday" : `${days}d ago`;
-}
+let historyLoaded = false;
 
-async function renderHistory() {
+function historyNote(text) {
   const list = el("history-list");
   list.textContent = "";
-  let history = [];
-  try {
-    history = (await ext.storage.local.get("history")).history ?? [];
-  } catch {
-    // storage unavailable
-  }
-  if (!history.length) {
-    const note = document.createElement("div");
-    note.className = "list-note";
-    note.textContent = "No history yet — songs you play will show up here.";
-    list.append(note);
+  const note = document.createElement("div");
+  note.className = "list-note";
+  note.textContent = text;
+  list.append(note);
+}
+
+function requestHistory() {
+  if (historyLoaded || !port) return;
+  historyNote("Loading history…");
+  port.postMessage({ type: "getHistory" });
+}
+
+function renderHistory(history) {
+  historyLoaded = Boolean(history);
+  if (!history) {
+    historyNote("Couldn’t load history from YouTube Music.");
     return;
   }
-  for (const item of history) {
-    const row = document.createElement("div");
-    row.className = item.videoId ? "qrow has-actions" : "qrow";
-    const thumb = document.createElement("div");
-    thumb.className = "qthumb";
-    if (item.thumb) thumb.style.backgroundImage = `url("${item.thumb}")`;
-    const meta = document.createElement("div");
-    meta.className = "qmeta";
-    const title = document.createElement("div");
-    title.className = "qtitle";
-    title.textContent = item.title;
-    const artist = document.createElement("div");
-    artist.className = "qartist";
-    artist.textContent = item.artist;
-    meta.append(title, artist);
-    const when = document.createElement("div");
-    when.className = "qdur";
-    when.textContent = relativeTime(item.at);
-    row.append(thumb, meta, when);
-    if (item.videoId) {
-      row.addEventListener("click", () => send("playVideoById", { videoId: item.videoId }));
+  if (history.signedOut) {
+    historyNote("Sign in to YouTube Music to see your history.");
+    return;
+  }
+  if (!history.sections.length) {
+    historyNote("No history yet — songs you play will show up here.");
+    return;
+  }
+  const list = el("history-list");
+  list.textContent = "";
+  for (const section of history.sections) {
+    if (section.header) {
+      const header = document.createElement("div");
+      header.className = "list-header";
+      header.textContent = section.header;
+      list.append(header);
     }
-    list.append(row);
+    for (const item of section.items) {
+      const row = document.createElement("div");
+      row.className = "qrow";
+      const thumb = document.createElement("div");
+      thumb.className = "qthumb";
+      if (item.thumb) thumb.style.backgroundImage = `url("${item.thumb}")`;
+      const meta = document.createElement("div");
+      meta.className = "qmeta";
+      const title = document.createElement("div");
+      title.className = "qtitle";
+      title.textContent = item.title;
+      const artist = document.createElement("div");
+      artist.className = "qartist";
+      artist.textContent = item.artist;
+      meta.append(title, artist);
+      const duration = document.createElement("div");
+      duration.className = "qdur";
+      duration.textContent = item.duration;
+      row.append(thumb, meta, duration);
+      if (item.videoId) {
+        row.addEventListener("click", () => send("playVideoById", { videoId: item.videoId }));
+      }
+      list.append(row);
+    }
   }
 }
 
@@ -478,7 +495,7 @@ function switchTab(name) {
   el("queue-list").hidden = !showQueue;
   el("history-list").hidden = showQueue;
   el("queue-meta").hidden = !showQueue;
-  if (!showQueue) renderHistory();
+  if (!showQueue) requestHistory();
 }
 
 for (const tab of document.querySelectorAll(".tab")) {
@@ -502,6 +519,7 @@ async function connect() {
   port.onMessage.addListener((msg) => {
     if (msg.type === "state") render(msg.state);
     else if (msg.type === "queue") renderQueue(msg.queue);
+    else if (msg.type === "history") renderHistory(msg.history);
     else if (msg.type === "notice") showToast(msg.text);
   });
   port.postMessage({ type: "getQueue" });

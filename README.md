@@ -9,7 +9,7 @@ A browser extension for Firefox and Chrome that lets you control YouTube Music p
 - Mini player popup: album art, playback controls, seek, volume
 - Keyboard shortcuts (play/pause, next, previous, like)
 - Queue: view, jump, play next, remove, reorder
-- Playback history (stored locally)
+- Playback history — your real YouTube Music history, grouped by day
 - Lyrics via [LRCLIB](https://lrclib.net) — better than YTM's own, optionally time-synced
 - Search and playlists
 - Themes

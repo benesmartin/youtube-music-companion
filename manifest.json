@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Companion for YouTube Music",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Control YouTube Music from a compact popup: track info, playback controls, seek, volume, and keyboard shortcuts.",
   "browser_specific_settings": {
     "gecko": {
@@ -15,7 +15,7 @@
       "strict_min_version": "142.0"
     }
   },
-  "permissions": ["storage", "clipboardWrite", "alarms"],
+  "permissions": ["clipboardWrite", "alarms"],
   "host_permissions": ["https://music.youtube.com/*"],
   "background": {
     "scripts": ["background.js"],

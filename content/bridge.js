@@ -215,6 +215,92 @@
     });
   }
 
+  // ---- account history (the real music.youtube.com/history data) ----
+
+  // The history page is fed by the internal "browse" endpoint. Calling it
+  // from the page context reuses YTM's own config (ytcfg) and cookies; the
+  // only extra requirement is the SAPISIDHASH Authorization header Google
+  // demands on cookie-authenticated API requests.
+  const cfgGet = (key) => window.ytcfg?.get?.(key) ?? window.ytcfg?.data_?.[key];
+
+  async function sapisidHash() {
+    const match = document.cookie.match(/(?:^|;\s*)(?:SAPISID|__Secure-3PAPISID)=([^;]+)/);
+    if (!match) return null; // signed out — there is no account history
+    const ts = Math.floor(Date.now() / 1000);
+    const input = new TextEncoder().encode(`${ts} ${match[1]} ${location.origin}`);
+    const digest = await crypto.subtle.digest("SHA-1", input);
+    const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+    return `SAPISIDHASH ${ts}_${hex}`;
+  }
+
+  const columnText = (column) =>
+    (column?.musicResponsiveListItemFlexColumnRenderer?.text?.runs ?? [])
+      .map((run) => run.text)
+      .join("");
+
+  function parseHistoryItem(entry) {
+    const renderer = entry?.musicResponsiveListItemRenderer;
+    if (!renderer) return null;
+    const thumbs = renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? [];
+    return {
+      videoId:
+        renderer.playlistItemData?.videoId ??
+        renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer
+          ?.playNavigationEndpoint?.watchEndpoint?.videoId ??
+        null,
+      title: columnText(renderer.flexColumns?.[0]),
+      artist: columnText(renderer.flexColumns?.[1]),
+      duration:
+        renderer.fixedColumns?.[0]?.musicResponsiveListItemFixedColumnRenderer?.text?.runs?.[0]
+          ?.text ?? "",
+      thumb: thumbs.length ? thumbs[thumbs.length - 1].url : "",
+    };
+  }
+
+  async function fetchHistory() {
+    try {
+      const context = cfgGet("INNERTUBE_CONTEXT");
+      if (!context) return null;
+      const auth = await sapisidHash();
+      if (!auth) return { signedOut: true, sections: [] };
+      const key = cfgGet("INNERTUBE_API_KEY");
+      const url = `/youtubei/v1/browse?prettyPrint=false${key ? `&key=${encodeURIComponent(key)}` : ""}`;
+      const res = await fetch(url, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          authorization: auth,
+          // multi-account sessions break without the right account index
+          "x-goog-authuser": String(cfgGet("SESSION_INDEX") ?? "0"),
+          "x-origin": location.origin,
+        },
+        body: JSON.stringify({ context, browseId: "FEmusic_history" }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const shelves =
+        data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content
+          ?.sectionListRenderer?.contents ?? [];
+      const sections = [];
+      for (const shelf of shelves) {
+        const renderer = shelf?.musicShelfRenderer;
+        if (!renderer) continue;
+        const items = (renderer.contents ?? []).map(parseHistoryItem).filter((i) => i?.title);
+        if (!items.length) continue;
+        sections.push({
+          // localized period header: "Today", "Yesterday", month names, …
+          header: (renderer.title?.runs ?? []).map((run) => run.text).join(""),
+          items,
+        });
+      }
+      return { signedOut: false, sections };
+    } catch (err) {
+      console.debug("[YTM Companion] history fetch failed:", err);
+      return null;
+    }
+  }
+
   window.addEventListener("message", async (e) => {
     if (e.source !== window || e.data?.source !== FROM_CONTENT) return;
     const { command, payload, requestId } = e.data;
@@ -231,6 +317,14 @@
       if (ok) player().loadVideoById(payload.videoId);
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result: ok },
+        window.location.origin
+      );
+      return;
+    }
+    if (command === "getHistory") {
+      const result = await fetchHistory();
+      window.postMessage(
+        { source: FROM_BRIDGE, type: "response", requestId, result },
         window.location.origin
       );
       return;
