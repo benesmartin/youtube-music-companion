@@ -55,12 +55,12 @@ function render(state) {
   el("album").classList.toggle("link", Boolean(state.albumUrl));
   el("radio").disabled = !state.videoId;
   el("copy-link").disabled = !state.videoId;
-  el("library").disabled = !state.videoId;
   el("copy-info").disabled = !state.title;
 
   // Library reflects the probed state; "Add" is the default until known.
-  // User uploads have no library action at all — hide the entry.
-  el("library").hidden = state.libraryAvailable === false;
+  // User uploads have no library action — keep the row (stable spacing)
+  // but disable it.
+  el("library").disabled = !state.videoId || state.libraryAvailable === false;
   el("library").classList.toggle("in", state.inLibrary === true);
   el("library-label").textContent =
     state.inLibrary === true ? "Remove from library" : "Add to library";
