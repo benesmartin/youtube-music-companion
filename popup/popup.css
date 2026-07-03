@@ -14,6 +14,11 @@
   box-sizing: border-box;
 }
 
+/* the hidden attribute must always win over display rules */
+[hidden] {
+  display: none !important;
+}
+
 body {
   width: 450px;
   background: var(--bg);
