@@ -57,11 +57,11 @@
       "description": "Play or pause the current track"
     },
     "next-track": {
-      "suggested_key": { "default": "Alt+Shift+N" },
+      "suggested_key": { "default": "Alt+Shift+Period" },
       "description": "Next track"
     },
     "previous-track": {
-      "suggested_key": { "default": "Alt+Shift+P" },
+      "suggested_key": { "default": "Alt+Shift+Comma" },
       "description": "Previous track"
     },
     "toggle-like": {
