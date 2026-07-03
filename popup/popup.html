@@ -19,13 +19,18 @@
         <span id="duration">0:00</span>
       </div>
       <div id="controls">
-        <button id="like" title="Like">♡</button>
+        <button id="dislike" title="Dislike">
+          <svg viewBox="0 0 24 24" style="transform: rotate(180deg)"><path d="M1 21h4V9H1v12zM23 10c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
+        </button>
         <button id="previous" title="Previous">⏮</button>
         <button id="play-pause" title="Play/Pause">▶</button>
         <button id="next" title="Next">⏭</button>
-        <button id="mute" title="Mute">🔊</button>
+        <button id="like" title="Like">
+          <svg viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zM23 10c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
+        </button>
       </div>
       <div id="volume-row">
+        <button id="mute" title="Mute">🔊</button>
         <input id="volume" type="range" min="0" max="100" step="1" value="100" />
       </div>
     </main>

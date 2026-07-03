@@ -30,8 +30,8 @@ function render(state) {
   if (el("artwork").src !== state.artwork) el("artwork").src = state.artwork;
 
   el("play-pause").textContent = state.playing ? "⏸" : "▶";
-  el("like").textContent = state.liked ? "♥" : "♡";
-  el("like").classList.toggle("liked", state.liked);
+  el("like").classList.toggle("active", state.liked);
+  el("dislike").classList.toggle("active", state.disliked);
   el("mute").textContent = state.muted ? "🔇" : "🔊";
 
   el("position").textContent = formatTime(state.position);
@@ -56,6 +56,7 @@ el("play-pause").addEventListener("click", () => send("playPause"));
 el("next").addEventListener("click", () => send("next"));
 el("previous").addEventListener("click", () => send("previous"));
 el("like").addEventListener("click", () => send("toggleLike"));
+el("dislike").addEventListener("click", () => send("toggleDislike"));
 el("mute").addEventListener("click", () => send("toggleMute"));
 
 el("seek").addEventListener("input", () => {

@@ -108,6 +108,12 @@ input[type="range"] {
   background: var(--surface);
 }
 
+#controls button svg {
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+}
+
 #play-pause {
   font-size: 24px;
   width: 52px;
@@ -115,14 +121,30 @@ input[type="range"] {
   background: var(--surface) !important;
 }
 
-#like.liked {
+#like,
+#dislike {
+  color: var(--text-dim);
+}
+
+#like.active,
+#dislike.active {
   color: var(--accent);
 }
 
 #volume-row {
   display: flex;
+  align-items: center;
+  gap: 8px;
   margin-top: 8px;
-  padding: 0 24px;
+  padding: 0 20px;
+}
+
+#volume-row button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
 }
 
 #empty {

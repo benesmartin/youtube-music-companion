@@ -22,6 +22,15 @@ function likeButton() {
   );
 }
 
+function dislikeButton() {
+  const bar = playerBar();
+  if (!bar) return null;
+  return (
+    bar.querySelector("ytmusic-like-button-renderer #button-shape-dislike button") ??
+    bar.querySelector('ytmusic-like-button-renderer button[aria-label*="dislike" i]')
+  );
+}
+
 // Class selectors first — aria-labels are localized (Czech UI says "Další",
 // not "Next"), so label matching is only a last-resort fallback.
 function barButton(className, labelPattern) {
@@ -63,6 +72,7 @@ function readState() {
     volume: media ? Math.round(media.volume * 100) : 100,
     muted: media?.muted ?? false,
     liked: like?.getAttribute("aria-pressed") === "true",
+    disliked: dislikeButton()?.getAttribute("aria-pressed") === "true",
   };
 }
 
@@ -82,6 +92,7 @@ const commands = {
   next: () => clickIfFound(barButton("next-button", "^next")),
   previous: () => clickIfFound(barButton("previous-button", "^previous")),
   toggleLike: () => clickIfFound(likeButton()),
+  toggleDislike: () => clickIfFound(dislikeButton()),
   seek(payload) {
     const media = video();
     if (!media || !Number.isFinite(media.duration)) return false;
