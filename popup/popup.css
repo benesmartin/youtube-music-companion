@@ -328,9 +328,8 @@ input[type="range"]::-moz-range-thumb {
 #more-menu {
   position: fixed;
   right: 10px;
-  bottom: 40px;
+  /* bottom + max-height set from JS relative to the ⋯ button */
   width: 208px;
-  max-height: calc(100vh - 46px);
   overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--surface-2);
