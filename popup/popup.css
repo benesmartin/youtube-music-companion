@@ -314,7 +314,7 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 6px;
   justify-content: flex-start;
   gap: 8px;
-  padding: 6px 9px;
+  padding: 5px 9px;
   font-size: 12px;
   color: var(--text);
   white-space: nowrap;
@@ -390,7 +390,9 @@ input[type="range"]::-moz-range-thumb {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 9px 4px 32px;
+  width: 70%;
+  margin: 0 auto;
+  padding: 2px 0 4px;
 }
 
 #sleep-custom input {
@@ -401,7 +403,7 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 6px;
   color: var(--text);
   font-size: 12px;
-  padding: 5px 8px;
+  padding: 4px 8px;
   outline: none;
 }
 
@@ -430,9 +432,47 @@ input[type="range"]::-moz-range-thumb {
 #sleep-active {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 9px;
+  gap: 6px;
+  padding: 2px 9px;
   font-size: 12px;
+}
+
+/* trailing dots light up one after another while the timer runs */
+#sleep-active .dots {
+  display: inline-flex;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+
+#sleep-active .dots span {
+  opacity: 0.2;
+  animation: dot-pulse 1.4s infinite;
+}
+
+#sleep-active .dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+#sleep-active .dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes dot-pulse {
+  0%,
+  60%,
+  100% {
+    opacity: 0.2;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #sleep-active .dots span {
+    animation: none;
+    opacity: 1;
+  }
 }
 
 #sleep-active[hidden] {
@@ -466,14 +506,14 @@ input[type="range"]::-moz-range-thumb {
 #sleep-presets {
   display: flex;
   gap: 6px;
-  padding: 4px 9px;
+  padding: 2px 9px;
 }
 
 #more-menu .sleep-opt {
   flex: 1;
   width: auto;
   justify-content: center;
-  padding: 6px 0;
+  padding: 4px 0;
   border: 1px solid var(--surface-2);
   border-radius: 6px;
   color: var(--text-dim);
