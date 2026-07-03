@@ -546,6 +546,8 @@ function runSearch() {
   const query = el("search-input").value.trim();
   if (query.length < 2) {
     el("search-results").textContent = "";
+    el("search-filters").hidden = true;
+    searchResultsData = null;
     return;
   }
   if (!port) return;
@@ -564,29 +566,47 @@ el("search-input").addEventListener("keydown", (e) => {
   }
 });
 
+let searchResultsData = null; // {songs, videos} of the current query
+let searchGroup = "songs";
+
 function renderSearchResults(msg) {
   // Only render the response matching what's in the box right now.
   if (msg.query !== el("search-input").value.trim()) return;
+  searchResultsData = msg.results ?? null;
   if (!msg.results) {
+    el("search-filters").hidden = true;
     searchNote("Search failed — try again.");
     return;
   }
-  if (!msg.results.length) {
+  if (!msg.results.songs.length && !msg.results.videos.length) {
+    el("search-filters").hidden = true;
     searchNote("Nothing found.");
     return;
   }
+  // If the selected group came back empty, hop to the one with results.
+  if (!msg.results[searchGroup].length) {
+    searchGroup = msg.results.songs.length ? "songs" : "videos";
+  }
+  showSearchGroup();
+}
+
+function showSearchGroup() {
+  el("search-filters").hidden = false;
+  for (const pill of document.querySelectorAll("#search-filters .pill")) {
+    pill.classList.toggle("active", pill.dataset.group === searchGroup);
+    pill.disabled = !searchResultsData?.[pill.dataset.group]?.length;
+  }
   const list = el("search-results");
   list.textContent = "";
-  for (const section of msg.results) {
-    if (section.header) {
-      const header = document.createElement("div");
-      header.className = "list-header";
-      header.textContent = section.header;
-      list.append(header);
-    }
-    for (const item of section.items) list.append(buildTrackRow(item));
-  }
+  for (const item of searchResultsData[searchGroup]) list.append(buildTrackRow(item));
   list.scrollTop = 0;
+}
+
+for (const pill of document.querySelectorAll("#search-filters .pill")) {
+  pill.addEventListener("click", () => {
+    searchGroup = pill.dataset.group;
+    showSearchGroup();
+  });
 }
 
 // ---- lyrics (LRCLIB) ----

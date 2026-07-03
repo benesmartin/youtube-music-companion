@@ -486,10 +486,7 @@
         searchFiltered(query, SEARCH_FILTERS.videos),
       ]);
       if (!songs && !videos) return null;
-      const sections = [];
-      if (songs?.length) sections.push({ header: "Songs", items: songs });
-      if (videos?.length) sections.push({ header: "Videos", items: videos });
-      return sections;
+      return { songs: songs ?? [], videos: videos ?? [] };
     } catch (err) {
       console.debug("[YTM Companion] search failed:", err);
       return null;

@@ -667,14 +667,35 @@ input[type="range"]::-moz-range-thumb {
   scrollbar-color: var(--surface-2) transparent;
 }
 
-/* group headers in search results ("Songs", "Videos") */
-.list-header {
-  font-size: 10.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+/* songs/videos filter pills, styled like the main tab chips */
+#search-filters {
+  display: flex;
+  gap: 6px;
+  flex: none;
+  padding: 0 10px 6px;
+}
+
+#search-filters .pill {
+  padding: 3px 12px 4px;
+  border-radius: 999px;
+  font-size: 11.5px;
   color: var(--text-dim);
-  padding: 8px 8px 3px;
+  background: var(--surface);
+}
+
+#search-filters .pill:hover:not(:disabled) {
+  color: var(--text);
+}
+
+#search-filters .pill.active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+#search-filters .pill:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* ---- lyrics ---- */
