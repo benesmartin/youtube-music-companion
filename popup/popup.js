@@ -515,14 +515,35 @@ function renderHistory(history) {
             playlistId: item.playlistId,
             params: item.params,
           });
-          // Jump to the queue once YTM has had a moment to rebuild it —
-          // switching instantly would show the stale queue mid-teardown.
-          setTimeout(() => switchTab("queue"), 1200);
+          armQueueSwitch(item.videoId);
         });
       }
       list.append(row);
     }
   }
+}
+
+// After a history play, jump to the Queue tab only once the picked song is
+// confirmed playing (state echoes its videoId) AND a fresh queue push landed —
+// a fixed delay raced YTM's queue rebuild. Fallback fires in case the id
+// never echoes (e.g. the bridge used its raw-player fallback).
+let queueSwitchVideoId = null;
+let queueSwitchLoaded = false;
+let queueSwitchFallback = null;
+
+function armQueueSwitch(videoId) {
+  queueSwitchVideoId = videoId;
+  queueSwitchLoaded = false;
+  clearTimeout(queueSwitchFallback);
+  queueSwitchFallback = setTimeout(doQueueSwitch, 3000);
+}
+
+function doQueueSwitch() {
+  clearTimeout(queueSwitchFallback);
+  queueSwitchFallback = null;
+  queueSwitchVideoId = null;
+  queueSwitchLoaded = false;
+  switchTab("queue");
 }
 
 function switchTab(name) {
@@ -555,9 +576,15 @@ async function connect() {
     return;
   }
   port.onMessage.addListener((msg) => {
-    if (msg.type === "state") render(msg.state);
-    else if (msg.type === "queue") renderQueue(msg.queue);
-    else if (msg.type === "history") renderHistory(msg.history);
+    if (msg.type === "state") {
+      if (queueSwitchVideoId && msg.state.available && msg.state.videoId === queueSwitchVideoId) {
+        queueSwitchLoaded = true;
+      }
+      render(msg.state);
+    } else if (msg.type === "queue") {
+      renderQueue(msg.queue);
+      if (queueSwitchLoaded && msg.queue.some((item) => item.selected)) doQueueSwitch();
+    } else if (msg.type === "history") renderHistory(msg.history);
     else if (msg.type === "notice") showToast(msg.text);
   });
   port.postMessage({ type: "getQueue" });
