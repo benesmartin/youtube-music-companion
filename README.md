@@ -32,3 +32,9 @@ There is no build step yet. Load the extension unpacked:
 
 - **Firefox:** `about:debugging` → This Firefox → Load Temporary Add-on
 - **Chrome:** `chrome://extensions` → Developer mode → Load unpacked
+
+## License
+
+© 2026 Martin Beneš. Licensed under the [GNU General Public License v3.0](LICENSE) —
+use it, fork it, learn from it, but derivatives must stay open source under the
+same terms.
