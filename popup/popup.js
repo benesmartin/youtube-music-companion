@@ -9,6 +9,7 @@ const emptyView = el("empty");
 
 let port = null;
 let seeking = false;
+let currentTrack = null;
 
 // Sliders paint their filled portion via the --fill custom property.
 function updateFill(slider) {
@@ -29,6 +30,14 @@ function render(state) {
   }
   playerView.hidden = false;
   emptyView.hidden = true;
+
+  // A track change invalidates any in-flight drag: without this, releasing
+  // the seek slider just after a transition seeks the NEW song to its end.
+  const track = `${state.title}|${state.artist}`;
+  if (track !== currentTrack) {
+    currentTrack = track;
+    seeking = false;
+  }
 
   el("title").textContent = state.title;
   el("title").title = state.title;
@@ -77,7 +86,8 @@ el("seek").addEventListener("input", () => {
   updateFill(el("seek"));
 });
 el("seek").addEventListener("change", () => {
-  send("seek", { position: Number(el("seek").value) });
+  // Only send if the drag wasn't invalidated by a track change mid-drag.
+  if (seeking) send("seek", { position: Number(el("seek").value) });
   seeking = false;
 });
 

@@ -145,7 +145,8 @@ const commands = {
     const media = video();
     if (!media || !Number.isFinite(media.duration)) return false;
     // Clamp inside the track: an out-of-range position makes YTM skip tracks.
-    media.currentTime = Math.min(Math.max(0, payload.position), Math.max(0, media.duration - 0.5));
+    // The 1s end margin keeps seeks clear of the ended/transition race.
+    media.currentTime = Math.min(Math.max(0, payload.position), Math.max(0, media.duration - 1));
     return true;
   },
   setVolume(payload) {
