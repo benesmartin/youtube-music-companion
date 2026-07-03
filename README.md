@@ -17,6 +17,13 @@ A browser extension for Firefox and Chrome that lets you control YouTube Music p
 
 See [ROADMAP.md](ROADMAP.md) for build order and decisions.
 
+## Known limitations
+
+- **Play on a freshly loaded tab** can be blocked by the browser's autoplay
+  policy (extension clicks aren't "user gestures" in the tab). The popup shows
+  a notice when this happens. Permanent fix: allow **Autoplay → Audio and
+  Video** for music.youtube.com in the browser's site permissions.
+
 ## Development
 
 There is no build step yet. Load the extension unpacked:
