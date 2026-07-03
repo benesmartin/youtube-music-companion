@@ -46,9 +46,11 @@ function render(state) {
   el("title").textContent = state.title;
   el("title").title = state.title;
   el("artist").textContent = state.artist;
-  const album = state.album ? `${state.album}${state.year ? ` • ${state.year}` : ""}` : "";
-  el("album").textContent = album;
-  el("album").hidden = !album;
+  // Always keep the album line in layout so tracks without one (user
+  // uploads) get identical spacing; it just renders blank.
+  el("album").textContent = state.album
+    ? `${state.album}${state.year ? ` • ${state.year}` : ""}`
+    : "";
 
   lastState = state;
   el("artist").classList.toggle("link", Boolean(state.artistUrl));

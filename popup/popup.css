@@ -104,6 +104,11 @@ button svg {
   white-space: nowrap;
 }
 
+/* keep the line box (and thus panel spacing) when there is no album */
+#album:empty::before {
+  content: "\00a0";
+}
+
 /* ---- transport controls ---- */
 
 #controls {
