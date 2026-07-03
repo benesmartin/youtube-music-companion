@@ -469,7 +469,7 @@ function renderQueue(queue) {
 
 // ---- settings (theme) ----
 
-const DEFAULT_SETTINGS = { theme: "dark", accent: "red", statusDot: true };
+const DEFAULT_SETTINGS = { theme: "dark", accent: "red", statusDot: true, showDislike: true };
 // Each accent is a named hue with a per-theme variant: bright enough to read
 // on near-black, deep enough to hold contrast on light grey.
 const ACCENTS = [
@@ -499,6 +499,8 @@ function applySettings() {
     swatch.classList.toggle("active", swatch.dataset.accent === accent.name);
   }
   el("set-status-dot").classList.toggle("on", settings.statusDot !== false);
+  el("set-dislike").classList.toggle("on", settings.showDislike !== false);
+  el("dislike").hidden = settings.showDislike === false;
 }
 
 function saveSettings() {
@@ -550,6 +552,11 @@ for (const option of document.querySelectorAll(".theme-opt")) {
 
 el("set-status-dot").addEventListener("click", () => {
   settings.statusDot = settings.statusDot === false;
+  saveSettings();
+});
+
+el("set-dislike").addEventListener("click", () => {
+  settings.showDislike = settings.showDislike === false;
   saveSettings();
 });
 
