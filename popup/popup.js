@@ -530,7 +530,6 @@ function renderHistory(history) {
 // lyrics get a live highlight driven by the position stream + click-to-seek.
 
 const LYRICS_TYPES = new Set(["MUSIC_VIDEO_TYPE_ATV", "MUSIC_VIDEO_TYPE_OMV"]);
-const LYRICS_CACHE_LIMIT = 40;
 
 let lyricsEnabled = null; // null = not read from storage yet
 let lyricsKey = null; // track the pane currently reflects
@@ -601,55 +600,6 @@ function parseLrc(text) {
     }
   }
   return lines.sort((a, b) => a.t - b.t);
-}
-
-async function cachedLyrics(videoId) {
-  try {
-    return (await ext.storage.local.get("lyricsCache")).lyricsCache?.[videoId] ?? null;
-  } catch {
-    return null;
-  }
-}
-
-async function storeLyrics(videoId, entry) {
-  try {
-    const cache = (await ext.storage.local.get("lyricsCache")).lyricsCache ?? {};
-    cache[videoId] = { ...entry, at: Date.now() };
-    const keys = Object.keys(cache);
-    if (keys.length > LYRICS_CACHE_LIMIT) {
-      keys.sort((a, b) => (cache[a].at ?? 0) - (cache[b].at ?? 0));
-      for (const key of keys.slice(0, keys.length - LYRICS_CACHE_LIMIT)) delete cache[key];
-    }
-    await ext.storage.local.set({ lyricsCache: cache });
-  } catch {
-    // cache is best-effort
-  }
-}
-
-async function fetchLyrics(state) {
-  // Exact lookup first — duration (±2s server-side) is what makes it precise.
-  const params = new URLSearchParams({
-    track_name: state.title,
-    artist_name: state.artist,
-    duration: String(Math.round(state.duration)),
-  });
-  if (state.album) params.set("album_name", state.album);
-  let res = await fetch(`https://lrclib.net/api/get?${params}`);
-  if (res.ok) return res.json();
-  // Miss — search and take the closest duration within reason.
-  const searchParams = new URLSearchParams({
-    track_name: state.title,
-    artist_name: state.artist,
-  });
-  res = await fetch(`https://lrclib.net/api/search?${searchParams}`);
-  if (!res.ok) return null;
-  const hits = await res.json();
-  if (!Array.isArray(hits) || !hits.length) return null;
-  hits.sort(
-    (a, b) =>
-      Math.abs((a.duration ?? 0) - state.duration) - Math.abs((b.duration ?? 0) - state.duration)
-  );
-  return Math.abs((hits[0].duration ?? 0) - state.duration) <= 10 ? hits[0] : null;
 }
 
 function showLyricsEntry(entry) {
@@ -728,23 +678,25 @@ async function renderLyrics() {
   lyricsLines = null;
   lyricsNote("Looking up lyrics…");
   const fetchId = ++lyricsFetchId;
-  let entry = state.videoId ? await cachedLyrics(state.videoId) : null;
-  if (!entry) {
-    let data = null;
-    try {
-      data = await fetchLyrics(state);
-    } catch {
-      data = null;
-    }
-    entry = {
-      synced: data?.syncedLyrics ?? "",
-      plain: data?.plainLyrics ?? "",
-      instrumental: Boolean(data?.instrumental),
-    };
-    if (state.videoId) storeLyrics(state.videoId, entry);
+  // The background script fetches and caches; usually the content script has
+  // already prefetched on song start, making this an instant cache hit.
+  let entry = null;
+  try {
+    entry = await ext.runtime.sendMessage({
+      type: "fetchLyrics",
+      track: {
+        videoId: state.videoId,
+        title: state.title,
+        artist: state.artist,
+        album: state.album,
+        duration: state.duration,
+      },
+    });
+  } catch {
+    entry = null;
   }
   if (fetchId !== lyricsFetchId) return; // a newer track superseded this fetch
-  showLyricsEntry(entry);
+  showLyricsEntry(entry ?? { synced: "", plain: "", instrumental: false });
 }
 
 // Manual scrolling pauses the autoscroll so it doesn't fight the user.

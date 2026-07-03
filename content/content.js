@@ -165,6 +165,9 @@ function readState() {
     setTimeout(pushQueue, 500);
     setTimeout(pushQueue, 1600);
     setTimeout(pushQueue, 3500);
+    // Warm the lyrics cache once duration/videoType have settled, so the
+    // popup's Lyrics tab is an instant cache hit.
+    setTimeout(prefetchLyrics, 2500);
   }
 
   const artworkSrc = bar?.querySelector("img.image")?.src ?? "";
@@ -542,6 +545,39 @@ function notifyBackground(state) {
   if (indicator === lastIndicator) return;
   lastIndicator = indicator;
   ext.runtime.sendMessage({ type: "playbackState", indicator }).catch(() => {});
+}
+
+// --- Lyrics prefetch (fetching + cache live in the background script) ---
+
+const LYRICS_TYPES = new Set(["MUSIC_VIDEO_TYPE_ATV", "MUSIC_VIDEO_TYPE_OMV"]);
+let lyricsPrefetchedKey = null;
+
+async function prefetchLyrics() {
+  const state = readState();
+  if (!state.available || !state.title || !state.duration) return;
+  const eligible = state.videoType
+    ? LYRICS_TYPES.has(state.videoType)
+    : Boolean(state.album);
+  if (!eligible) return;
+  const key = state.videoId || `${state.title}|${state.artist}`;
+  if (key === lyricsPrefetchedKey) return;
+  try {
+    // Respect the opt-in: no request leaves the browser until it's enabled.
+    if (!(await ext.storage.local.get("lyricsEnabled")).lyricsEnabled) return;
+    lyricsPrefetchedKey = key;
+    await ext.runtime.sendMessage({
+      type: "fetchLyrics",
+      track: {
+        videoId: state.videoId,
+        title: state.title,
+        artist: state.artist,
+        album: state.album,
+        duration: state.duration,
+      },
+    });
+  } catch {
+    // background unavailable — the popup fetches on demand instead
+  }
 }
 
 function broadcast() {

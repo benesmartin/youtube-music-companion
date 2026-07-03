@@ -57,6 +57,81 @@ ext.runtime.onMessage.addListener((msg) => {
   if (msg?.type === "playbackState") setIndicator(msg.indicator);
 });
 
+// ---- lyrics (LRCLIB) ----
+// Fetching lives here so the content script can prefetch the moment a song
+// starts and the popup's Lyrics tab gets an instant cache hit.
+
+const LYRICS_CACHE_LIMIT = 40;
+
+async function lrclibLookup(track) {
+  // Exact lookup first — duration (±2s server-side) is what makes it precise.
+  const params = new URLSearchParams({
+    track_name: track.title,
+    artist_name: track.artist,
+    duration: String(Math.round(track.duration)),
+  });
+  if (track.album) params.set("album_name", track.album);
+  let res = await fetch(`https://lrclib.net/api/get?${params}`);
+  if (res.ok) return res.json();
+  // Miss — search and take the closest duration within reason.
+  const searchParams = new URLSearchParams({
+    track_name: track.title,
+    artist_name: track.artist,
+  });
+  res = await fetch(`https://lrclib.net/api/search?${searchParams}`);
+  if (!res.ok) return null;
+  const hits = await res.json();
+  if (!Array.isArray(hits) || !hits.length) return null;
+  hits.sort(
+    (a, b) =>
+      Math.abs((a.duration ?? 0) - track.duration) - Math.abs((b.duration ?? 0) - track.duration)
+  );
+  return Math.abs((hits[0].duration ?? 0) - track.duration) <= 10 ? hits[0] : null;
+}
+
+async function getLyrics(track) {
+  if (!track?.title) return null;
+  try {
+    if (track.videoId) {
+      const cache = (await ext.storage.local.get("lyricsCache")).lyricsCache ?? {};
+      if (cache[track.videoId]) return cache[track.videoId];
+    }
+    let data = null;
+    try {
+      data = await lrclibLookup(track);
+    } catch {
+      data = null;
+    }
+    const entry = {
+      synced: data?.syncedLyrics ?? "",
+      plain: data?.plainLyrics ?? "",
+      instrumental: Boolean(data?.instrumental),
+      at: Date.now(),
+    };
+    if (track.videoId) {
+      const cache = (await ext.storage.local.get("lyricsCache")).lyricsCache ?? {};
+      cache[track.videoId] = entry;
+      const keys = Object.keys(cache);
+      if (keys.length > LYRICS_CACHE_LIMIT) {
+        keys.sort((a, b) => (cache[a].at ?? 0) - (cache[b].at ?? 0));
+        for (const key of keys.slice(0, keys.length - LYRICS_CACHE_LIMIT)) delete cache[key];
+      }
+      await ext.storage.local.set({ lyricsCache: cache });
+    }
+    return entry;
+  } catch {
+    return null;
+  }
+}
+
+ext.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type === "fetchLyrics") {
+    getLyrics(msg.track).then(sendResponse);
+    return true; // async response
+  }
+  return false;
+});
+
 // No YTM tab left → back to the disconnected dot. The closing/navigating
 // tab can still show up in tabs.query for a moment, so exclude it by id.
 async function checkTabsGone(excludeTabId) {
