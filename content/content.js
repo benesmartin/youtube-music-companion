@@ -355,9 +355,18 @@ function runCommand(name, payload = {}) {
 
 const ports = new Set();
 
+// Keep the toolbar icon's state dot current even when no popup is open.
+let lastIndicator = null;
+function notifyBackground(state) {
+  const indicator = state.available ? (state.playing ? "playing" : "paused") : "none";
+  if (indicator === lastIndicator) return;
+  lastIndicator = indicator;
+  ext.runtime.sendMessage({ type: "playbackState", indicator }).catch(() => {});
+}
+
 function broadcast() {
-  if (ports.size === 0) return;
   const state = readState();
+  notifyBackground(state);
   for (const port of ports) {
     port.postMessage({ type: "state", state });
   }
@@ -390,6 +399,9 @@ ext.runtime.onConnect.addListener((port) => {
 ext.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "command") {
     sendResponse({ ok: runCommand(msg.command, msg.payload) });
+  } else if (msg.type === "queryPlayback") {
+    lastIndicator = null; // force a fresh notification
+    broadcast();
   }
   return false;
 });

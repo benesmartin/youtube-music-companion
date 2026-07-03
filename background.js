@@ -17,6 +17,64 @@ async function findMusicTab() {
   return tabs.find((tab) => tab.audible) ?? tabs[0];
 }
 
+// ---- toolbar icon state dot (green playing, yellow paused, gray off) ----
+
+const DOT_COLORS = { playing: "#22c55e", paused: "#eab308", none: "#9ca3af" };
+let currentIndicator = null;
+
+async function setIndicator(indicator) {
+  if (indicator === currentIndicator) return;
+  currentIndicator = indicator;
+  try {
+    const imageData = {};
+    for (const size of [16, 32]) {
+      const response = await fetch(ext.runtime.getURL(`icons/icon${size}.png`));
+      const bitmap = await createImageBitmap(await response.blob());
+      const canvas = new OffscreenCanvas(size, size);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(bitmap, 0, 0, size, size);
+      const radius = Math.max(3, Math.round(size * 0.19));
+      ctx.beginPath();
+      ctx.arc(size - radius - 1, radius + 1, radius, 0, Math.PI * 2);
+      ctx.fillStyle = DOT_COLORS[indicator] ?? DOT_COLORS.none;
+      ctx.fill();
+      ctx.lineWidth = Math.max(1, size / 16);
+      ctx.strokeStyle = "#1a1a1a";
+      ctx.stroke();
+      imageData[size] = ctx.getImageData(0, 0, size, size);
+    }
+    await ext.action.setIcon({ imageData });
+  } catch {
+    // Canvas unavailable — leave the static icon.
+  }
+}
+
+ext.runtime.onMessage.addListener((msg) => {
+  if (msg?.type === "playbackState") setIndicator(msg.indicator);
+});
+
+// No YTM tab left → back to the disconnected dot.
+async function checkTabsGone() {
+  if (!(await findMusicTab())) setIndicator("none");
+}
+ext.tabs.onRemoved.addListener(checkTabsGone);
+ext.tabs.onUpdated.addListener((_id, changeInfo) => {
+  if (changeInfo.url) checkTabsGone();
+});
+
+// On (re)start, ask the content script for the real state instead of
+// assuming disconnected.
+(async () => {
+  await setIndicator("none");
+  const tab = await findMusicTab();
+  if (!tab) return;
+  try {
+    await ext.tabs.sendMessage(tab.id, { type: "queryPlayback" });
+  } catch {
+    // Content script not ready; it will report when it loads.
+  }
+})();
+
 ext.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== "sleep-timer") return;
   const tab = await findMusicTab();
