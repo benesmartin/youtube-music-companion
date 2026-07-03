@@ -274,7 +274,13 @@
     }
     return items.map((entry) => {
       const renderer = queueRendererOf(entry);
-      const thumbs = renderer?.thumbnail?.thumbnails ?? [];
+      // Wrapped (video-with-song) entries sometimes only carry a thumbnail
+      // on the hidden counterpart renderer.
+      const counterpart =
+        entry?.playlistPanelVideoWrapperRenderer?.counterpart?.[0]?.counterpartRenderer
+          ?.playlistPanelVideoRenderer ?? null;
+      const thumbs =
+        renderer?.thumbnail?.thumbnails ?? counterpart?.thumbnail?.thumbnails ?? [];
       return {
         videoId: renderer?.videoId ?? null,
         title: (renderer?.title?.runs ?? []).map((run) => run.text).join(""),
@@ -330,6 +336,16 @@
       .map((run) => run.text)
       .join("");
 
+  // For plain YouTube videos the artist column carries extra runs
+  // ("Channel • 1.4M views • today") — keep the linked artist/channel runs
+  // and drop the stats; fall back to the text before the first bullet.
+  function artistText(column) {
+    const runs = column?.musicResponsiveListItemFlexColumnRenderer?.text?.runs ?? [];
+    const linked = runs.filter((run) => run.navigationEndpoint).map((run) => run.text);
+    if (linked.length) return linked.join(", ");
+    return runs.map((run) => run.text).join("").split("•")[0].trim();
+  }
+
   function parseHistoryItem(entry) {
     const renderer = entry?.musicResponsiveListItemRenderer;
     if (!renderer) return null;
@@ -344,7 +360,7 @@
       playlistId: endpoint?.playlistId ?? null,
       params: endpoint?.params ?? null,
       title: columnText(renderer.flexColumns?.[0]),
-      artist: columnText(renderer.flexColumns?.[1]),
+      artist: artistText(renderer.flexColumns?.[1]),
       duration:
         renderer.fixedColumns?.[0]?.musicResponsiveListItemFixedColumnRenderer?.text?.runs?.[0]
           ?.text ?? "",

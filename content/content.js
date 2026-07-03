@@ -159,9 +159,11 @@ function readState() {
     libraryState = null;
     libraryAvailable = null;
     // Track changes often rebuild the queue; push it fresh once YTM has
-    // re-rendered (twice — the rebuild can land late).
+    // re-rendered. Several passes — the rebuild can land late, and after a
+    // history play the data store fills its thumbnails later still.
     setTimeout(pushQueue, 500);
     setTimeout(pushQueue, 1600);
+    setTimeout(pushQueue, 3500);
   }
 
   const artworkSrc = bar?.querySelector("img.image")?.src ?? "";
@@ -329,7 +331,12 @@ async function queueWithThumbs() {
         data.filter((entry) => entry.thumb).map((entry) => [entry.title, entry.thumb])
       );
       for (const item of queue) {
-        if (!item.thumb) item.thumb = thumbByTitle.get(item.title) ?? "";
+        // Auto-generated queues (playing from history) can render DOM titles
+        // that don't exactly match the store's, so fall back to position —
+        // store items map 1:1 onto the visible (non-counterpart) rows.
+        if (!item.thumb) {
+          item.thumb = thumbByTitle.get(item.title) ?? data[item.index]?.thumb ?? "";
+        }
       }
     }
   }
