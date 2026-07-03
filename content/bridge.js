@@ -44,7 +44,16 @@
 
   // ---- library toggle (needs Polymer element data, page-context only) ----
 
-  async function withHiddenMenu(worker) {
+  // Menu automations must never overlap: a second menuButton.click() while
+  // a probe holds the menu open would close it and kill both operations.
+  let menuBusy = Promise.resolve();
+  function withHiddenMenu(worker) {
+    const run = menuBusy.then(() => runWithHiddenMenu(worker));
+    menuBusy = run.catch(() => {});
+    return run;
+  }
+
+  async function runWithHiddenMenu(worker) {
     const menuButton = document.querySelector(
       "ytmusic-player-bar ytmusic-menu-renderer #button-shape button"
     );
@@ -73,8 +82,9 @@
   // (e.g. LIBRARY_ADD) plus both text variants — comparing the rendered text
   // against defaultText reveals which state is currently shown.
   function findLibrary() {
-    for (const item of document.querySelectorAll("ytmusic-toggle-menu-service-item-renderer")) {
-      const data = item.data;
+    const toggles = [...document.querySelectorAll("ytmusic-toggle-menu-service-item-renderer")];
+    for (const item of toggles) {
+      const data = item.data ?? item.__data?.data ?? null;
       const defaultIcon = data?.defaultIcon?.iconType ?? "";
       const toggledIcon = data?.toggledIcon?.iconType ?? "";
       if (!defaultIcon.includes("LIBRARY") && !toggledIcon.includes("LIBRARY")) continue;
@@ -83,6 +93,12 @@
       const showingDefault = shownText !== "" && shownText === defaultText;
       const defaultIsAdd = defaultIcon.includes("ADD");
       return { item, inLibrary: showingDefault ? !defaultIsAdd : defaultIsAdd };
+    }
+    if (toggles.length) {
+      // Data unreadable on this build: assume the first toggle is the library
+      // entry (holds in all observed menus) but report the state as unknown.
+      console.debug("[YTM Companion] library data unreadable, using first toggle of", toggles.length);
+      return { item: toggles[0], inLibrary: null };
     }
     return null;
   }
@@ -98,7 +114,8 @@
       const found = findLibrary();
       if (!found) return null;
       found.item.click();
-      return { inLibrary: !found.inLibrary };
+      console.debug("[YTM Companion] library toggled, was:", found.inLibrary);
+      return { inLibrary: found.inLibrary === null ? null : !found.inLibrary };
     });
 
   window.addEventListener("message", async (e) => {

@@ -251,6 +251,11 @@ function startRadio() {
 // Library state lives in Polymer element data only the page context can
 // read (both menu variants share one icon), so the bridge does the work.
 async function probeLibrary() {
+  // Already known for this track — don't churn the menu again.
+  if (libraryState !== null) {
+    broadcast();
+    return true;
+  }
   const result = await askBridgeAsync("probeLibrary");
   if (typeof result?.inLibrary === "boolean") libraryState = result.inLibrary;
   broadcast();
