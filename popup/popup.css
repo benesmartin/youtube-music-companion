@@ -50,14 +50,15 @@ button svg {
 
 /* ---- header: art left, panel right ---- */
 
+/* fixed card height — no track type may change the popup's size */
 #header {
   display: flex;
+  height: 176px;
 }
 
 #artwork {
   width: 176px;
-  min-height: 176px;
-  align-self: stretch;
+  height: 176px;
   object-fit: cover;
   background: var(--surface);
   flex: none;
