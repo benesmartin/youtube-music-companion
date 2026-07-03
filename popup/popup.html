@@ -37,6 +37,7 @@
         <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
         <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
         <symbol id="i-infinity" viewBox="0 0 24 24"><path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/></symbol>
+        <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
       </defs>
     </svg>
 
@@ -125,6 +126,7 @@
         <div class="tab" data-tab="search">Search</div>
         <div class="tab" data-tab="playlists">Playlists</div>
         <button id="autoplay-toggle" title="Autoplay" hidden><svg><use href="#i-infinity"/></svg></button>
+        <button id="settings-open" title="Settings"><svg><use href="#i-gear"/></svg></button>
       </div>
       <div id="queue-list"><div id="queue-note">Loading queue…</div></div>
       <div id="history-list" hidden></div>
@@ -139,6 +141,19 @@
           <button class="pill" data-group="videos">Videos</button>
         </div>
         <div id="search-results"></div>
+      </div>
+      <div id="settings-pane" hidden>
+        <div class="settings-section">
+          <div class="settings-label">Appearance</div>
+          <div id="theme-options">
+            <button class="theme-opt" data-theme="dark">Dark</button>
+            <button class="theme-opt" data-theme="light">Light</button>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="settings-label">Accent color</div>
+          <div id="accent-options"></div>
+        </div>
       </div>
       <div id="playlists-pane" hidden>
         <div id="playlists-list"></div>

@@ -461,6 +461,74 @@ function renderQueue(queue) {
   }
 }
 
+// ---- settings (theme) ----
+
+const DEFAULT_SETTINGS = { theme: "dark", accent: "#ff4e45" };
+const ACCENTS = [
+  "#ff4e45", // red (default)
+  "#ff9f43", // orange
+  "#f7c948", // yellow
+  "#34c759", // green
+  "#2bb8c4", // teal
+  "#4a9eff", // blue
+  "#a78bfa", // purple
+  "#ff6bb0", // pink
+];
+let settings = { ...DEFAULT_SETTINGS };
+
+function applySettings() {
+  document.body.classList.toggle("light", settings.theme === "light");
+  document.documentElement.style.setProperty("--accent", settings.accent);
+  for (const option of document.querySelectorAll(".theme-opt")) {
+    option.classList.toggle("active", option.dataset.theme === settings.theme);
+  }
+  for (const swatch of document.querySelectorAll(".accent-swatch")) {
+    swatch.classList.toggle("active", swatch.dataset.accent === settings.accent);
+  }
+}
+
+function saveSettings() {
+  applySettings();
+  try {
+    ext.storage.local.set({ settings });
+  } catch {
+    // session-only preference
+  }
+}
+
+async function loadSettings() {
+  try {
+    settings = { ...DEFAULT_SETTINGS, ...(await ext.storage.local.get("settings")).settings };
+  } catch {
+    // defaults stand
+  }
+  applySettings();
+}
+
+for (const color of ACCENTS) {
+  const swatch = document.createElement("button");
+  swatch.className = "accent-swatch";
+  swatch.dataset.accent = color;
+  swatch.style.background = color;
+  swatch.title = color;
+  swatch.addEventListener("click", () => {
+    settings.accent = color;
+    saveSettings();
+  });
+  el("accent-options").append(swatch);
+}
+
+for (const option of document.querySelectorAll(".theme-opt")) {
+  option.addEventListener("click", () => {
+    settings.theme = option.dataset.theme;
+    saveSettings();
+  });
+}
+
+el("settings-open").addEventListener("click", () => {
+  switchTab(activeTab === "settings" ? "queue" : "settings");
+});
+
 // ---- autoplay toggle (mirrors YTM's queue-header switch) ----
 
 let lastAutoplay = null; // null = YTM hasn't rendered its toggle
@@ -1036,6 +1104,8 @@ function switchTab(name) {
   el("lyrics-pane").hidden = name !== "lyrics";
   el("search-pane").hidden = name !== "search";
   el("playlists-pane").hidden = name !== "playlists";
+  el("settings-pane").hidden = name !== "settings";
+  el("settings-open").classList.toggle("active", name === "settings");
   el("autoplay-toggle").hidden = name !== "queue" || lastAutoplay === null;
   if (name === "history") requestHistory();
   if (name === "lyrics") renderLyrics();
@@ -1095,5 +1165,6 @@ async function connect() {
   });
 }
 
+loadSettings();
 connect();
 refreshSleep();

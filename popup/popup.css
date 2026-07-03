@@ -6,6 +6,18 @@
   --text: #ffffff;
   --text-dim: #aaaaaa;
   --accent: #ff4e45;
+  --slider-thumb-base: #ffffff;
+}
+
+/* light theme, toggled from settings */
+body.light {
+  color-scheme: light;
+  --bg: #f7f7f7;
+  --surface: #eaeaea;
+  --surface-2: #d6d6d6;
+  --text: #1a1a1a;
+  --text-dim: #5f5f5f;
+  --slider-thumb-base: #3a3a3a;
 }
 
 * {
@@ -237,7 +249,7 @@ input[type="range"]::-webkit-slider-thumb {
   height: var(--thumb, 10px);
   border-radius: 50%;
   border: none;
-  background: var(--slider-thumb, #fff);
+  background: var(--slider-thumb, var(--slider-thumb-base));
 }
 
 input[type="range"]::-moz-range-thumb {
@@ -245,7 +257,7 @@ input[type="range"]::-moz-range-thumb {
   height: var(--thumb, 10px);
   border-radius: 50%;
   border: none;
-  background: var(--slider-thumb, #fff);
+  background: var(--slider-thumb, var(--slider-thumb-base));
 }
 
 #seek {
@@ -563,7 +575,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 #volume:hover {
-  --slider-thumb: #fff;
+  --slider-thumb: var(--text);
 }
 
 /* ---- tabs + queue ---- */
@@ -595,29 +607,116 @@ input[type="range"]::-moz-range-thumb {
   font-weight: 600;
 }
 
-/* autoplay: dim infinity when off, accent when on */
-#autoplay-toggle {
+/* icon buttons at the right end of the tab row */
+#autoplay-toggle,
+#settings-open {
   width: 24px;
   height: 24px;
   border-radius: 50%;
   flex: none;
-  margin-left: auto;
-  margin-right: 6px;
   color: var(--text-dim);
 }
 
-#autoplay-toggle:hover {
+#autoplay-toggle:hover,
+#settings-open:hover {
   background: var(--surface);
   color: var(--text);
 }
 
+#autoplay-toggle svg,
+#settings-open svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* autoplay: dim infinity when off, accent when on */
 #autoplay-toggle.on {
   color: var(--accent);
 }
 
-#autoplay-toggle svg {
-  width: 15px;
-  height: 15px;
+#autoplay-toggle {
+  margin-left: auto;
+}
+
+#settings-open {
+  margin-right: 4px;
+}
+
+/* when the autoplay toggle is hidden, the gear takes over the right edge */
+#autoplay-toggle[hidden] + #settings-open {
+  margin-left: auto;
+}
+
+#settings-open.active {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ---- settings pane ---- */
+
+#settings-pane {
+  max-height: 264px;
+  overflow-y: auto;
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-2) transparent;
+}
+
+.settings-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  margin-bottom: 7px;
+}
+
+#theme-options {
+  display: flex;
+  gap: 6px;
+}
+
+.theme-opt {
+  padding: 4px 16px 5px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--text-dim);
+  background: var(--surface);
+}
+
+.theme-opt:hover {
+  color: var(--text);
+}
+
+.theme-opt.active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+#accent-options {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.accent-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: transform 0.12s, border-color 0.12s;
+}
+
+.accent-swatch:hover {
+  transform: scale(1.15);
+}
+
+.accent-swatch.active {
+  border-color: var(--text);
 }
 
 #queue-list,
