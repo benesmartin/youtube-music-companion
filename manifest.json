@@ -73,6 +73,9 @@
     },
     "volume-down": {
       "description": "Volume down"
+    },
+    "toggle-dislike": {
+      "description": "Dislike or un-dislike the current track"
     }
   }
 }

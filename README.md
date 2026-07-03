@@ -7,9 +7,9 @@ A browser extension for Firefox and Chrome that lets you control YouTube Music p
 ## Features (planned)
 
 - Mini player popup: album art, playback controls, seek, volume
-- Keyboard shortcuts: play/pause, next, previous, like — plus unbound volume up/down
-  commands. All bindings are user-changeable (Firefox: about:addons → ⚙ →
-  Manage Extension Shortcuts; Chrome: chrome://extensions/shortcuts)
+- Keyboard shortcuts: play/pause, next, previous, like — plus unbound volume
+  up/down and dislike commands. All bindings are editable right in the popup's
+  settings on Firefox (Chrome: chrome://extensions/shortcuts)
 - Queue: view, jump, play next, remove, reorder
 - Playback history — your real YouTube Music history, grouped by day
 - Lyrics via [LRCLIB](https://lrclib.net) — time-synced with click-to-seek, opt-in, official songs only
@@ -25,6 +25,9 @@ See [ROADMAP.md](ROADMAP.md) for build order and decisions.
   policy (extension clicks aren't "user gestures" in the tab). The popup shows
   a notice when this happens. Permanent fix: allow **Autoplay → Audio and
   Video** for music.youtube.com in the browser's site permissions.
+- **Keyboard shortcuts are browser-global, not OS-global** — they fire while
+  the browser has focus. WebExtensions can't register system-wide hotkeys;
+  use your OS media keys for that.
 
 ## Development
 

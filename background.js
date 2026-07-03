@@ -12,6 +12,7 @@ const SHORTCUT_COMMANDS = {
   // via Manage Extension Shortcuts / chrome://extensions/shortcuts.
   "volume-up": "volumeUp",
   "volume-down": "volumeDown",
+  "toggle-dislike": "toggleDislike",
 };
 
 async function findMusicTab() {
