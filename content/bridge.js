@@ -10,11 +10,18 @@
   const player = () => document.getElementById("movie_player");
   const volumeSlider = () => document.querySelector("ytmusic-player-bar #volume-slider");
 
-  function postVolume() {
+  function postStatus() {
     const p = player();
     if (!p?.getVolume) return;
     window.postMessage(
-      { source: FROM_BRIDGE, type: "volume", volume: p.getVolume(), muted: p.isMuted() },
+      {
+        source: FROM_BRIDGE,
+        type: "status",
+        volume: p.getVolume(),
+        muted: p.isMuted(),
+        // -1 unstarted, 1 playing, 2 paused, 3 buffering, 5 cued
+        playerState: p.getPlayerState?.() ?? null,
+      },
       window.location.origin
     );
   }
@@ -31,7 +38,7 @@
     } else {
       player()?.setVolume?.(clamped);
     }
-    postVolume();
+    postStatus();
   }
 
   window.addEventListener("message", (e) => {
@@ -43,7 +50,9 @@
       const p = player();
       if (!p) return;
       p.isMuted() ? p.unMute() : p.mute();
-      postVolume();
+      postStatus();
+    } else if (command === "seekTo") {
+      player()?.seekTo?.(payload.position, true);
     }
   });
 
@@ -52,7 +61,8 @@
     const p = player();
     if (!p?.addEventListener) return;
     clearInterval(poll);
-    p.addEventListener("onVolumeChange", postVolume);
-    postVolume();
+    p.addEventListener("onVolumeChange", postStatus);
+    p.addEventListener("onStateChange", postStatus);
+    postStatus();
   }, 500);
 })();

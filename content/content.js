@@ -8,7 +8,7 @@ const ext = globalThis.browser ?? globalThis.chrome;
 // page slider desyncs and YTM snaps the volume back. The bridge reports the
 // authoritative volume/mute state; the <video> element is only a fallback.
 
-let pageVolume = null;
+let pageStatus = null;
 
 function injectBridge() {
   const script = document.createElement("script");
@@ -19,8 +19,8 @@ function injectBridge() {
 
 window.addEventListener("message", (e) => {
   if (e.source !== window || e.data?.source !== "ytmc-bridge") return;
-  if (e.data.type === "volume") {
-    pageVolume = { volume: e.data.volume, muted: e.data.muted };
+  if (e.data.type === "status") {
+    pageStatus = { volume: e.data.volume, muted: e.data.muted, playerState: e.data.playerState };
     broadcastThrottled();
   }
 });
@@ -80,6 +80,17 @@ function sliderVolume() {
   return Number.isFinite(value) ? value : null;
 }
 
+// Position/duration come from the page's progress bar (in seconds), NOT the
+// <video> element — the first video element in the DOM can go stale across
+// track changes and keep reporting the previous song's time and duration.
+function progressInfo() {
+  const slider = playerBar()?.querySelector("#progress-bar");
+  const position = Number(slider?.getAttribute("aria-valuenow"));
+  const duration = Number(slider?.getAttribute("aria-valuemax"));
+  if (!Number.isFinite(position) || !Number.isFinite(duration) || duration <= 0) return null;
+  return { position, duration };
+}
+
 // The player bar reflects the repeat mode into an attribute (NONE/ALL/ONE).
 // Returns null when the attribute is missing so the popup can hide the state.
 function repeatMode() {
@@ -128,11 +139,14 @@ function readState() {
     album,
     year,
     artwork: artworkSrc ? upscaleArtwork(artworkSrc) : "",
-    playing: Boolean(media && !media.paused && media.readyState > 0),
-    position: media?.currentTime ?? 0,
-    duration: Number.isFinite(media?.duration) ? media.duration : 0,
-    volume: sliderVolume() ?? pageVolume?.volume ?? (media ? Math.round(media.volume * 100) : 100),
-    muted: pageVolume?.muted ?? media?.muted ?? false,
+    playing:
+      pageStatus?.playerState != null
+        ? pageStatus.playerState === 1 || pageStatus.playerState === 3
+        : Boolean(media && !media.paused && media.readyState > 0),
+    position: progressInfo()?.position ?? media?.currentTime ?? 0,
+    duration: progressInfo()?.duration ?? (Number.isFinite(media?.duration) ? media.duration : 0),
+    volume: sliderVolume() ?? pageStatus?.volume ?? (media ? Math.round(media.volume * 100) : 100),
+    muted: pageStatus?.muted ?? media?.muted ?? false,
     liked: likeStatus ? likeStatus === "LIKE" : likeButton()?.getAttribute("aria-pressed") === "true",
     disliked: likeStatus
       ? likeStatus === "DISLIKE"
@@ -151,6 +165,10 @@ function clickIfFound(el) {
 
 const commands = {
   playPause() {
+    // The page button, not the <video> element — the first video in the DOM
+    // can be a stale one that no longer drives playback.
+    const pageButton = barButton("play-pause-button", "^(play|pause)$");
+    if (pageButton) return clickIfFound(pageButton);
     const media = video();
     if (!media) return false;
     media.paused ? media.play() : media.pause();
@@ -163,15 +181,21 @@ const commands = {
   toggleLike: () => clickIfFound(likeButton()),
   toggleDislike: () => clickIfFound(dislikeButton()),
   seek(payload) {
-    const media = video();
-    if (!media || !Number.isFinite(media.duration)) return false;
     // Clamp inside the track: an out-of-range position makes YTM skip tracks.
     // The 1s end margin keeps seeks clear of the ended/transition race.
+    const progress = progressInfo();
+    if (progress) {
+      const target = Math.min(Math.max(0, payload.position), Math.max(0, progress.duration - 1));
+      askBridge("seekTo", { position: target });
+      return true;
+    }
+    const media = video();
+    if (!media || !Number.isFinite(media.duration)) return false;
     media.currentTime = Math.min(Math.max(0, payload.position), Math.max(0, media.duration - 1));
     return true;
   },
   setVolume(payload) {
-    if (pageVolume || sliderVolume() !== null) {
+    if (pageStatus || sliderVolume() !== null) {
       askBridge("setVolume", { volume: payload.volume });
       return true;
     }
@@ -185,7 +209,7 @@ const commands = {
     // YTM's own mute button keeps the app state consistent, same as the slider.
     const pageMute = barButton("volume", "^mute");
     if (pageMute) return clickIfFound(pageMute);
-    if (pageVolume) {
+    if (pageStatus) {
       askBridge("toggleMute");
       return true;
     }
