@@ -11,7 +11,14 @@ const YTM_BASE = "https://music.youtube.com/";
 
 let port = null;
 let seeking = false;
+let volumeDragging = false;
 let volumeSettleTimer = null;
+
+// Volume is under user control from pointerdown until shortly after release;
+// state echoes from the page are ignored for that whole window.
+function volumeBusy() {
+  return volumeDragging || volumeSettleTimer !== null;
+}
 let currentTrack = null;
 let currentTabId = null;
 let lastState = null;
@@ -74,7 +81,7 @@ function render(state) {
   el("like").classList.toggle("active", state.liked);
   el("dislike").classList.toggle("active", state.disliked);
   el("mute").classList.toggle("muted", state.muted);
-  el("mute").classList.toggle("high", state.volume >= 50);
+  if (!volumeBusy()) el("mute").classList.toggle("high", state.volume >= 50);
   el("repeat").classList.toggle("active", state.repeat === "all" || state.repeat === "one");
   el("repeat").classList.toggle("one", state.repeat === "one");
 
@@ -86,8 +93,8 @@ function render(state) {
     updateFill(el("seek"));
   }
   // While the user drags the volume, echoed state would yank the knob to a
-  // stale value — hold off until input has settled.
-  if (volumeSettleTimer === null) {
+  // stale value — hold off until the drag has settled.
+  if (!volumeBusy()) {
     el("volume").value = state.muted ? 0 : state.volume;
     updateFill(el("volume"));
   }
@@ -122,14 +129,31 @@ el("seek").addEventListener("change", () => {
   seeking = false;
 });
 
+el("volume").addEventListener("pointerdown", () => {
+  volumeDragging = true;
+});
+
+window.addEventListener("pointerup", () => {
+  if (!volumeDragging) return;
+  volumeDragging = false;
+  // Let the last command's echo arrive before trusting page state again.
+  clearTimeout(volumeSettleTimer);
+  volumeSettleTimer = setTimeout(() => {
+    volumeSettleTimer = null;
+  }, 600);
+});
+
 el("volume").addEventListener("input", () => {
   send("setVolume", { volume: Number(el("volume").value) });
   updateFill(el("volume"));
   el("mute").classList.toggle("high", Number(el("volume").value) >= 50);
-  clearTimeout(volumeSettleTimer);
-  volumeSettleTimer = setTimeout(() => {
-    volumeSettleTimer = null;
-  }, 400);
+  if (!volumeDragging) {
+    // Keyboard adjustment — settle window keeps echoes at bay.
+    clearTimeout(volumeSettleTimer);
+    volumeSettleTimer = setTimeout(() => {
+      volumeSettleTimer = null;
+    }, 600);
+  }
 });
 
 el("open-ytm").addEventListener("click", async () => {
