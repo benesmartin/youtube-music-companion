@@ -73,9 +73,14 @@ button svg {
 #panel {
   flex: 1;
   min-width: 0;
-  padding: 12px 14px 10px;
+  padding: 10px 14px 8px;
   display: flex;
   flex-direction: column;
+}
+
+/* children must never be vertically squeezed into clipping */
+#panel > * {
+  flex-shrink: 0;
 }
 
 #title {
@@ -134,7 +139,7 @@ button svg {
   justify-content: center;
   align-items: center;
   gap: 6px;
-  margin: 8px 0;
+  margin: 4px 0;
 }
 
 #controls button {
@@ -253,7 +258,7 @@ input[type="range"]::-moz-range-thumb {
   color: var(--text-dim);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
 #time .sep {
