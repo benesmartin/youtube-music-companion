@@ -210,7 +210,7 @@ async function refreshSleep() {
     ? Math.max(1, Math.ceil((alarm.scheduledTime - Date.now()) / 60000))
     : 0;
   el("sleep-active").hidden = !alarm;
-  if (alarm) waveText(el("sleep-remaining"), `Pausing in ${minutes} min`);
+  if (alarm) el("sleep-remaining").textContent = `Pausing in ${minutes} min`;
   setSleepStatus(alarm ? `${minutes} min` : "");
 }
 
@@ -222,7 +222,7 @@ function armSleep(minutes) {
   const clamped = Math.min(720, Math.round(minutes));
   ext.alarms.create("sleep-timer", { delayInMinutes: clamped });
   setSleepStatus(`${clamped} min`);
-  waveText(el("sleep-remaining"), `Pausing in ${clamped} min`);
+  el("sleep-remaining").textContent = `Pausing in ${clamped} min`;
   el("sleep-active").hidden = false;
   showSleepPage(false);
   setTimeout(refreshSleep, 150);

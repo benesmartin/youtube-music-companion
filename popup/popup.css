@@ -433,6 +433,7 @@ input[type="range"]::-moz-range-thumb {
 #sleep-active {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 1px 9px;
   font-size: 12px;
@@ -460,7 +461,6 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 6px;
   justify-content: center;
   color: var(--accent);
-  margin-left: auto;
 }
 
 #sleep-off svg {
