@@ -258,6 +258,32 @@ input[type="range"]::-moz-range-thumb {
   fill: currentColor;
 }
 
+#copy-link .on-copied,
+#copy-link.copied .on-idle {
+  display: none;
+}
+#copy-link.copied .on-copied {
+  display: block;
+  color: #3ba55d;
+}
+
+#bottom-row button:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* artist/album become links when a target URL is known */
+#artist.link,
+#album.link {
+  cursor: pointer;
+}
+
+#artist.link:hover,
+#album.link:hover {
+  text-decoration: underline;
+  color: var(--text);
+}
+
 #mute {
   margin-left: auto;
 }

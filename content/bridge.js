@@ -21,6 +21,7 @@
         muted: p.isMuted(),
         // -1 unstarted, 1 playing, 2 paused, 3 buffering, 5 cued
         playerState: p.getPlayerState?.() ?? null,
+        videoId: p.getVideoData?.()?.video_id ?? null,
       },
       window.location.origin
     );

@@ -20,7 +20,12 @@ function injectBridge() {
 window.addEventListener("message", (e) => {
   if (e.source !== window || e.data?.source !== "ytmc-bridge") return;
   if (e.data.type === "status") {
-    pageStatus = { volume: e.data.volume, muted: e.data.muted, playerState: e.data.playerState };
+    pageStatus = {
+      volume: e.data.volume,
+      muted: e.data.muted,
+      playerState: e.data.playerState,
+      videoId: e.data.videoId,
+    };
     broadcastThrottled();
   }
 });
@@ -138,6 +143,11 @@ function readState() {
     artist,
     album,
     year,
+    videoId: pageStatus?.videoId ?? location.href.match(/[?&]v=([^&]+)/)?.[1] ?? "",
+    artistUrl:
+      links.find((a) => a.getAttribute("href")?.startsWith("channel/"))?.getAttribute("href") ?? "",
+    albumUrl:
+      links.find((a) => a.getAttribute("href")?.startsWith("browse/"))?.getAttribute("href") ?? "",
     artwork: artworkSrc ? upscaleArtwork(artworkSrc) : "",
     playing:
       pageStatus?.playerState != null

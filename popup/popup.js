@@ -7,9 +7,13 @@ const el = (id) => document.getElementById(id);
 const playerView = el("player");
 const emptyView = el("empty");
 
+const YTM_BASE = "https://music.youtube.com/";
+
 let port = null;
 let seeking = false;
 let currentTrack = null;
+let currentTabId = null;
+let lastState = null;
 
 // Sliders paint their filled portion via the --fill custom property.
 function updateFill(slider) {
@@ -45,6 +49,12 @@ function render(state) {
   const album = state.album ? `${state.album}${state.year ? ` • ${state.year}` : ""}` : "";
   el("album").textContent = album;
   el("album").hidden = !album;
+
+  lastState = state;
+  el("artist").classList.toggle("link", Boolean(state.artistUrl));
+  el("album").classList.toggle("link", Boolean(state.albumUrl));
+  el("radio").disabled = !state.videoId;
+  el("copy-link").disabled = !state.videoId;
   if (el("artwork").src !== state.artwork) el("artwork").src = state.artwork;
 
   el("play-pause").classList.toggle("playing", state.playing);
@@ -100,9 +110,35 @@ el("volume").addEventListener("input", () => {
 });
 
 el("open-ytm").addEventListener("click", async () => {
-  await ext.tabs.create({ url: "https://music.youtube.com/" });
+  await ext.tabs.create({ url: YTM_BASE });
   window.close();
 });
+
+// Radio replaces the queue in the existing tab; no need to focus it.
+el("radio").addEventListener("click", () => {
+  const id = lastState?.videoId;
+  if (!id || currentTabId === null) return;
+  ext.tabs.update(currentTabId, { url: `${YTM_BASE}watch?v=${id}&list=RDAMVM${id}` });
+});
+
+el("copy-link").addEventListener("click", async () => {
+  const id = lastState?.videoId;
+  if (!id) return;
+  await navigator.clipboard.writeText(`${YTM_BASE}watch?v=${id}`);
+  el("copy-link").classList.add("copied");
+  setTimeout(() => el("copy-link").classList.remove("copied"), 1500);
+});
+
+// Artist/album navigate the YTM tab and bring it into view.
+async function openInTab(relativeUrl) {
+  if (!relativeUrl || currentTabId === null) return;
+  const tab = await ext.tabs.update(currentTabId, { url: YTM_BASE + relativeUrl, active: true });
+  await ext.windows.update(tab.windowId, { focused: true });
+  window.close();
+}
+
+el("artist").addEventListener("click", () => openInTab(lastState?.artistUrl));
+el("album").addEventListener("click", () => openInTab(lastState?.albumUrl));
 
 async function connect() {
   const tabs = await ext.tabs.query({ url: "https://music.youtube.com/*" });
@@ -111,6 +147,7 @@ async function connect() {
     showEmpty();
     return;
   }
+  currentTabId = tab.id;
   try {
     port = ext.tabs.connect(tab.id, { name: "popup" });
   } catch {

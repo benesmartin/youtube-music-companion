@@ -15,7 +15,7 @@
       "strict_min_version": "142.0"
     }
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "clipboardWrite"],
   "host_permissions": ["https://music.youtube.com/*"],
   "background": {
     "scripts": ["background.js"],
