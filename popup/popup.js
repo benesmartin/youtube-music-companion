@@ -672,7 +672,7 @@ async function renderShortcuts() {
   if (canEditShortcuts) {
     const reset = document.createElement("button");
     reset.className = "shortcut-manage";
-    reset.textContent = "Reset to defaults";
+    reset.textContent = "Reset shortcuts";
     reset.addEventListener("click", async () => {
       for (const command of commandList) {
         try {
