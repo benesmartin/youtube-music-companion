@@ -32,11 +32,12 @@ async function setIndicator(indicator) {
       const bitmap = await createImageBitmap(await response.blob());
       const canvas = new OffscreenCanvas(size, size);
       const ctx = canvas.getContext("2d");
-      // Badge look: icon shrunk toward bottom-left, dot riding its top-right
-      // corner — half on the icon, half beside it.
-      const scale = 0.84;
-      ctx.drawImage(bitmap, 0, size * (1 - scale), size * scale, size * scale);
-      const radius = Math.max(3, Math.round(size * 0.21));
+      // Icon centered and as large as the dot allows; the dot overlaps the
+      // top-right corner like a notification badge.
+      const scale = 0.92;
+      const inset = (size * (1 - scale)) / 2;
+      ctx.drawImage(bitmap, inset, inset, size * scale, size * scale);
+      const radius = Math.max(3, Math.round(size * 0.2));
       ctx.beginPath();
       ctx.arc(size - radius - 0.5, radius + 0.5, radius, 0, Math.PI * 2);
       ctx.fillStyle = DOT_COLORS[indicator] ?? DOT_COLORS.none;
