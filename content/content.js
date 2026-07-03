@@ -302,14 +302,19 @@ function queueItemElements() {
 
 function readQueue() {
   return queueItemElements()
-    .map((item, index) => ({
-      index,
-      title: item.querySelector(".song-title")?.textContent?.trim() ?? "",
-      artist: item.querySelector(".byline")?.textContent?.trim() ?? "",
-      duration: item.querySelector(".duration")?.textContent?.trim() ?? "",
-      thumb: item.querySelector("img")?.src ?? "",
-      selected: item.hasAttribute("selected"),
-    }))
+    .map((item, index) => {
+      // Lazy-loaded thumbnails start as a 1×1 data: GIF; report those as
+      // missing — the src observer pushes again once the real image lands.
+      const src = item.querySelector("img")?.src ?? "";
+      return {
+        index,
+        title: item.querySelector(".song-title")?.textContent?.trim() ?? "",
+        artist: item.querySelector(".byline")?.textContent?.trim() ?? "",
+        duration: item.querySelector(".duration")?.textContent?.trim() ?? "",
+        thumb: src.startsWith("data:") ? "" : src,
+        selected: item.hasAttribute("selected"),
+      };
+    })
     .filter((entry) => entry.title);
 }
 
@@ -344,7 +349,8 @@ function watchQueue() {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["selected"],
+    // "src" catches thumbnails lazy-loading in after a queue rebuild
+    attributeFilter: ["selected", "src"],
   });
 }
 
