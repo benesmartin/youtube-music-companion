@@ -466,6 +466,24 @@ function renderQueue(queue) {
   }
 }
 
+// ---- autoplay toggle (mirrors YTM's queue-header switch) ----
+
+let lastAutoplay = null; // null = YTM hasn't rendered its toggle
+
+function updateAutoplayToggle(value) {
+  lastAutoplay = typeof value === "boolean" ? value : null;
+  const button = el("autoplay-toggle");
+  button.hidden = lastAutoplay === null || activeTab !== "queue";
+  button.classList.toggle("on", lastAutoplay === true);
+  button.title = lastAutoplay ? "Autoplay is on" : "Autoplay is off";
+}
+
+el("autoplay-toggle").addEventListener("click", () => {
+  send("toggleAutoplay");
+  // Optimistic flip; the next queue push confirms.
+  updateAutoplayToggle(!lastAutoplay);
+});
+
 // Live drag preview: the dragged row follows the pointer through the list.
 // Autoplay rows are excluded — the real queue ends at the Autoplay header.
 function dragRowAfter(container, y) {
@@ -1024,6 +1042,7 @@ function switchTab(name) {
   el("search-pane").hidden = name !== "search";
   el("playlists-pane").hidden = name !== "playlists";
   el("queue-meta").hidden = name !== "queue";
+  el("autoplay-toggle").hidden = name !== "queue" || lastAutoplay === null;
   if (name === "history") requestHistory();
   if (name === "lyrics") renderLyrics();
   if (name === "search") el("search-input").focus();
@@ -1056,6 +1075,7 @@ async function connect() {
       render(msg.state);
     } else if (msg.type === "queue") {
       renderQueue(msg.queue);
+      updateAutoplayToggle(msg.autoplay);
       if (queueSwitchLoaded && msg.queue.some((item) => item.selected)) doQueueSwitch();
     } else if (msg.type === "history") renderHistory(msg.history);
     else if (msg.type === "searchResults") renderSearchResults(msg);

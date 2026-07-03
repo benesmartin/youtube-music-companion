@@ -352,11 +352,20 @@ async function queueWithThumbs() {
   return queue;
 }
 
+// YTM's autoplay toggle lives in the queue tab header; its checked attribute
+// is the state, clicking it flips it. null = toggle not rendered (yet).
+function autoplayState() {
+  const toggle = document.querySelector("tp-yt-paper-toggle-button#automix");
+  if (!toggle) return null;
+  return toggle.hasAttribute("checked") || toggle.getAttribute("aria-pressed") === "true";
+}
+
 async function pushQueue() {
   if (ports.size === 0) return;
   const queue = await queueWithThumbs();
+  const autoplay = autoplayState();
   for (const port of ports) {
-    port.postMessage({ type: "queue", queue });
+    port.postMessage({ type: "queue", queue, autoplay });
   }
 }
 
@@ -468,6 +477,13 @@ const commands = {
   // payload may carry playlistId/params so YTM builds the proper queue
   playVideoById: (payload) => askBridgeAsync("playVideoById", payload),
   playPlaylist: (payload) => askBridgeAsync("playPlaylist", { playlistId: payload.playlistId }),
+  toggleAutoplay() {
+    const toggle = document.querySelector("tp-yt-paper-toggle-button#automix");
+    if (!toggle) return false;
+    toggle.click();
+    setTimeout(pushQueue, 400);
+    return true;
+  },
   queueMove(payload) {
     return askBridgeAsync("queueMove", {
       fromIndex: payload.fromIndex,
@@ -630,7 +646,9 @@ ext.runtime.onConnect.addListener((port) => {
       // Reflect the result quickly; button clicks need a beat to apply.
       setTimeout(broadcast, 150);
     } else if (msg.type === "getQueue") {
-      queueWithThumbs().then((queue) => port.postMessage({ type: "queue", queue }));
+      queueWithThumbs().then((queue) =>
+        port.postMessage({ type: "queue", queue, autoplay: autoplayState() })
+      );
     } else if (msg.type === "getPlaylists") {
       askBridgeAsync("getPlaylists", {}, 8000).then((playlists) =>
         port.postMessage({ type: "playlists", playlists })

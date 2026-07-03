@@ -597,11 +597,35 @@ input[type="range"]::-moz-range-thumb {
 
 #queue-meta {
   margin-left: auto;
-  padding-right: 14px;
+  padding-right: 8px;
   font-size: 11px;
   color: var(--text-dim);
   opacity: 0.75;
   font-variant-numeric: tabular-nums;
+}
+
+/* autoplay: dim infinity when off, accent when on */
+#autoplay-toggle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex: none;
+  margin-right: 6px;
+  color: var(--text-dim);
+}
+
+#autoplay-toggle:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+#autoplay-toggle.on {
+  color: var(--accent);
+}
+
+#autoplay-toggle svg {
+  width: 15px;
+  height: 15px;
 }
 
 #queue-list,

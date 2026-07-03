@@ -36,6 +36,7 @@
         <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
         <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
         <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+        <symbol id="i-infinity" viewBox="0 0 24 24"><path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/></symbol>
       </defs>
     </svg>
 
@@ -124,6 +125,7 @@
         <div class="tab" data-tab="search">Search</div>
         <div class="tab" data-tab="playlists">Playlists</div>
         <span id="queue-meta"></span>
+        <button id="autoplay-toggle" title="Autoplay" hidden><svg><use href="#i-infinity"/></svg></button>
       </div>
       <div id="queue-list"><div id="queue-note">Loading queue…</div></div>
       <div id="history-list" hidden></div>
