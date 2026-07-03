@@ -39,6 +39,8 @@ function render(state) {
   el("like").classList.toggle("active", state.liked);
   el("dislike").classList.toggle("active", state.disliked);
   el("mute").classList.toggle("muted", state.muted);
+  el("repeat").classList.toggle("active", state.repeat === "all" || state.repeat === "one");
+  el("repeat").classList.toggle("one", state.repeat === "one");
 
   el("position").textContent = formatTime(state.position);
   el("duration").textContent = formatTime(state.duration);
@@ -65,6 +67,8 @@ el("next").addEventListener("click", () => send("next"));
 el("previous").addEventListener("click", () => send("previous"));
 el("like").addEventListener("click", () => send("toggleLike"));
 el("dislike").addEventListener("click", () => send("toggleDislike"));
+el("shuffle").addEventListener("click", () => send("shuffle"));
+el("repeat").addEventListener("click", () => send("toggleRepeat"));
 el("mute").addEventListener("click", () => send("toggleMute"));
 
 el("seek").addEventListener("input", () => {

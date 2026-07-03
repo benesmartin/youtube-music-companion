@@ -12,6 +12,9 @@
         <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></symbol>
         <symbol id="i-prev" viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></symbol>
         <symbol id="i-next" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></symbol>
+        <symbol id="i-shuffle" viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></symbol>
+        <symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></symbol>
+        <symbol id="i-repeat-1" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/><path d="M11 10h1v4"/></symbol>
         <symbol id="i-thumb-up" viewBox="0 0 24 24"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></symbol>
         <symbol id="i-thumb-down" viewBox="0 0 24 24"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></symbol>
         <symbol id="i-volume" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></symbol>
@@ -20,34 +23,36 @@
     </svg>
 
     <main id="player" hidden>
-      <div id="artwork-wrap">
+      <div id="header">
         <img id="artwork" alt="" />
-      </div>
-      <div id="track">
-        <div id="title">—</div>
-        <div id="artist">—</div>
-      </div>
-      <div id="timeline">
-        <span id="position">0:00</span>
-        <input id="seek" type="range" min="0" max="100" step="1" value="0" />
-        <span id="duration">0:00</span>
-      </div>
-      <div id="controls">
-        <button id="previous" title="Previous"><svg><use href="#i-prev"/></svg></button>
-        <button id="play-pause" title="Play/Pause">
-          <svg class="on-paused"><use href="#i-play"/></svg>
-          <svg class="on-playing"><use href="#i-pause"/></svg>
-        </button>
-        <button id="next" title="Next"><svg><use href="#i-next"/></svg></button>
-      </div>
-      <div id="bottom-row">
-        <button id="like" title="Like"><svg><use href="#i-thumb-up"/></svg></button>
-        <button id="dislike" title="Dislike"><svg><use href="#i-thumb-down"/></svg></button>
-        <button id="mute" title="Mute">
-          <svg class="on-sound"><use href="#i-volume"/></svg>
-          <svg class="on-muted"><use href="#i-volume-muted"/></svg>
-        </button>
-        <input id="volume" type="range" min="0" max="100" step="1" value="100" />
+        <div id="panel">
+          <div id="title">—</div>
+          <div id="artist">—</div>
+          <div id="controls">
+            <button id="shuffle" title="Shuffle"><svg><use href="#i-shuffle"/></svg></button>
+            <button id="previous" title="Previous"><svg><use href="#i-prev"/></svg></button>
+            <button id="play-pause" title="Play/Pause">
+              <svg class="on-paused"><use href="#i-play"/></svg>
+              <svg class="on-playing"><use href="#i-pause"/></svg>
+            </button>
+            <button id="next" title="Next"><svg><use href="#i-next"/></svg></button>
+            <button id="repeat" title="Repeat">
+              <svg class="on-all"><use href="#i-repeat"/></svg>
+              <svg class="on-one"><use href="#i-repeat-1"/></svg>
+            </button>
+          </div>
+          <input id="seek" type="range" min="0" max="100" step="1" value="0" />
+          <div id="time"><span id="position">0:00</span><span class="sep">/</span><span id="duration">0:00</span></div>
+          <div id="bottom-row">
+            <button id="like" title="Like"><svg><use href="#i-thumb-up"/></svg></button>
+            <button id="dislike" title="Dislike"><svg><use href="#i-thumb-down"/></svg></button>
+            <button id="mute" title="Mute">
+              <svg class="on-sound"><use href="#i-volume"/></svg>
+              <svg class="on-muted"><use href="#i-volume-muted"/></svg>
+            </button>
+            <input id="volume" type="range" min="0" max="100" step="1" value="100" />
+          </div>
+        </div>
       </div>
     </main>
 

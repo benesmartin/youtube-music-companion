@@ -15,15 +15,11 @@
 }
 
 body {
-  width: 320px;
+  width: 450px;
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, sans-serif;
   font-size: 14px;
-}
-
-main {
-  padding: 16px;
 }
 
 button {
@@ -38,8 +34,8 @@ button {
 
 /* Lucide icons are stroke-based outlines */
 button svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -47,27 +43,32 @@ button svg {
   stroke-linejoin: round;
 }
 
-#artwork-wrap {
+/* ---- header: art left, panel right ---- */
+
+#header {
   display: flex;
-  justify-content: center;
 }
 
 #artwork {
-  width: 240px;
-  height: 240px;
-  border-radius: 8px;
+  width: 176px;
+  min-height: 176px;
+  align-self: stretch;
   object-fit: cover;
   background: var(--surface);
+  flex: none;
 }
 
-#track {
-  text-align: center;
-  margin-top: 12px;
+#panel {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px 10px;
+  display: flex;
+  flex-direction: column;
 }
 
 #title {
   font-weight: 600;
-  font-size: 16px;
+  font-size: 15px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -75,10 +76,88 @@ button svg {
 
 #artist {
   color: var(--text-dim);
-  margin-top: 2px;
+  font-size: 12.5px;
+  margin-top: 1px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ---- transport controls ---- */
+
+#controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+#controls button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: background 0.15s, color 0.15s;
+}
+
+#controls button:hover {
+  background: var(--surface);
+}
+
+#shuffle,
+#repeat {
+  color: var(--text-dim);
+}
+
+#shuffle:hover,
+#repeat:hover {
+  color: var(--text);
+}
+
+#shuffle svg,
+#repeat svg {
+  width: 15px;
+  height: 15px;
+}
+
+#repeat.active {
+  color: var(--accent);
+}
+
+#play-pause {
+  width: 44px;
+  height: 44px;
+  background: var(--surface) !important;
+}
+
+#play-pause svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* two-icon buttons swap via a state class */
+#play-pause .on-playing,
+#play-pause.playing .on-paused {
+  display: none;
+}
+#play-pause.playing .on-playing {
+  display: block;
+}
+
+#repeat .on-one,
+#repeat.one .on-all {
+  display: none;
+}
+#repeat.one .on-one {
+  display: block;
+}
+
+#mute .on-muted,
+#mute.muted .on-sound {
+  display: none;
+}
+#mute.muted .on-muted {
+  display: block;
 }
 
 /* ---- sliders ---- */
@@ -114,78 +193,21 @@ input[type="range"]::-moz-range-thumb {
   background: var(--slider-thumb, #fff);
 }
 
-/* ---- timeline ---- */
-
-#timeline {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-#timeline span {
-  color: var(--text-dim);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  min-width: 34px;
-}
-
-#duration {
-  text-align: right;
-}
-
 #seek {
-  flex: 1;
+  width: 100%;
   height: 4px;
 }
 
-/* ---- main controls ---- */
-
-#controls {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 14px;
-  margin-top: 8px;
+#time {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  margin-top: 3px;
 }
 
-#controls button {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  transition: background 0.15s;
-}
-
-#controls button:hover {
-  background: var(--surface);
-}
-
-#play-pause {
-  width: 52px;
-  height: 52px;
-  background: var(--surface) !important;
-}
-
-#play-pause svg {
-  width: 24px;
-  height: 24px;
-}
-
-/* play/pause and mute swap their two icons via a state class */
-#play-pause .on-playing,
-#play-pause.playing .on-paused {
-  display: none;
-}
-#play-pause.playing .on-playing {
-  display: block;
-}
-
-#mute .on-muted,
-#mute.muted .on-sound {
-  display: none;
-}
-#mute.muted .on-muted {
-  display: block;
+#time .sep {
+  margin: 0 5px;
 }
 
 /* ---- bottom row: like, dislike, volume ---- */
@@ -193,14 +215,13 @@ input[type="range"]::-moz-range-thumb {
 #bottom-row {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-top: 10px;
-  padding: 0 6px;
+  gap: 2px;
+  margin-top: auto;
 }
 
 #bottom-row button {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   color: var(--text-dim);
   transition: background 0.15s, color 0.15s;
@@ -212,8 +233,8 @@ input[type="range"]::-moz-range-thumb {
 }
 
 #bottom-row button svg {
-  width: 17px;
-  height: 17px;
+  width: 15px;
+  height: 15px;
 }
 
 /* outlined by default, filled when active */
@@ -232,7 +253,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 #volume {
-  width: 90px;
+  width: 80px;
   height: 3px;
   --slider-fill: var(--text-dim);
   --slider-thumb: var(--text-dim);

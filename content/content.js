@@ -80,6 +80,15 @@ function sliderVolume() {
   return Number.isFinite(value) ? value : null;
 }
 
+// The player bar reflects the repeat mode into an attribute (NONE/ALL/ONE).
+// Returns null when the attribute is missing so the popup can hide the state.
+function repeatMode() {
+  const bar = playerBar();
+  const raw = bar?.getAttribute("repeat-mode_") ?? bar?.getAttribute("repeat-mode");
+  if (!raw) return null;
+  return { NONE: "off", ALL: "all", ONE: "one" }[raw] ?? "off";
+}
+
 // Album art URLs carry a size suffix (=w60-h60 or =s60); request a larger one.
 function upscaleArtwork(url) {
   return url.replace(/=w\d+-h\d+.*$/, "=w544-h544-l90-rj").replace(/=s\d+.*$/, "=s544");
@@ -107,6 +116,7 @@ function readState() {
     muted: pageVolume?.muted ?? media?.muted ?? false,
     liked: like?.getAttribute("aria-pressed") === "true",
     disliked: dislikeButton()?.getAttribute("aria-pressed") === "true",
+    repeat: repeatMode(),
   };
 }
 
@@ -125,6 +135,8 @@ const commands = {
   },
   next: () => clickIfFound(barButton("next-button", "^next")),
   previous: () => clickIfFound(barButton("previous-button", "^previous")),
+  shuffle: () => clickIfFound(barButton("shuffle", "shuffle")),
+  toggleRepeat: () => clickIfFound(barButton("repeat", "repeat")),
   toggleLike: () => clickIfFound(likeButton()),
   toggleDislike: () => clickIfFound(dislikeButton()),
   seek(payload) {
@@ -234,7 +246,7 @@ function start() {
     subtree: true,
     characterData: true,
     attributes: true,
-    attributeFilter: ["aria-valuenow", "aria-pressed"],
+    attributeFilter: ["aria-valuenow", "aria-pressed", "repeat-mode_", "repeat-mode"],
   });
   watchMedia();
 }
