@@ -364,7 +364,8 @@
       headers["x-goog-authuser"] = String(cfgGet("SESSION_INDEX") ?? "0");
     }
     const key = cfgGet("INNERTUBE_API_KEY");
-    const url = `/youtubei/v1/${path}?prettyPrint=false${key ? `&key=${encodeURIComponent(key)}` : ""}`;
+    const sep = path.includes("?") ? "&" : "?";
+    const url = `/youtubei/v1/${path}${sep}prettyPrint=false${key ? `&key=${encodeURIComponent(key)}` : ""}`;
     const res = await fetch(url, {
       method: "POST",
       credentials: "include",
@@ -495,6 +496,33 @@
 
   // ---- playlists (library list, tracks, play, add-current) ----
 
+  // Collects playlist tiles from a batch of grid items; returns the
+  // continuation token if one rides along as a continuationItemRenderer.
+  function collectPlaylistItems(items, playlists) {
+    let token = null;
+    for (const item of items ?? []) {
+      const riderToken =
+        item?.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token;
+      if (riderToken) {
+        token = riderToken;
+        continue;
+      }
+      const renderer = item?.musicTwoRowItemRenderer;
+      const browseId = renderer?.navigationEndpoint?.browseEndpoint?.browseId ?? "";
+      // Skips the "New playlist" tile and non-playlist entries.
+      if (!browseId.startsWith("VL")) continue;
+      const thumbs =
+        renderer.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? [];
+      playlists.push({
+        id: browseId,
+        title: (renderer.title?.runs ?? []).map((run) => run.text).join(""),
+        subtitle: (renderer.subtitle?.runs ?? []).map((run) => run.text).join(""),
+        thumb: thumbs.length ? thumbs[thumbs.length - 1].url : "",
+      });
+    }
+    return token;
+  }
+
   async function getPlaylists() {
     try {
       const data = await innertubeRequest("browse", { browseId: "FEmusic_liked_playlists" });
@@ -507,19 +535,27 @@
         [];
       const grid = sections.find((s) => s.gridRenderer)?.gridRenderer;
       const playlists = [];
-      for (const item of grid?.items ?? []) {
-        const renderer = item?.musicTwoRowItemRenderer;
-        const browseId = renderer?.navigationEndpoint?.browseEndpoint?.browseId ?? "";
-        // Skips the "New playlist" tile and non-playlist entries.
-        if (!browseId.startsWith("VL")) continue;
-        const thumbs =
-          renderer.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? [];
-        playlists.push({
-          id: browseId,
-          title: (renderer.title?.runs ?? []).map((run) => run.text).join(""),
-          subtitle: (renderer.subtitle?.runs ?? []).map((run) => run.text).join(""),
-          thumb: thumbs.length ? thumbs[thumbs.length - 1].url : "",
-        });
+      // The grid is paginated (~25 tiles per page) — follow continuations
+      // until the library is exhausted. Token arrives either as a trailing
+      // continuationItemRenderer or in the legacy continuations array.
+      let token =
+        collectPlaylistItems(grid?.items, playlists) ??
+        grid?.continuations?.[0]?.nextContinuationData?.continuation ??
+        null;
+      for (let page = 0; token && page < 40; page++) {
+        const query = `ctoken=${encodeURIComponent(token)}&continuation=${encodeURIComponent(token)}&type=next`;
+        const next = await innertubeRequest(`browse?${query}`, { continuation: token });
+        if (!next) break;
+        const gridCont = next?.continuationContents?.gridContinuation;
+        const contItems =
+          gridCont?.items ??
+          (next?.onResponseReceivedActions ?? []).flatMap(
+            (action) => action?.appendContinuationItemsAction?.continuationItems ?? []
+          );
+        token =
+          collectPlaylistItems(contItems, playlists) ??
+          gridCont?.continuations?.[0]?.nextContinuationData?.continuation ??
+          null;
       }
       return playlists;
     } catch (err) {

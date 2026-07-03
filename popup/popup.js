@@ -624,9 +624,12 @@ function noteInto(container, text) {
   container.append(note);
 }
 
-function requestPlaylists() {
-  if (playlistsLoaded || !port) return;
-  noteInto(el("playlists-list"), "Loading playlists…");
+function requestPlaylists(silent = false) {
+  if (!port) return;
+  if (!silent) {
+    if (playlistsLoaded) return;
+    noteInto(el("playlists-list"), "Loading playlists…");
+  }
   port.postMessage({ type: "getPlaylists" });
 }
 
@@ -996,8 +999,16 @@ async function connect() {
     else if (msg.type === "searchResults") renderSearchResults(msg);
     else if (msg.type === "playlists") renderPlaylists(msg.playlists);
     else if (msg.type === "playlistTracks") renderPlaylistTracks(msg);
-    else if (msg.type === "addToPlaylistResult")
+    else if (msg.type === "addToPlaylistResult") {
       showToast(msg.ok ? `Added to ${msg.name}.` : "Couldn’t add to that playlist.");
+      if (msg.ok) {
+        // Refresh so track counts (and the open detail view) match reality.
+        requestPlaylists(true);
+        if (playlistDetailId === msg.playlistId) {
+          port?.postMessage({ type: "getPlaylistTracks", browseId: msg.playlistId });
+        }
+      }
+    }
     else if (msg.type === "notice") showToast(msg.text);
   });
   port.postMessage({ type: "getQueue" });

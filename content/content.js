@@ -620,7 +620,14 @@ ext.runtime.onConnect.addListener((port) => {
       );
     } else if (msg.type === "addToPlaylist") {
       askBridgeAsync("addToPlaylist", { playlistId: msg.playlistId, videoId: msg.videoId }, 8000)
-        .then((ok) => port.postMessage({ type: "addToPlaylistResult", ok, name: msg.name }));
+        .then((ok) =>
+          port.postMessage({
+            type: "addToPlaylistResult",
+            ok,
+            name: msg.name,
+            playlistId: msg.playlistId,
+          })
+        );
     } else if (msg.type === "search") {
       askBridgeAsync("search", { query: msg.query }, 8000).then((results) =>
         port.postMessage({ type: "searchResults", query: msg.query, results })
