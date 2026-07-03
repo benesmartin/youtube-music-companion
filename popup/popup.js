@@ -10,6 +10,12 @@ const emptyView = el("empty");
 let port = null;
 let seeking = false;
 
+// Sliders paint their filled portion via the --fill custom property.
+function updateFill(slider) {
+  const pct = (100 * Number(slider.value)) / Math.max(1, Number(slider.max));
+  slider.style.setProperty("--fill", `${pct}%`);
+}
+
 function formatTime(totalSeconds) {
   const s = Math.floor(totalSeconds % 60);
   const m = Math.floor(totalSeconds / 60);
@@ -29,18 +35,20 @@ function render(state) {
   el("artist").textContent = state.artist;
   if (el("artwork").src !== state.artwork) el("artwork").src = state.artwork;
 
-  el("play-pause").textContent = state.playing ? "⏸" : "▶";
+  el("play-pause").classList.toggle("playing", state.playing);
   el("like").classList.toggle("active", state.liked);
   el("dislike").classList.toggle("active", state.disliked);
-  el("mute").textContent = state.muted ? "🔇" : "🔊";
+  el("mute").classList.toggle("muted", state.muted);
 
   el("position").textContent = formatTime(state.position);
   el("duration").textContent = formatTime(state.duration);
   if (!seeking) {
     el("seek").max = Math.max(1, Math.floor(state.duration));
     el("seek").value = Math.floor(state.position);
+    updateFill(el("seek"));
   }
-  el("volume").value = state.volume;
+  el("volume").value = state.muted ? 0 : state.volume;
+  updateFill(el("volume"));
 }
 
 function showEmpty() {
@@ -62,6 +70,7 @@ el("mute").addEventListener("click", () => send("toggleMute"));
 el("seek").addEventListener("input", () => {
   seeking = true;
   el("position").textContent = formatTime(Number(el("seek").value));
+  updateFill(el("seek"));
 });
 el("seek").addEventListener("change", () => {
   send("seek", { position: Number(el("seek").value) });
@@ -70,6 +79,7 @@ el("seek").addEventListener("change", () => {
 
 el("volume").addEventListener("input", () => {
   send("setVolume", { volume: Number(el("volume").value) });
+  updateFill(el("volume"));
 });
 
 el("open-ytm").addEventListener("click", async () => {

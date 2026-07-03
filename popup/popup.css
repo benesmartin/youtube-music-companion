@@ -2,6 +2,7 @@
   color-scheme: dark;
   --bg: #121212;
   --surface: #1e1e1e;
+  --surface-2: #333333;
   --text: #ffffff;
   --text-dim: #aaaaaa;
   --accent: #ff4e45;
@@ -23,6 +24,27 @@ body {
 
 main {
   padding: 16px;
+}
+
+button {
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Lucide icons are stroke-based outlines */
+button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 #artwork-wrap {
@@ -59,6 +81,41 @@ main {
   white-space: nowrap;
 }
 
+/* ---- sliders ---- */
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 99px;
+  outline: none;
+  /* --fill is set from JS as a percentage */
+  background: linear-gradient(
+    to right,
+    var(--slider-fill, var(--accent)) var(--fill, 0%),
+    var(--surface-2) var(--fill, 0%)
+  );
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--thumb, 10px);
+  height: var(--thumb, 10px);
+  border-radius: 50%;
+  border: none;
+  background: var(--slider-thumb, #fff);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: var(--thumb, 10px);
+  height: var(--thumb, 10px);
+  border-radius: 50%;
+  border: none;
+  background: var(--slider-thumb, #fff);
+}
+
+/* ---- timeline ---- */
+
 #timeline {
   display: flex;
   align-items: center;
@@ -77,75 +134,116 @@ main {
   text-align: right;
 }
 
-input[type="range"] {
+#seek {
   flex: 1;
-  accent-color: var(--accent);
+  height: 4px;
 }
+
+/* ---- main controls ---- */
 
 #controls {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 12px;
-  margin-top: 10px;
+  gap: 14px;
+  margin-top: 8px;
 }
 
 #controls button {
-  background: none;
-  border: none;
-  color: var(--text);
-  font-size: 18px;
-  cursor: pointer;
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transition: background 0.15s;
 }
 
 #controls button:hover {
   background: var(--surface);
 }
 
-#controls button svg {
-  width: 17px;
-  height: 17px;
-  fill: currentColor;
-}
-
 #play-pause {
-  font-size: 24px;
   width: 52px;
   height: 52px;
   background: var(--surface) !important;
 }
 
-#like,
-#dislike {
-  color: var(--text-dim);
+#play-pause svg {
+  width: 24px;
+  height: 24px;
 }
 
+/* play/pause and mute swap their two icons via a state class */
+#play-pause .on-playing,
+#play-pause.playing .on-paused {
+  display: none;
+}
+#play-pause.playing .on-playing {
+  display: block;
+}
+
+#mute .on-muted,
+#mute.muted .on-sound {
+  display: none;
+}
+#mute.muted .on-muted {
+  display: block;
+}
+
+/* ---- bottom row: like, dislike, volume ---- */
+
+#bottom-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 0 6px;
+}
+
+#bottom-row button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--text-dim);
+  transition: background 0.15s, color 0.15s;
+}
+
+#bottom-row button:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+#bottom-row button svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* outlined by default, filled when active */
 #like.active,
 #dislike.active {
   color: var(--accent);
 }
 
-#volume-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  padding: 0 20px;
+#like.active svg,
+#dislike.active svg {
+  fill: currentColor;
 }
 
-#volume-row button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 4px;
+#mute {
+  margin-left: auto;
 }
+
+#volume {
+  width: 90px;
+  height: 3px;
+  --slider-fill: var(--text-dim);
+  --slider-thumb: var(--text-dim);
+  --thumb: 8px;
+}
+
+#volume:hover {
+  --slider-thumb: #fff;
+}
+
+/* ---- empty state ---- */
 
 #empty {
   text-align: center;
@@ -160,9 +258,8 @@ input[type="range"] {
 #open-ytm {
   background: var(--accent);
   color: #fff;
-  border: none;
   border-radius: 18px;
   padding: 10px 20px;
   font-size: 14px;
-  cursor: pointer;
+  margin: 0 auto;
 }
