@@ -620,20 +620,6 @@ input[type="range"]::-moz-range-thumb {
   padding: 16px 12px;
 }
 
-/* period headers in the history list ("Today", "Yesterday", …) */
-.list-header {
-  font-size: 10.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-dim);
-  padding: 10px 8px 4px;
-}
-
-.list-header:first-child {
-  padding-top: 4px;
-}
-
 .qrow {
   display: flex;
   align-items: center;

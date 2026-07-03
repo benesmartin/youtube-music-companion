@@ -453,13 +453,9 @@ function renderHistory(history) {
   }
   const list = el("history-list");
   list.textContent = "";
+  // Period headers ("Today", …) come with the data but aren't rendered —
+  // one flat, uncluttered list reads better in a popup this size.
   for (const section of history.sections) {
-    if (section.header) {
-      const header = document.createElement("div");
-      header.className = "list-header";
-      header.textContent = section.header;
-      list.append(header);
-    }
     for (const item of section.items) {
       const row = document.createElement("div");
       row.className = "qrow";

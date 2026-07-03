@@ -277,11 +277,24 @@
         items = null;
       }
     }
-    if (!Array.isArray(items)) {
+    if (!Array.isArray(items) || !items.length) {
+      // Rebuilt queues (playing from history) sometimes expose no readable
+      // store, but the player API still knows the playlist order — and every
+      // videoId has a guaranteed static thumbnail.
+      const ids = player()?.getPlaylist?.() ?? null;
+      if (Array.isArray(ids) && ids.length) {
+        console.debug("[YTM Companion] queue store empty, using player playlist:", ids.length);
+        return ids.map((id) => ({
+          videoId: id ?? null,
+          title: "",
+          thumb: id ? `https://i.ytimg.com/vi/${id}/mqdefault.jpg` : "",
+        }));
+      }
       console.debug("[YTM Companion] queue data store unreadable");
       return null;
     }
-    return items.map((entry) => {
+    console.debug("[YTM Companion] queue store items:", items.length);
+    const mapped = items.map((entry) => {
       const renderer = queueRendererOf(entry);
       // Wrapped (video-with-song) entries sometimes only carry a thumbnail
       // on the hidden counterpart renderer.
@@ -304,6 +317,16 @@
             : "",
       };
     });
+    // Store entries with unrecognized renderers yield no videoId/thumb;
+    // patch those from the player's playlist when the orders line up.
+    const ids = player()?.getPlaylist?.() ?? null;
+    if (Array.isArray(ids) && ids.length === mapped.length) {
+      mapped.forEach((entry, i) => {
+        if (!entry.videoId) entry.videoId = ids[i] ?? null;
+        if (!entry.thumb && ids[i]) entry.thumb = `https://i.ytimg.com/vi/${ids[i]}/mqdefault.jpg`;
+      });
+    }
+    return mapped;
   }
 
   // ---- internal API plumbing ----
