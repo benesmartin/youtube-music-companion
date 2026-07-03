@@ -289,14 +289,14 @@ input[type="range"]::-moz-range-thumb {
 #more-menu {
   position: fixed;
   right: 10px;
-  bottom: 42px;
+  bottom: 40px;
   width: 208px;
-  max-height: calc(100vh - 48px);
+  max-height: calc(100vh - 46px);
   overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--surface-2);
   border-radius: 8px;
-  padding: 4px;
+  padding: 3px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   z-index: 10;
   display: flex;
@@ -314,7 +314,7 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 6px;
   justify-content: flex-start;
   gap: 8px;
-  padding: 5px 9px;
+  padding: 4px 9px;
   font-size: 12px;
   color: var(--text);
   white-space: nowrap;
