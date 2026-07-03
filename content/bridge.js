@@ -100,9 +100,16 @@
     return null;
   }
 
+  // Menu rendered at all? (distinguishes "not ready yet" from "no library
+  // item exists" — user uploads have no library action, only liked/pin
+  // toggles, and clicking those by mistake acts like a like button)
+  function menuRendered() {
+    return document.querySelector("ytmusic-menu-popup-renderer [role='menuitem']") !== null;
+  }
+
   function findLibrary() {
     const toggles = [...document.querySelectorAll("ytmusic-toggle-menu-service-item-renderer")];
-    const item = toggles.find((t) => t.querySelector(LIBRARY_ICON)) ?? toggles[0] ?? null;
+    const item = toggles.find((t) => t.querySelector(LIBRARY_ICON)) ?? null;
     if (!item) return null;
     const shownText = item.querySelector("yt-formatted-string.text")?.textContent?.trim() ?? "";
 
@@ -124,17 +131,22 @@
 
   const probeLibrary = () =>
     withHiddenMenu(() => {
+      if (!menuRendered()) return null;
       const found = findLibrary();
-      return found ? { inLibrary: found.inLibrary } : null;
+      return { available: Boolean(found), inLibrary: found?.inLibrary ?? null };
     });
 
   const toggleLibrary = () =>
     withHiddenMenu(() => {
+      if (!menuRendered()) return null;
       const found = findLibrary();
-      if (!found) return null;
+      if (!found) return { available: false, inLibrary: null };
       found.item.click();
       console.debug("[YTM Companion] library toggled, was:", found.inLibrary);
-      return { inLibrary: found.inLibrary === null ? null : !found.inLibrary };
+      return {
+        available: true,
+        inLibrary: found.inLibrary === null ? null : !found.inLibrary,
+      };
     });
 
   window.addEventListener("message", async (e) => {

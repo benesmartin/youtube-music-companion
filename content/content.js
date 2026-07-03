@@ -157,6 +157,7 @@ function readState() {
   if (title !== libraryTitle) {
     libraryTitle = title;
     libraryState = null;
+    libraryAvailable = null;
   }
 
   const artworkSrc = bar?.querySelector("img.image")?.src ?? "";
@@ -191,6 +192,7 @@ function readState() {
       : dislikeButton()?.getAttribute("aria-pressed") === "true",
     repeat: repeatMode(),
     inLibrary: libraryState,
+    libraryAvailable,
   };
 }
 
@@ -231,8 +233,10 @@ async function withHiddenMenu(worker) {
   }
 }
 
-// null = unknown (probed lazily when the popup's dropdown opens)
+// null = unknown (probed lazily when the popup's dropdown opens);
+// libraryAvailable=false means the track has no library action (user uploads)
 let libraryState = null;
+let libraryAvailable = null;
 let libraryTitle = "";
 
 function startRadio() {
@@ -250,21 +254,25 @@ function startRadio() {
 
 // Library state lives in Polymer element data only the page context can
 // read (both menu variants share one icon), so the bridge does the work.
+function applyLibraryResult(result) {
+  if (!result) return;
+  libraryAvailable = result.available;
+  libraryState = typeof result.inLibrary === "boolean" ? result.inLibrary : null;
+}
+
 async function probeLibrary() {
   // Already known for this track — don't churn the menu again.
-  if (libraryState !== null) {
+  if (libraryAvailable === false || libraryState !== null) {
     broadcast();
     return true;
   }
-  const result = await askBridgeAsync("probeLibrary");
-  if (typeof result?.inLibrary === "boolean") libraryState = result.inLibrary;
+  applyLibraryResult(await askBridgeAsync("probeLibrary"));
   broadcast();
   return true;
 }
 
 async function toggleLibrary() {
-  const result = await askBridgeAsync("toggleLibrary");
-  if (typeof result?.inLibrary === "boolean") libraryState = result.inLibrary;
+  applyLibraryResult(await askBridgeAsync("toggleLibrary"));
   broadcast();
   return true;
 }

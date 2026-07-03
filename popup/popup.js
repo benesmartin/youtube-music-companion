@@ -59,6 +59,8 @@ function render(state) {
   el("copy-info").disabled = !state.title;
 
   // Library reflects the probed state; "Add" is the default until known.
+  // User uploads have no library action at all — hide the entry.
+  el("library").hidden = state.libraryAvailable === false;
   el("library").classList.toggle("in", state.inLibrary === true);
   el("library-label").textContent =
     state.inLibrary === true ? "Remove from library" : "Add to library";
