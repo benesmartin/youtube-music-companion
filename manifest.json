@@ -68,14 +68,14 @@
       "suggested_key": { "default": "Alt+Shift+L" },
       "description": "Like or unlike the current track"
     },
+    "toggle-dislike": {
+      "description": "Dislike or un-dislike the current track"
+    },
     "volume-up": {
       "description": "Volume up"
     },
     "volume-down": {
       "description": "Volume down"
-    },
-    "toggle-dislike": {
-      "description": "Dislike or un-dislike the current track"
     }
   }
 }
