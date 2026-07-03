@@ -576,22 +576,21 @@ function comboFromEvent(e) {
   if (e.metaKey) mods.push("Command");
   if (e.shiftKey) mods.push("Shift");
   if (!mods.length) return null; // a plain key can't be a global shortcut
-  const SPECIAL = {
-    " ": "Space",
-    ArrowUp: "Up",
-    ArrowDown: "Down",
-    ArrowLeft: "Left",
-    ArrowRight: "Right",
-    ",": "Comma",
-    ".": "Period",
-  };
-  let key = SPECIAL[e.key] ?? e.key;
-  if (/^[a-z]$/i.test(key)) key = key.toUpperCase();
-  const valid =
-    /^[A-Z0-9]$/.test(key) ||
-    /^F([1-9]|1[0-2])$/.test(key) ||
-    ["Space", "Up", "Down", "Left", "Right", "Comma", "Period", "Home", "End", "PageUp", "PageDown", "Insert"].includes(key);
-  return valid ? [...mods, key].join("+") : null;
+  // Use the PHYSICAL key (e.code): with Shift held, e.key turns Period into
+  // ">" (or a diacritic on non-US layouts) and every such combo would be
+  // rejected — including our own defaults.
+  const code = e.code;
+  let key = null;
+  if (/^Key[A-Z]$/.test(code)) key = code.slice(3);
+  else if (/^Digit\d$/.test(code)) key = code.slice(5);
+  else if (/^F([1-9]|1[0-2])$/.test(code)) key = code;
+  else if (/^Arrow(Up|Down|Left|Right)$/.test(code)) key = code.slice(5);
+  else if (
+    ["Comma", "Period", "Space", "Home", "End", "PageUp", "PageDown", "Insert", "Delete"].includes(code)
+  ) {
+    key = code;
+  }
+  return key ? [...mods, key].join("+") : null;
 }
 
 function beginShortcutCapture(name, chip) {
@@ -606,7 +605,8 @@ function beginShortcutCapture(name, chip) {
       renderShortcuts();
       return;
     }
-    if (e.key === "Backspace" || e.key === "Delete") {
+    // Bare Backspace/Delete clears; with modifiers they can be part of a combo.
+    if ((e.key === "Backspace" || e.key === "Delete") && !e.ctrlKey && !e.altKey && !e.metaKey) {
       try {
         await ext.commands.update({ name, shortcut: "" });
       } catch {
@@ -669,7 +669,22 @@ async function renderShortcuts() {
     row.append(label, chip);
     wrap.append(row);
   }
-  if (!canEditShortcuts) {
+  if (canEditShortcuts) {
+    const reset = document.createElement("button");
+    reset.className = "shortcut-manage";
+    reset.textContent = "Reset to defaults";
+    reset.addEventListener("click", async () => {
+      for (const command of commandList) {
+        try {
+          await ext.commands.reset(command.name);
+        } catch {
+          // leave that one as-is
+        }
+      }
+      renderShortcuts();
+    });
+    wrap.append(reset);
+  } else {
     // Chrome: rebinding only works on its own settings page.
     const note = document.createElement("button");
     note.className = "shortcut-manage";
