@@ -567,34 +567,31 @@ input[type="range"]::-moz-range-thumb {
 
 /* ---- tabs + queue ---- */
 
+/* chip tabs — deliberately not the underlined paper-tab look */
 #tabs {
   display: flex;
   align-items: center;
-  border-top: 1px solid var(--surface);
-  border-bottom: 1px solid var(--surface);
-  font-size: 12.5px;
+  gap: 6px;
+  padding: 8px 10px 4px;
+  font-size: 12px;
   color: var(--text-dim);
 }
 
 .tab {
-  padding: 8px 16px 9px;
-  position: relative;
+  padding: 4px 12px 5px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: var(--surface);
+  color: var(--text);
 }
 
 .tab.active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
   color: var(--text);
   font-weight: 600;
-}
-
-.tab.active::after {
-  content: "";
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: -1px;
-  height: 2px;
-  border-radius: 1px;
-  background: var(--accent);
 }
 
 #queue-meta {
