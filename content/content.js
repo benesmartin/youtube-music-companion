@@ -309,6 +309,10 @@ function queueItemElements() {
 }
 
 function readQueue() {
+  // With autoplay off, YTM keeps the automix rows in the DOM (hidden) —
+  // they're not upcoming playback, so drop them. Filtering happens after
+  // mapping so item.index still matches queueItemElements() positions.
+  const autoplayOff = autoplayState() === false;
   return queueItemElements()
     .map((item, index) => {
       // Lazy-loaded thumbnails start as a 1×1 data: GIF; report those as
@@ -326,7 +330,7 @@ function readQueue() {
         automix: item.closest("#automix-contents") !== null,
       };
     })
-    .filter((entry) => entry.title);
+    .filter((entry) => entry.title && !(autoplayOff && entry.automix));
 }
 
 // Fill placeholder thumbnails from the page's queue data store (via the
