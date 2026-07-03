@@ -210,14 +210,26 @@ function updateOverflowTitles() {
   }
 }
 
+// Browsers cap action popups around this height; growing past it just clips.
+const POPUP_MAX_HEIGHT = 600;
+
 function toggleMenu(open) {
   const show = open ?? el("more-menu").hidden;
   if (show) {
-    // Anchor just below the ⋯ button — the queue/history lists give the
-    // popup plenty of room underneath.
+    // Anchor just below the ⋯ button. If the popup is currently shorter than
+    // the menu needs (e.g. a one-song queue), grow the body so the menu can
+    // open at full height — the popup window resizes with the document.
+    const menu = el("more-menu");
     const anchor = el("more").getBoundingClientRect();
-    el("more-menu").style.top = `${anchor.bottom + 6}px`;
-    el("more-menu").style.maxHeight = `${Math.max(80, window.innerHeight - anchor.bottom - 14)}px`;
+    const top = anchor.bottom + 6;
+    menu.style.top = `${top}px`;
+    menu.style.maxHeight = "none";
+    menu.hidden = false; // must be measurable
+    const total = Math.min(POPUP_MAX_HEIGHT, top + menu.scrollHeight + 14);
+    document.body.style.minHeight = `${total}px`;
+    menu.style.maxHeight = `${Math.max(80, total - top - 14)}px`;
+  } else {
+    document.body.style.minHeight = "";
   }
   el("more-menu").hidden = !show;
   el("more").classList.toggle("open", show);
