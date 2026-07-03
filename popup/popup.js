@@ -640,13 +640,17 @@ function beginShortcutCapture(name, chip) {
 
 async function renderShortcuts() {
   const wrap = el("shortcut-rows");
-  wrap.textContent = "";
   let commandList = [];
   try {
     commandList = await ext.commands.getAll();
   } catch {
     // commands API unavailable
   }
+  // Rebuilding empties the pane for a moment, which would clamp its scroll
+  // back to the top mid-edit — hold the position across the rebuild.
+  const pane = el("settings-pane");
+  const scroll = pane.scrollTop;
+  wrap.textContent = "";
   for (const command of commandList) {
     const row = document.createElement("div");
     row.className = "shortcut-row";
@@ -676,6 +680,7 @@ async function renderShortcuts() {
     });
     wrap.append(note);
   }
+  pane.scrollTop = scroll;
 }
 
 // ---- autoplay toggle (mirrors YTM's queue-header switch) ----
