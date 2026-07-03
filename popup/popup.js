@@ -11,6 +11,7 @@ const YTM_BASE = "https://music.youtube.com/";
 
 let port = null;
 let seeking = false;
+let volumeSettleTimer = null;
 let currentTrack = null;
 let currentTabId = null;
 let lastState = null;
@@ -84,8 +85,12 @@ function render(state) {
     el("seek").value = Math.floor(state.position);
     updateFill(el("seek"));
   }
-  el("volume").value = state.muted ? 0 : state.volume;
-  updateFill(el("volume"));
+  // While the user drags the volume, echoed state would yank the knob to a
+  // stale value — hold off until input has settled.
+  if (volumeSettleTimer === null) {
+    el("volume").value = state.muted ? 0 : state.volume;
+    updateFill(el("volume"));
+  }
 }
 
 function showEmpty() {
@@ -121,6 +126,10 @@ el("volume").addEventListener("input", () => {
   send("setVolume", { volume: Number(el("volume").value) });
   updateFill(el("volume"));
   el("mute").classList.toggle("high", Number(el("volume").value) >= 50);
+  clearTimeout(volumeSettleTimer);
+  volumeSettleTimer = setTimeout(() => {
+    volumeSettleTimer = null;
+  }, 400);
 });
 
 el("open-ytm").addEventListener("click", async () => {
