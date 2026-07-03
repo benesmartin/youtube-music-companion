@@ -28,6 +28,7 @@ window.addEventListener("message", (e) => {
       muted: e.data.muted,
       playerState: e.data.playerState,
       videoId: e.data.videoId,
+      videoType: e.data.videoType,
     };
     broadcastThrottled();
   } else if (e.data.type === "response" && pendingBridgeRequests.has(e.data.requestId)) {
@@ -179,6 +180,7 @@ function readState() {
     album,
     year,
     videoId: pageStatus?.videoId ?? location.href.match(/[?&]v=([^&]+)/)?.[1] ?? "",
+    videoType: pageStatus?.videoType ?? null,
     artistUrl:
       links.find((a) => a.getAttribute("href")?.startsWith("channel/"))?.getAttribute("href") ?? "",
     albumUrl:

@@ -65,7 +65,9 @@ function render(state) {
   if (track !== currentTrack) {
     currentTrack = track;
     seeking = false;
+    if (activeTab === "lyrics") renderLyrics();
   }
+  if (activeTab === "lyrics") updateLyricsHighlight(state.position);
 
   el("title").textContent = state.title;
   el("artist").textContent = state.artist;
@@ -523,6 +525,233 @@ function renderHistory(history) {
   }
 }
 
+// ---- lyrics (LRCLIB) ----
+// Opt-in (sends title/artist to lrclib.net), official songs only, synced
+// lyrics get a live highlight driven by the position stream + click-to-seek.
+
+const LYRICS_TYPES = new Set(["MUSIC_VIDEO_TYPE_ATV", "MUSIC_VIDEO_TYPE_OMV"]);
+const LYRICS_CACHE_LIMIT = 40;
+
+let lyricsEnabled = null; // null = not read from storage yet
+let lyricsKey = null; // track the pane currently reflects
+let lyricsLines = null; // [{t, text, el}] when synced lyrics are shown
+let lyricsFetchId = 0;
+let lyricsScrollHold = 0; // pause autoscroll until this timestamp
+
+function lyricsEligible(state) {
+  if (!state?.available || !state.title) return false;
+  if (state.videoType) return LYRICS_TYPES.has(state.videoType);
+  // Fallback heuristic: plain uploads/videos carry no album link.
+  return Boolean(state.album);
+}
+
+function lyricsNote(text) {
+  const pane = el("lyrics-pane");
+  pane.textContent = "";
+  const note = document.createElement("div");
+  note.className = "list-note";
+  note.textContent = text;
+  pane.append(note);
+  return note;
+}
+
+async function getLyricsEnabled() {
+  if (lyricsEnabled === null) {
+    try {
+      lyricsEnabled = Boolean((await ext.storage.local.get("lyricsEnabled")).lyricsEnabled);
+    } catch {
+      lyricsEnabled = false;
+    }
+  }
+  return lyricsEnabled;
+}
+
+function renderLyricsOptIn() {
+  const pane = el("lyrics-pane");
+  pane.textContent = "";
+  const note = document.createElement("div");
+  note.className = "list-note";
+  note.textContent =
+    "Lyrics are looked up on lrclib.net using the track’s title and artist.";
+  const button = document.createElement("button");
+  button.id = "lyrics-enable";
+  button.textContent = "Enable lyrics";
+  button.addEventListener("click", async () => {
+    lyricsEnabled = true;
+    try {
+      await ext.storage.local.set({ lyricsEnabled: true });
+    } catch {
+      // session-only enable
+    }
+    renderLyrics();
+  });
+  pane.append(note, button);
+}
+
+// LRC format: one or more [mm:ss.xx] stamps per line.
+function parseLrc(text) {
+  const lines = [];
+  for (const raw of text.split("\n")) {
+    const stamps = [...raw.matchAll(/\[(\d+):(\d+(?:\.\d+)?)\]/g)];
+    if (!stamps.length) continue;
+    const content = raw.replace(/\[\d+:\d+(?:\.\d+)?\]/g, "").trim();
+    if (!content) continue;
+    for (const stamp of stamps) {
+      lines.push({ t: Number(stamp[1]) * 60 + Number(stamp[2]), text: content });
+    }
+  }
+  return lines.sort((a, b) => a.t - b.t);
+}
+
+async function cachedLyrics(videoId) {
+  try {
+    return (await ext.storage.local.get("lyricsCache")).lyricsCache?.[videoId] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function storeLyrics(videoId, entry) {
+  try {
+    const cache = (await ext.storage.local.get("lyricsCache")).lyricsCache ?? {};
+    cache[videoId] = { ...entry, at: Date.now() };
+    const keys = Object.keys(cache);
+    if (keys.length > LYRICS_CACHE_LIMIT) {
+      keys.sort((a, b) => (cache[a].at ?? 0) - (cache[b].at ?? 0));
+      for (const key of keys.slice(0, keys.length - LYRICS_CACHE_LIMIT)) delete cache[key];
+    }
+    await ext.storage.local.set({ lyricsCache: cache });
+  } catch {
+    // cache is best-effort
+  }
+}
+
+async function fetchLyrics(state) {
+  // Exact lookup first — duration (±2s server-side) is what makes it precise.
+  const params = new URLSearchParams({
+    track_name: state.title,
+    artist_name: state.artist,
+    duration: String(Math.round(state.duration)),
+  });
+  if (state.album) params.set("album_name", state.album);
+  let res = await fetch(`https://lrclib.net/api/get?${params}`);
+  if (res.ok) return res.json();
+  // Miss — search and take the closest duration within reason.
+  const searchParams = new URLSearchParams({
+    track_name: state.title,
+    artist_name: state.artist,
+  });
+  res = await fetch(`https://lrclib.net/api/search?${searchParams}`);
+  if (!res.ok) return null;
+  const hits = await res.json();
+  if (!Array.isArray(hits) || !hits.length) return null;
+  hits.sort(
+    (a, b) =>
+      Math.abs((a.duration ?? 0) - state.duration) - Math.abs((b.duration ?? 0) - state.duration)
+  );
+  return Math.abs((hits[0].duration ?? 0) - state.duration) <= 10 ? hits[0] : null;
+}
+
+function showLyricsEntry(entry) {
+  const pane = el("lyrics-pane");
+  pane.textContent = "";
+  lyricsLines = null;
+  if (entry.instrumental) {
+    lyricsNote("Instrumental track.");
+    return;
+  }
+  if (entry.synced) {
+    const lines = parseLrc(entry.synced);
+    if (lines.length) {
+      for (const line of lines) {
+        const div = document.createElement("div");
+        div.className = "lyr-line";
+        div.textContent = line.text;
+        div.addEventListener("click", () => send("seek", { position: line.t }));
+        line.el = div;
+        pane.append(div);
+      }
+      lyricsLines = lines;
+      updateLyricsHighlight(lastState?.position ?? 0, true);
+      return;
+    }
+  }
+  if (entry.plain) {
+    const div = document.createElement("div");
+    div.className = "lyr-plain";
+    div.textContent = entry.plain;
+    pane.append(div);
+    return;
+  }
+  lyricsNote("No lyrics found for this track.");
+}
+
+function updateLyricsHighlight(position, force = false) {
+  if (!lyricsLines || el("lyrics-pane").hidden) return;
+  let current = -1;
+  for (let i = 0; i < lyricsLines.length; i++) {
+    if (lyricsLines[i].t <= position + 0.3) current = i;
+    else break;
+  }
+  lyricsLines.forEach((line, i) => line.el.classList.toggle("cur", i === current));
+  if (current >= 0 && (force || Date.now() > lyricsScrollHold)) {
+    lyricsLines[current].el.scrollIntoView({
+      block: "center",
+      behavior: force ? "auto" : "smooth",
+    });
+  }
+}
+
+async function renderLyrics() {
+  const state = lastState;
+  if (!state?.available || !state.title) {
+    lyricsKey = null;
+    lyricsLines = null;
+    lyricsNote("Nothing is playing.");
+    return;
+  }
+  if (!lyricsEligible(state)) {
+    lyricsKey = null;
+    lyricsLines = null;
+    lyricsNote("Lyrics are available for official songs only.");
+    return;
+  }
+  if (!(await getLyricsEnabled())) {
+    lyricsKey = null;
+    lyricsLines = null;
+    renderLyricsOptIn();
+    return;
+  }
+  const key = state.videoId || `${state.title}|${state.artist}`;
+  if (key === lyricsKey) return; // pane already reflects this track
+  lyricsKey = key;
+  lyricsLines = null;
+  lyricsNote("Looking up lyrics…");
+  const fetchId = ++lyricsFetchId;
+  let entry = state.videoId ? await cachedLyrics(state.videoId) : null;
+  if (!entry) {
+    let data = null;
+    try {
+      data = await fetchLyrics(state);
+    } catch {
+      data = null;
+    }
+    entry = {
+      synced: data?.syncedLyrics ?? "",
+      plain: data?.plainLyrics ?? "",
+      instrumental: Boolean(data?.instrumental),
+    };
+    if (state.videoId) storeLyrics(state.videoId, entry);
+  }
+  if (fetchId !== lyricsFetchId) return; // a newer track superseded this fetch
+  showLyricsEntry(entry);
+}
+
+// Manual scrolling pauses the autoscroll so it doesn't fight the user.
+el("lyrics-pane").addEventListener("wheel", () => {
+  lyricsScrollHold = Date.now() + 4000;
+});
+
 // After a history play, jump to the Queue tab only once the picked song is
 // confirmed playing (state echoes its videoId) AND a fresh queue push landed —
 // a fixed delay raced YTM's queue rebuild. Fallback fires in case the id
@@ -546,15 +775,19 @@ function doQueueSwitch() {
   switchTab("queue");
 }
 
+let activeTab = "queue";
+
 function switchTab(name) {
+  activeTab = name;
   for (const tab of document.querySelectorAll(".tab")) {
     tab.classList.toggle("active", tab.dataset.tab === name);
   }
-  const showQueue = name === "queue";
-  el("queue-list").hidden = !showQueue;
-  el("history-list").hidden = showQueue;
-  el("queue-meta").hidden = !showQueue;
-  if (!showQueue) requestHistory();
+  el("queue-list").hidden = name !== "queue";
+  el("history-list").hidden = name !== "history";
+  el("lyrics-pane").hidden = name !== "lyrics";
+  el("queue-meta").hidden = name !== "queue";
+  if (name === "history") requestHistory();
+  if (name === "lyrics") renderLyrics();
 }
 
 for (const tab of document.querySelectorAll(".tab")) {

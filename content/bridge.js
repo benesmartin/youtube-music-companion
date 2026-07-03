@@ -29,6 +29,8 @@
         // -1 unstarted, 1 playing, 2 paused, 3 buffering, 5 cued
         playerState: p.getPlayerState?.() ?? null,
         videoId: p.getVideoData?.()?.video_id ?? null,
+        // ATV = album track, OMV = official video, UGC = plain upload
+        videoType: p.getPlayerResponse?.()?.videoDetails?.musicVideoType ?? null,
       },
       window.location.origin
     );
