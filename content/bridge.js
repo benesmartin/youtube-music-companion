@@ -149,6 +149,37 @@
       };
     });
 
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  // Autoplay-policy workaround: normal play → muted play (always allowed) →
+  // unmute. Some browsers re-block on the unmute; report honestly.
+  async function forcePlay() {
+    const p = player();
+    const media = document.querySelector("video");
+    if (!p?.playVideo || !media) return false;
+    p.playVideo();
+    await wait(350);
+    if (!media.paused) return true;
+
+    media.muted = true;
+    p.playVideo();
+    await wait(450);
+    if (media.paused) {
+      media.muted = false;
+      return false;
+    }
+    media.muted = false;
+    await wait(350);
+    if (media.paused || media.muted) {
+      // Unmute got re-blocked — don't leave it playing silently.
+      p.pauseVideo?.();
+      media.muted = false;
+      return false;
+    }
+    postStatus();
+    return true;
+  }
+
   // The queue element's data store knows every item's thumbnail URL and
   // videoId even when the DOM images haven't lazy-loaded yet.
   function readQueueData() {
@@ -187,6 +218,14 @@
   window.addEventListener("message", async (e) => {
     if (e.source !== window || e.data?.source !== FROM_CONTENT) return;
     const { command, payload, requestId } = e.data;
+    if (command === "forcePlay") {
+      const result = await forcePlay();
+      window.postMessage(
+        { source: FROM_BRIDGE, type: "response", requestId, result },
+        window.location.origin
+      );
+      return;
+    }
     if (command === "getQueueData") {
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result: readQueueData() },

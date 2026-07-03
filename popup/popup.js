@@ -99,6 +99,16 @@ function render(state) {
   }
 }
 
+let toastTimer = null;
+function showToast(text) {
+  el("toast").textContent = text;
+  el("toast").hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el("toast").hidden = true;
+  }, 6000);
+}
+
 function showEmpty() {
   playerView.hidden = true;
   emptyView.hidden = false;
@@ -422,6 +432,7 @@ async function connect() {
   port.onMessage.addListener((msg) => {
     if (msg.type === "state") render(msg.state);
     else if (msg.type === "queue") renderQueue(msg.queue);
+    else if (msg.type === "notice") showToast(msg.text);
   });
   port.postMessage({ type: "getQueue" });
   port.onDisconnect.addListener(() => {

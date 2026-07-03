@@ -413,15 +413,32 @@ async function queueItemMenuAction(index, iconSelector) {
 }
 
 const commands = {
-  playPause() {
-    // The page button, not the <video> element — the first video in the DOM
-    // can be a stale one that no longer drives playback.
-    const pageButton = barButton("play-pause-button", "^(play|pause)$");
-    if (pageButton) return clickIfFound(pageButton);
-    const media = video();
-    if (!media) return false;
-    media.paused ? media.play() : media.pause();
-    return true;
+  async playPause() {
+    const playing =
+      pageStatus?.playerState === 1 || pageStatus?.playerState === 3;
+    if (playing) {
+      const pageButton = barButton("play-pause-button", "^(play|pause)$");
+      if (pageButton) return clickIfFound(pageButton);
+      video()?.pause();
+      return true;
+    }
+    // Starting playback can hit the autoplay policy; the bridge tries the
+    // muted-start workaround and reports whether anything actually plays.
+    const result = await askBridgeAsync("forcePlay", {}, 3000);
+    if (result === true) return true;
+    if (result === null) {
+      // Bridge unavailable — fall back to the plain button click.
+      const pageButton = barButton("play-pause-button", "^(play|pause)$");
+      if (pageButton) return clickIfFound(pageButton);
+      return false;
+    }
+    for (const port of ports) {
+      port.postMessage({
+        type: "notice",
+        text: "Playback was blocked by the browser. Allow autoplay for music.youtube.com, or press play in the tab once.",
+      });
+    }
+    return false;
   },
   next: () => clickIfFound(barButton("next-button", "^next")),
   previous: () => clickIfFound(barButton("previous-button", "^previous")),
