@@ -1,0 +1,14 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Node (if a build step is added later)
+node_modules/
+
+# Packaged extension artifacts
+*.zip
+*.xpi
+*.crx
+web-ext-artifacts/
