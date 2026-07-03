@@ -285,13 +285,19 @@ function clickIfFound(el) {
 
 // ---- queue ----
 
-function queueScope() {
-  return document.querySelector("ytmusic-player-queue") ?? document;
+// Queue entries are often wrapped in a playlist-panel-video-wrapper holding
+// TWO queue-items: the visible one (#primary-renderer) and a hidden
+// song/video counterpart (#counterpart-renderer). Only the primary counts —
+// including counterparts duplicates every track.
+function queueItemElements() {
+  const scope = document.querySelector("ytmusic-player-queue") ?? document;
+  return [...scope.querySelectorAll("ytmusic-player-queue-item")].filter(
+    (item) => !item.closest("#counterpart-renderer")
+  );
 }
 
 function readQueue() {
-  const items = [...queueScope().querySelectorAll("ytmusic-player-queue-item")];
-  return items
+  return queueItemElements()
     .map((item, index) => ({
       index,
       title: item.querySelector(".song-title")?.textContent?.trim() ?? "",
@@ -356,7 +362,7 @@ const commands = {
   goToArtist: () => clickIfFound(bylineLink("channel/")),
   goToAlbum: () => clickIfFound(bylineLink("browse/")),
   playQueueItem(payload) {
-    const items = [...queueScope().querySelectorAll("ytmusic-player-queue-item")];
+    const items = queueItemElements();
     const item = items[payload.index];
     if (!item || item.hasAttribute("selected")) return false;
     (item.querySelector("ytmusic-play-button-renderer") ?? item).click();
