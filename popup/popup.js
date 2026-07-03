@@ -73,6 +73,7 @@ function render(state) {
   el("like").classList.toggle("active", state.liked);
   el("dislike").classList.toggle("active", state.disliked);
   el("mute").classList.toggle("muted", state.muted);
+  el("mute").classList.toggle("high", state.volume >= 50);
   el("repeat").classList.toggle("active", state.repeat === "all" || state.repeat === "one");
   el("repeat").classList.toggle("one", state.repeat === "one");
 
@@ -119,6 +120,7 @@ el("seek").addEventListener("change", () => {
 el("volume").addEventListener("input", () => {
   send("setVolume", { volume: Number(el("volume").value) });
   updateFill(el("volume"));
+  el("mute").classList.toggle("high", Number(el("volume").value) >= 50);
 });
 
 el("open-ytm").addEventListener("click", async () => {

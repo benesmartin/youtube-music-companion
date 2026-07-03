@@ -178,9 +178,15 @@ button svg {
   display: block;
 }
 
-#mute .on-muted,
-#mute.muted .on-sound {
+/* volume icon reflects level: low (one wave), high (two), muted (crossed) */
+#mute svg {
   display: none;
+}
+#mute:not(.muted):not(.high) .on-low {
+  display: block;
+}
+#mute.high:not(.muted) .on-high {
+  display: block;
 }
 #mute.muted .on-muted {
   display: block;
