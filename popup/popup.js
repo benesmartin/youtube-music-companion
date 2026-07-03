@@ -52,13 +52,12 @@ function render(state) {
   }
 
   el("title").textContent = state.title;
-  el("title").title = state.title;
   el("artist").textContent = state.artist;
-  // Always keep the album line in layout so tracks without one (user
-  // uploads) get identical spacing; it just renders blank.
-  el("album").textContent = state.album
-    ? `${state.album}${state.year ? ` • ${state.year}` : ""}`
-    : "";
+  el("album").textContent = state.album ?? "";
+  el("album-year").textContent = state.album && state.year ? ` • ${state.year}` : "";
+  // Tooltips only where text actually truncates.
+  el("title").title = el("title").scrollWidth > el("title").clientWidth ? state.title : "";
+  el("album").title = el("album").scrollWidth > el("album").clientWidth ? state.album : "";
 
   lastState = state;
   el("artist").classList.toggle("link", Boolean(state.artistUrl));

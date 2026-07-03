@@ -86,28 +86,45 @@ button svg {
   white-space: nowrap;
 }
 
-#artist {
-  color: var(--text-dim);
-  font-size: 12.5px;
+/* rows own the full width; only the text spans inside are interactive */
+#artist-row,
+#album-row {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
   margin-top: 1px;
+}
+
+/* zero-width space keeps the line box (and panel spacing) when empty */
+#artist-row::before,
+#album-row::before {
+  content: "\200b";
+}
+
+#artist,
+#album {
+  color: var(--text-dim);
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-#album {
+#artist {
+  font-size: 12.5px;
+}
+
+#album,
+#album-year {
   color: var(--text-dim);
   opacity: 0.75;
   font-size: 11.5px;
-  margin-top: 1px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-/* keep the line box (and thus panel spacing) when there is no album */
-#album:empty::before {
-  content: "\00a0";
+/* the album name may truncate; the separator and year never do */
+#album-year {
+  flex: none;
+  white-space: pre;
 }
 
 /* ---- transport controls ---- */
