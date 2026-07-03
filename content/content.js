@@ -158,6 +158,10 @@ function readState() {
     libraryTitle = title;
     libraryState = null;
     libraryAvailable = null;
+    // Track changes often rebuild the queue; push it fresh once YTM has
+    // re-rendered (twice — the rebuild can land late).
+    setTimeout(pushQueue, 500);
+    setTimeout(pushQueue, 1600);
   }
 
   const artworkSrc = bar?.querySelector("img.image")?.src ?? "";
@@ -332,7 +336,10 @@ let observedQueue = null;
 function watchQueue() {
   const container = document.querySelector("ytmusic-player-queue");
   if (!container || container === observedQueue) return;
+  // The container is replaced when a new queue is built (radio, jumping
+  // around) — drop the detached one and observe the replacement.
   observedQueue = container;
+  queueObserver.disconnect();
   queueObserver.observe(container, {
     childList: true,
     subtree: true,
