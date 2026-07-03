@@ -323,22 +323,22 @@ input[type="range"]::-moz-range-thumb {
   position: relative;
 }
 
-/* fixed overlay: the popup viewport is tiny, so an absolutely-positioned
-   menu above the row would be clipped at the window edge */
+/* fixed overlay so the menu can float over the queue/history lists */
 #more-menu {
   position: fixed;
   right: 10px;
-  /* bottom + max-height set from JS relative to the ⋯ button */
-  width: 208px;
+  /* top + max-height set from JS relative to the ⋯ button */
+  width: 224px;
   overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--surface-2);
-  border-radius: 8px;
-  padding: 3px;
+  border-radius: 10px;
+  padding: 6px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   z-index: 10;
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
 #more-menu[hidden] {
@@ -351,8 +351,8 @@ input[type="range"]::-moz-range-thumb {
   height: auto;
   border-radius: 6px;
   justify-content: flex-start;
-  gap: 8px;
-  padding: 3px 9px;
+  gap: 10px;
+  padding: 7px 10px;
   font-size: 12px;
   color: var(--text);
   white-space: nowrap;
@@ -370,6 +370,7 @@ input[type="range"]::-moz-range-thumb {
 .menu-page {
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
 /* page is sized to the main menu's height from JS; the back row stays put
@@ -440,7 +441,7 @@ input[type="range"]::-moz-range-thumb {
   gap: 6px;
   width: 70%;
   margin: 0 auto;
-  padding: 1px 0 3px;
+  padding: 4px 0 6px;
 }
 
 #sleep-custom input {
@@ -482,7 +483,7 @@ input[type="range"]::-moz-range-thumb {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 1px 9px;
+  padding: 4px 10px;
   font-size: 12px;
   color: var(--text-dim);
 }
@@ -518,7 +519,7 @@ input[type="range"]::-moz-range-thumb {
 #sleep-presets {
   display: flex;
   gap: 6px;
-  padding: 1px 9px;
+  padding: 4px 10px;
 }
 
 #more-menu .sleep-opt {

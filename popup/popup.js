@@ -211,10 +211,11 @@ function updateOverflowTitles() {
 function toggleMenu(open) {
   const show = open ?? el("more-menu").hidden;
   if (show) {
-    // Anchor just above the ⋯ button, wherever it currently sits.
+    // Anchor just below the ⋯ button — the queue/history lists give the
+    // popup plenty of room underneath.
     const anchor = el("more").getBoundingClientRect();
-    el("more-menu").style.bottom = `${window.innerHeight - anchor.top + 6}px`;
-    el("more-menu").style.maxHeight = `${Math.max(80, anchor.top - 14)}px`;
+    el("more-menu").style.top = `${anchor.bottom + 6}px`;
+    el("more-menu").style.maxHeight = `${Math.max(80, window.innerHeight - anchor.bottom - 14)}px`;
   }
   el("more-menu").hidden = !show;
   el("more").classList.toggle("open", show);
