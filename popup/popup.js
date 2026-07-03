@@ -377,9 +377,19 @@ function renderQueue(queue) {
     return;
   }
 
+  let automixHeaderAdded = false;
   for (const item of queue) {
+    // Everything below this line is YTM's suggestions, not the real queue.
+    if (item.automix && !automixHeaderAdded) {
+      automixHeaderAdded = true;
+      const header = document.createElement("div");
+      header.className = "queue-subheader";
+      header.textContent = "Autoplay";
+      list.append(header);
+    }
     const row = document.createElement("div");
     row.className = item.selected ? "qrow now" : "qrow";
+    if (item.automix) row.classList.add("automix");
     const thumb = document.createElement("div");
     thumb.className = "qthumb";
     if (item.thumb) thumb.style.backgroundImage = `url("${item.thumb}")`;
@@ -426,7 +436,9 @@ function renderQueue(queue) {
 
     // Drag to reorder: the popup previews the move locally; the drop sends
     // one queueMove and the next queue push confirms (or snaps back).
-    row.draggable = true;
+    // Autoplay suggestions aren't movable (they live outside the queue store's
+    // reorderable items), so they don't even offer the drag.
+    row.draggable = !item.automix;
     row.dataset.qindex = String(item.index);
     row.addEventListener("dragstart", (e) => {
       e.dataTransfer.setData("text/plain", ""); // Firefox needs data to drag
@@ -455,8 +467,9 @@ function renderQueue(queue) {
 }
 
 // Live drag preview: the dragged row follows the pointer through the list.
+// Autoplay rows are excluded — the real queue ends at the Autoplay header.
 function dragRowAfter(container, y) {
-  const rows = [...container.querySelectorAll(".qrow:not(.dragging)")];
+  const rows = [...container.querySelectorAll(".qrow:not(.dragging):not(.automix)")];
   let closest = { offset: -Infinity, element: null };
   for (const child of rows) {
     const box = child.getBoundingClientRect();
@@ -467,12 +480,20 @@ function dragRowAfter(container, y) {
 }
 
 el("queue-list").addEventListener("dragover", (e) => {
-  const dragging = el("queue-list").querySelector(".qrow.dragging");
+  const list = el("queue-list");
+  const dragging = list.querySelector(".qrow.dragging");
   if (!dragging) return;
   e.preventDefault();
-  const after = dragRowAfter(el("queue-list"), e.clientY);
-  if (after === null) el("queue-list").append(dragging);
-  else if (after !== dragging) el("queue-list").insertBefore(dragging, after);
+  const after = dragRowAfter(list, e.clientY);
+  if (after === null) {
+    // Past the last real row: land at the end of the real queue, never
+    // inside the Autoplay section.
+    const boundary = list.querySelector(".queue-subheader");
+    if (boundary) list.insertBefore(dragging, boundary);
+    else list.append(dragging);
+  } else if (after !== dragging) {
+    list.insertBefore(dragging, after);
+  }
 });
 
 // ---- history ----

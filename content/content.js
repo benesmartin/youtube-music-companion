@@ -321,6 +321,9 @@ function readQueue() {
         duration: item.querySelector(".duration")?.textContent?.trim() ?? "",
         thumb: src.startsWith("data:") ? "" : src,
         selected: item.hasAttribute("selected"),
+        // Autoplay continuations render in their own container — they're
+        // suggestions, not part of the user's actual queue.
+        automix: item.closest("#automix-contents") !== null,
       };
     })
     .filter((entry) => entry.title);
