@@ -205,10 +205,12 @@ async function refreshSleep() {
   } catch {
     // API unavailable; leave the timer UI inert.
   }
-  el("sleep-off").hidden = !alarm;
-  setSleepStatus(
-    alarm ? `${Math.max(1, Math.ceil((alarm.scheduledTime - Date.now()) / 60000))} min` : ""
-  );
+  const minutes = alarm
+    ? Math.max(1, Math.ceil((alarm.scheduledTime - Date.now()) / 60000))
+    : 0;
+  el("sleep-active").hidden = !alarm;
+  if (alarm) el("sleep-remaining").textContent = `Pausing in ${minutes} min`;
+  setSleepStatus(alarm ? `${minutes} min` : "");
 }
 
 el("sleep-open").addEventListener("click", () => showSleepPage(true));
@@ -216,9 +218,11 @@ el("sleep-back").addEventListener("click", () => showSleepPage(false));
 
 function armSleep(minutes) {
   if (!Number.isFinite(minutes) || minutes < 1) return;
-  ext.alarms.create("sleep-timer", { delayInMinutes: Math.min(720, Math.round(minutes)) });
-  setSleepStatus(`${Math.min(720, Math.round(minutes))} min`);
-  el("sleep-off").hidden = false;
+  const clamped = Math.min(720, Math.round(minutes));
+  ext.alarms.create("sleep-timer", { delayInMinutes: clamped });
+  setSleepStatus(`${clamped} min`);
+  el("sleep-remaining").textContent = `Pausing in ${clamped} min`;
+  el("sleep-active").hidden = false;
   showSleepPage(false);
   setTimeout(refreshSleep, 150);
 }
@@ -233,9 +237,8 @@ el("sleep-custom-min").addEventListener("keydown", (e) => {
 });
 
 el("sleep-off").addEventListener("click", async () => {
-  el("sleep-off").hidden = true;
+  el("sleep-active").hidden = true;
   setSleepStatus("");
-  showSleepPage(false);
   await ext.alarms.clear("sleep-timer");
   refreshSleep();
 });

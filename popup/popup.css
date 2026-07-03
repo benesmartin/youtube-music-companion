@@ -427,13 +427,62 @@ input[type="range"]::-moz-range-thumb {
   fill: currentColor;
 }
 
-/* sleep options carry no icon; indent labels to the icon column */
-#menu-sleep .sleep-opt {
-  padding-left: 32px;
+#sleep-active {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 9px;
+  font-size: 12px;
 }
 
-#sleep-off {
+#sleep-active[hidden] {
+  display: none;
+}
+
+#sleep-active > svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#more-menu #sleep-off {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  justify-content: center;
   color: var(--accent);
+  margin-left: auto;
+}
+
+#more-menu #sleep-off:hover {
+  background: var(--surface-2);
+}
+
+#sleep-presets {
+  display: flex;
+  gap: 6px;
+  padding: 4px 9px;
+}
+
+#more-menu .sleep-opt {
+  flex: 1;
+  width: auto;
+  justify-content: center;
+  padding: 6px 0;
+  border: 1px solid var(--surface-2);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+#more-menu .sleep-opt:hover {
+  background: var(--surface-2);
+  color: var(--text);
 }
 
 /* artist/album become links when a target URL is known */

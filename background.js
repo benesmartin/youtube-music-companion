@@ -32,10 +32,13 @@ async function setIndicator(indicator) {
       const bitmap = await createImageBitmap(await response.blob());
       const canvas = new OffscreenCanvas(size, size);
       const ctx = canvas.getContext("2d");
-      ctx.drawImage(bitmap, 0, 0, size, size);
-      const radius = Math.max(3, Math.round(size * 0.19));
+      // Badge look: icon shrunk toward bottom-left, dot riding its top-right
+      // corner — half on the icon, half beside it.
+      const scale = 0.84;
+      ctx.drawImage(bitmap, 0, size * (1 - scale), size * scale, size * scale);
+      const radius = Math.max(3, Math.round(size * 0.21));
       ctx.beginPath();
-      ctx.arc(size - radius - 1, radius + 1, radius, 0, Math.PI * 2);
+      ctx.arc(size - radius - 0.5, radius + 0.5, radius, 0, Math.PI * 2);
       ctx.fillStyle = DOT_COLORS[indicator] ?? DOT_COLORS.none;
       ctx.fill();
       ctx.lineWidth = Math.max(1, size / 16);
@@ -53,13 +56,17 @@ ext.runtime.onMessage.addListener((msg) => {
   if (msg?.type === "playbackState") setIndicator(msg.indicator);
 });
 
-// No YTM tab left → back to the disconnected dot.
-async function checkTabsGone() {
-  if (!(await findMusicTab())) setIndicator("none");
+// No YTM tab left → back to the disconnected dot. The closing/navigating
+// tab can still show up in tabs.query for a moment, so exclude it by id.
+async function checkTabsGone(excludeTabId) {
+  const tabs = await ext.tabs.query({ url: "https://music.youtube.com/*" });
+  if (tabs.every((tab) => tab.id === excludeTabId)) setIndicator("none");
 }
-ext.tabs.onRemoved.addListener(checkTabsGone);
-ext.tabs.onUpdated.addListener((_id, changeInfo) => {
-  if (changeInfo.url) checkTabsGone();
+ext.tabs.onRemoved.addListener((tabId) => checkTabsGone(tabId));
+ext.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url && !changeInfo.url.startsWith("https://music.youtube.com/")) {
+    checkTabsGone(tabId);
+  }
 });
 
 // On (re)start, ask the content script for the real state instead of
