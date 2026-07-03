@@ -284,11 +284,16 @@ input[type="range"]::-moz-range-thumb {
   position: relative;
 }
 
+/* fixed overlay: the popup viewport is tiny, so an absolutely-positioned
+   menu above the row would be clipped at the window edge */
 #more-menu {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 0;
+  position: fixed;
+  right: 10px;
+  bottom: 44px;
   min-width: 150px;
+  max-width: 220px;
+  max-height: calc(100vh - 54px);
+  overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--surface-2);
   border-radius: 8px;
@@ -309,10 +314,11 @@ input[type="range"]::-moz-range-thumb {
   height: auto;
   border-radius: 6px;
   justify-content: flex-start;
-  gap: 9px;
-  padding: 8px 10px;
-  font-size: 12.5px;
+  gap: 8px;
+  padding: 6px 9px;
+  font-size: 12px;
   color: var(--text);
+  white-space: nowrap;
 }
 
 #more-menu button:hover {
@@ -327,11 +333,12 @@ input[type="range"]::-moz-range-thumb {
 #sleep-row {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
-  font-size: 12.5px;
+  gap: 8px;
+  padding: 6px 9px;
+  font-size: 12px;
   border-top: 1px solid var(--surface-2);
   margin-top: 4px;
+  white-space: nowrap;
 }
 
 #sleep-row > svg {
