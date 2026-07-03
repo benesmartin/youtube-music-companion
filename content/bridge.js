@@ -419,7 +419,7 @@
         renderer.fixedColumns?.[0]?.musicResponsiveListItemFixedColumnRenderer?.text?.runs?.[0]
           ?.text ??
         // Search rows keep the duration at the end of the byline instead.
-        columnText(renderer.flexColumns?.[1]).match(/(\d+:\d{2})\s*$/)?.[1] ??
+        columnText(renderer.flexColumns?.[1]).match(/((?:\d+:)?\d+:\d{2})\s*$/)?.[1] ??
         "",
       thumb: thumbs.length ? thumbs[thumbs.length - 1].url : "",
     };
@@ -456,27 +456,40 @@
 
   // ---- search (internal search API, same row shape as history) ----
 
-  // Songs-only filter — the protobuf params YTM's own "Songs" chip sends.
-  const SEARCH_SONGS_PARAMS = "EgWKAQIIAWoMEA4QChADEAQQCRAF";
+  // Filter params as sent by YTM's own "Songs" / "Videos" chips. Videos
+  // matter because plenty of songs only exist as user uploads.
+  const SEARCH_FILTERS = {
+    songs: "EgWKAQIIAWoMEA4QChADEAQQCRAF",
+    videos: "EgWKAQIQAWoMEA4QChADEAQQCRAF",
+  };
+
+  async function searchFiltered(query, params) {
+    const data = await innertubeRequest("search", { query, params });
+    if (!data) return null;
+    const shelves =
+      data?.contents?.tabbedSearchResultsRenderer?.tabs?.[0]?.tabRenderer?.content
+        ?.sectionListRenderer?.contents ?? [];
+    const items = [];
+    for (const shelf of shelves) {
+      for (const entry of shelf?.musicShelfRenderer?.contents ?? []) {
+        const item = parseListItem(entry);
+        if (item?.title && item.videoId) items.push(item);
+      }
+    }
+    return items;
+  }
 
   async function searchMusic(query) {
     try {
-      const data = await innertubeRequest("search", {
-        query,
-        params: SEARCH_SONGS_PARAMS,
-      });
-      if (!data) return null;
-      const shelves =
-        data?.contents?.tabbedSearchResultsRenderer?.tabs?.[0]?.tabRenderer?.content
-          ?.sectionListRenderer?.contents ?? [];
-      const items = [];
-      for (const shelf of shelves) {
-        for (const entry of shelf?.musicShelfRenderer?.contents ?? []) {
-          const item = parseListItem(entry);
-          if (item?.title && item.videoId) items.push(item);
-        }
-      }
-      return items;
+      const [songs, videos] = await Promise.all([
+        searchFiltered(query, SEARCH_FILTERS.songs),
+        searchFiltered(query, SEARCH_FILTERS.videos),
+      ]);
+      if (!songs && !videos) return null;
+      const sections = [];
+      if (songs?.length) sections.push({ header: "Songs", items: songs });
+      if (videos?.length) sections.push({ header: "Videos", items: videos });
+      return sections;
     } catch (err) {
       console.debug("[YTM Companion] search failed:", err);
       return null;

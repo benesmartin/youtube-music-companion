@@ -572,12 +572,20 @@ function renderSearchResults(msg) {
     return;
   }
   if (!msg.results.length) {
-    searchNote("No songs found.");
+    searchNote("Nothing found.");
     return;
   }
   const list = el("search-results");
   list.textContent = "";
-  for (const item of msg.results) list.append(buildTrackRow(item));
+  for (const section of msg.results) {
+    if (section.header) {
+      const header = document.createElement("div");
+      header.className = "list-header";
+      header.textContent = section.header;
+      list.append(header);
+    }
+    for (const item of section.items) list.append(buildTrackRow(item));
+  }
   list.scrollTop = 0;
 }
 
