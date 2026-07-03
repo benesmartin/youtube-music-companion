@@ -415,6 +415,76 @@ function renderQueue(queue) {
   }
 }
 
+// ---- history ----
+
+function relativeTime(timestamp) {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "yesterday" : `${days}d ago`;
+}
+
+async function renderHistory() {
+  const list = el("history-list");
+  list.textContent = "";
+  let history = [];
+  try {
+    history = (await ext.storage.local.get("history")).history ?? [];
+  } catch {
+    // storage unavailable
+  }
+  if (!history.length) {
+    const note = document.createElement("div");
+    note.className = "list-note";
+    note.textContent = "No history yet — songs you play will show up here.";
+    list.append(note);
+    return;
+  }
+  for (const item of history) {
+    const row = document.createElement("div");
+    row.className = item.videoId ? "qrow has-actions" : "qrow";
+    const thumb = document.createElement("div");
+    thumb.className = "qthumb";
+    if (item.thumb) thumb.style.backgroundImage = `url("${item.thumb}")`;
+    const meta = document.createElement("div");
+    meta.className = "qmeta";
+    const title = document.createElement("div");
+    title.className = "qtitle";
+    title.textContent = item.title;
+    const artist = document.createElement("div");
+    artist.className = "qartist";
+    artist.textContent = item.artist;
+    meta.append(title, artist);
+    const when = document.createElement("div");
+    when.className = "qdur";
+    when.textContent = relativeTime(item.at);
+    row.append(thumb, meta, when);
+    if (item.videoId) {
+      row.addEventListener("click", () => send("playVideoById", { videoId: item.videoId }));
+    }
+    list.append(row);
+  }
+}
+
+function switchTab(name) {
+  for (const tab of document.querySelectorAll(".tab")) {
+    tab.classList.toggle("active", tab.dataset.tab === name);
+  }
+  const showQueue = name === "queue";
+  el("queue-list").hidden = !showQueue;
+  el("history-list").hidden = showQueue;
+  el("queue-meta").hidden = !showQueue;
+  if (!showQueue) renderHistory();
+}
+
+for (const tab of document.querySelectorAll(".tab")) {
+  tab.addEventListener("click", () => switchTab(tab.dataset.tab));
+}
+
 async function connect() {
   const tabs = await ext.tabs.query({ url: "https://music.youtube.com/*" });
   const tab = tabs.find((t) => t.audible) ?? tabs[0];

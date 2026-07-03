@@ -449,6 +449,7 @@ const commands = {
   probeLibrary,
   goToArtist: () => clickIfFound(bylineLink("channel/")),
   goToAlbum: () => clickIfFound(bylineLink("browse/")),
+  playVideoById: (payload) => askBridgeAsync("playVideoById", { videoId: payload.videoId }),
   queuePlayNext: (payload) => queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.playNext),
   queueRemove: (payload) => queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.removeFromQueue),
   playQueueItem(payload) {
@@ -527,9 +528,54 @@ function notifyBackground(state) {
   ext.runtime.sendMessage({ type: "playbackState", indicator }).catch(() => {});
 }
 
+// --- Playback history (local, no scraping beyond what we already read) ---
+
+const HISTORY_KEY = "history";
+const HISTORY_LIMIT = 200;
+let historyPendingKey = null;
+let historyTimer = null;
+let historyLastRecorded = null;
+
+function recordHistory(state) {
+  const key = state.videoId || `${state.title}|${state.artist}`;
+  if (!state.available || !state.playing || !state.title) return;
+  if (key === historyLastRecorded || key === historyPendingKey) return;
+
+  // Only log a track once it has genuinely been playing for a few seconds,
+  // so skipping through a queue doesn't fill history with unheard songs.
+  historyPendingKey = key;
+  clearTimeout(historyTimer);
+  historyTimer = setTimeout(async () => {
+    const now = readState();
+    if ((now.videoId || `${now.title}|${now.artist}`) !== key || !now.playing) {
+      historyPendingKey = null;
+      return;
+    }
+    historyPendingKey = null;
+    historyLastRecorded = key;
+    const entry = {
+      title: now.title,
+      artist: now.artist,
+      album: now.album,
+      year: now.year,
+      videoId: now.videoId,
+      thumb: now.artwork,
+      at: Date.now(),
+    };
+    try {
+      const stored = (await ext.storage.local.get(HISTORY_KEY))[HISTORY_KEY] ?? [];
+      const trimmed = [entry, ...stored.filter((e) => (e.videoId || e.title) !== key)];
+      await ext.storage.local.set({ [HISTORY_KEY]: trimmed.slice(0, HISTORY_LIMIT) });
+    } catch {
+      // storage unavailable; skip silently
+    }
+  }, 5000);
+}
+
 function broadcast() {
   const state = readState();
   notifyBackground(state);
+  recordHistory(state);
   for (const port of ports) {
     port.postMessage({ type: "state", state });
   }

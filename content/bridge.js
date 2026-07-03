@@ -226,6 +226,15 @@
       );
       return;
     }
+    if (command === "playVideoById") {
+      const ok = Boolean(player()?.loadVideoById);
+      if (ok) player().loadVideoById(payload.videoId);
+      window.postMessage(
+        { source: FROM_BRIDGE, type: "response", requestId, result: ok },
+        window.location.origin
+      );
+      return;
+    }
     if (command === "getQueueData") {
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result: readQueueData() },
