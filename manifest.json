@@ -21,6 +21,12 @@
     "scripts": ["background.js"],
     "service_worker": "background.js"
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["content/bridge.js"],
+      "matches": ["https://music.youtube.com/*"]
+    }
+  ],
   "content_scripts": [
     {
       "matches": ["https://music.youtube.com/*"],

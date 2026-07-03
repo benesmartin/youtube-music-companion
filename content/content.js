@@ -3,6 +3,32 @@
 
 const ext = globalThis.browser ?? globalThis.chrome;
 
+// --- Page bridge ---
+// Volume must go through YTM's own player API (page context), otherwise the
+// page slider desyncs and YTM snaps the volume back. The bridge reports the
+// authoritative volume/mute state; the <video> element is only a fallback.
+
+let pageVolume = null;
+
+function injectBridge() {
+  const script = document.createElement("script");
+  script.src = ext.runtime.getURL("content/bridge.js");
+  script.onload = () => script.remove();
+  (document.head ?? document.documentElement).append(script);
+}
+
+window.addEventListener("message", (e) => {
+  if (e.source !== window || e.data?.source !== "ytmc-bridge") return;
+  if (e.data.type === "volume") {
+    pageVolume = { volume: e.data.volume, muted: e.data.muted };
+    broadcastThrottled();
+  }
+});
+
+function askBridge(command, payload = {}) {
+  window.postMessage({ source: "ytmc-content", command, payload }, window.location.origin);
+}
+
 // YTM ships no public API, so state comes from scraping the player bar.
 // These selectors are the maintenance hotspot when Google changes the page.
 function playerBar() {
@@ -69,8 +95,8 @@ function readState() {
     playing: Boolean(media && !media.paused && media.readyState > 0),
     position: media?.currentTime ?? 0,
     duration: Number.isFinite(media?.duration) ? media.duration : 0,
-    volume: media ? Math.round(media.volume * 100) : 100,
-    muted: media?.muted ?? false,
+    volume: pageVolume?.volume ?? (media ? Math.round(media.volume * 100) : 100),
+    muted: pageVolume?.muted ?? media?.muted ?? false,
     liked: like?.getAttribute("aria-pressed") === "true",
     disliked: dislikeButton()?.getAttribute("aria-pressed") === "true",
   };
@@ -101,6 +127,10 @@ const commands = {
     return true;
   },
   setVolume(payload) {
+    if (pageVolume) {
+      askBridge("setVolume", { volume: payload.volume });
+      return true;
+    }
     const media = video();
     if (!media) return false;
     media.volume = Math.min(1, Math.max(0, payload.volume / 100));
@@ -108,6 +138,10 @@ const commands = {
     return true;
   },
   toggleMute() {
+    if (pageVolume) {
+      askBridge("toggleMute");
+      return true;
+    }
     const media = video();
     if (!media) return false;
     media.muted = !media.muted;
@@ -191,3 +225,4 @@ function start() {
 }
 
 start();
+injectBridge();
