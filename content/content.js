@@ -146,10 +146,12 @@ function readState() {
   const bylineParts = (bylineEl?.getAttribute("title") ?? bylineEl?.textContent ?? "")
     .split("•")
     .map((part) => part.trim());
-  const artist =
-    links.find((a) => a.getAttribute("href")?.startsWith("channel/"))?.textContent?.trim() ??
-    bylineParts[0] ??
-    "";
+  // All artist links, comma-joined — the byline renders one <a> per artist
+  // and taking only the first dropped co-artists from the display.
+  const artistLinks = links.filter((a) => a.getAttribute("href")?.startsWith("channel/"));
+  const artist = artistLinks.length
+    ? artistLinks.map((a) => a.textContent?.trim()).filter(Boolean).join(", ")
+    : bylineParts[0] ?? "";
   const album =
     links.find((a) => a.getAttribute("href")?.startsWith("browse/"))?.textContent?.trim() ?? "";
   const year = album && bylineParts.length >= 3 ? bylineParts[bylineParts.length - 1] : "";
@@ -337,11 +339,14 @@ function readQueue() {
 // bridge) — DOM images only load when YTM's own panel scrolls near them.
 async function queueWithThumbs() {
   const queue = readQueue();
-  if (queue.length && queue.some((item) => !item.thumb)) {
+  if (queue.length) {
     const data = await askBridgeAsync("getQueueData", {}, 2000);
     if (Array.isArray(data)) {
       const thumbByTitle = new Map(
         data.filter((entry) => entry.thumb).map((entry) => [entry.title, entry.thumb])
+      );
+      const artistByTitle = new Map(
+        data.filter((entry) => entry.artist).map((entry) => [entry.title, entry.artist])
       );
       for (const item of queue) {
         // Auto-generated queues (playing from history) can render DOM titles
@@ -350,6 +355,10 @@ async function queueWithThumbs() {
         if (!item.thumb) {
           item.thumb = thumbByTitle.get(item.title) ?? data[item.index]?.thumb ?? "";
         }
+        // Prefer the store's comma-joined artists over the DOM byline, which
+        // uses a localized "and" between names.
+        const artist = artistByTitle.get(item.title) ?? data[item.index]?.artist ?? "";
+        if (artist) item.artist = artist;
       }
     }
   }

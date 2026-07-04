@@ -330,6 +330,14 @@
       return null;
     }
     console.debug("[YTM Companion] queue store items:", items.length);
+    // Linked runs are the artists; separator runs carry the localized "and"
+    // ("a" in Czech) that we standardize to commas.
+    const bylineArtists = (byline) => {
+      const runs = byline?.runs ?? [];
+      const linked = runs.filter((run) => run.navigationEndpoint).map((run) => run.text);
+      if (linked.length) return linked.join(", ");
+      return runs.map((run) => run.text).join("");
+    };
     const mapped = items.map((entry) => {
       const renderer = queueRendererOf(entry);
       // Wrapped (video-with-song) entries sometimes only carry a thumbnail
@@ -343,6 +351,7 @@
       return {
         videoId,
         title: (renderer?.title?.runs ?? []).map((run) => run.text).join(""),
+        artist: bylineArtists(renderer?.shortBylineText ?? renderer?.longBylineText),
         // Every YouTube video has a guaranteed static thumbnail URL; use it
         // when the store entry carries no thumbnail of its own (common right
         // after a queue rebuild).
