@@ -330,13 +330,32 @@
       return null;
     }
     console.debug("[YTM Companion] queue store items:", items.length);
-    // Linked runs are the artists; separator runs carry the localized "and"
-    // ("a" in Czech) that we standardize to commas.
-    const bylineArtists = (byline) => {
-      const runs = byline?.runs ?? [];
-      const linked = runs.filter((run) => run.navigationEndpoint).map((run) => run.text);
+    // Artists from a queue renderer's bylines. Prefer runs linking to an
+    // artist/channel page; queue bylines are often endpoint-less though, in
+    // which case artists and localized "and" separators (" a " in Czech)
+    // alternate as runs — drop the separator runs and comma-join the rest.
+    const ARTIST_PAGE = /ARTIST|USER_CHANNEL/;
+    const SEPARATOR_RUN = /^[\s ]*(•|,|&|\+|a|and|y|e|i|et|en|ve|und|och|og|ja|и)[\s ]*$/i;
+    const linkedArtists = (byline) =>
+      (byline?.runs ?? [])
+        .filter((run) =>
+          ARTIST_PAGE.test(
+            run.navigationEndpoint?.browseEndpoint?.browseEndpointContextSupportedConfigs
+              ?.browseEndpointContextMusicConfig?.pageType ?? ""
+          )
+        )
+        .map((run) => run.text);
+    const bylineArtists = (renderer) => {
+      const linked = linkedArtists(renderer?.shortBylineText).length
+        ? linkedArtists(renderer?.shortBylineText)
+        : linkedArtists(renderer?.longBylineText);
       if (linked.length) return linked.join(", ");
-      return runs.map((run) => run.text).join("");
+      const short = (renderer?.shortBylineText?.runs ?? []).map((run) => run.text);
+      if (short.length > 1) {
+        const names = short.filter((text) => !SEPARATOR_RUN.test(text));
+        if (names.length) return names.join(", ");
+      }
+      return short.join("");
     };
     const mapped = items.map((entry) => {
       const renderer = queueRendererOf(entry);
@@ -351,7 +370,7 @@
       return {
         videoId,
         title: (renderer?.title?.runs ?? []).map((run) => run.text).join(""),
-        artist: bylineArtists(renderer?.shortBylineText ?? renderer?.longBylineText),
+        artist: bylineArtists(renderer),
         // Every YouTube video has a guaranteed static thumbnail URL; use it
         // when the store entry carries no thumbnail of its own (common right
         // after a queue rebuild).

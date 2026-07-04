@@ -68,7 +68,7 @@ function render(state) {
   }
 
   el("title").textContent = state.title;
-  el("artist").textContent = state.artist;
+  renderArtists(state);
   el("album").textContent = state.album ?? "";
   el("album-year").textContent = state.album && state.year ? ` • ${state.year}` : "";
   // Tooltips only where text actually truncates.
@@ -84,7 +84,6 @@ function render(state) {
     if (lyricsStateKey !== lyricsRenderKey) renderLyrics();
     else updateLyricsHighlight(state.position);
   }
-  el("artist").classList.toggle("link", Boolean(state.artistUrl));
   el("album").classList.toggle("link", Boolean(state.albumUrl));
   el("radio").disabled = !state.videoId;
   el("copy-link").disabled = !state.videoId;
@@ -121,6 +120,38 @@ function render(state) {
     el("volume").value = state.muted ? 0 : state.volume;
     updateFill(el("volume"));
   }
+}
+
+// Each artist gets its own clickable span so collabs can navigate to either
+// artist — one collective link always went to the first one.
+let artistsSig = null;
+
+function renderArtists(state) {
+  const list = state.artists?.length
+    ? state.artists
+    : state.artist
+      ? [{ name: state.artist, url: state.artistUrl ?? "" }]
+      : [];
+  const sig = JSON.stringify(list);
+  if (sig === artistsSig) return; // avoid rebuilding spans on every push
+  artistsSig = sig;
+  const wrap = el("artist");
+  wrap.textContent = "";
+  list.forEach((entry, i) => {
+    if (i) wrap.append(", ");
+    const span = document.createElement("span");
+    span.textContent = entry.name;
+    if (entry.url) {
+      span.className = "artist-link";
+      span.addEventListener("click", () => {
+        send("openByline", { href: entry.url });
+        focusYtmTab();
+      });
+    }
+    wrap.append(span);
+  });
+  wrap.title =
+    wrap.scrollWidth > wrap.clientWidth ? list.map((entry) => entry.name).join(", ") : "";
 }
 
 let toastTimer = null;
@@ -356,7 +387,6 @@ function goTo(command) {
   focusYtmTab();
 }
 
-el("artist").addEventListener("click", () => lastState?.artistUrl && goTo("goToArtist"));
 el("album").addEventListener("click", () => lastState?.albumUrl && goTo("goToAlbum"));
 el("artwork").addEventListener("click", focusYtmTab);
 

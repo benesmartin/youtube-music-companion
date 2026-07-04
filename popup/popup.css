@@ -550,13 +550,13 @@ input[type="range"]::-moz-range-thumb {
   color: var(--text);
 }
 
-/* artist/album become links when a target URL is known */
-#artist.link,
+/* artist names / album become links when a target URL is known */
+#artist .artist-link,
 #album.link {
   cursor: pointer;
 }
 
-#artist.link:hover,
+#artist .artist-link:hover,
 #album.link:hover {
   text-decoration: underline;
   color: var(--text);

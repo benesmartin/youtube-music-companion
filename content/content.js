@@ -146,11 +146,14 @@ function readState() {
   const bylineParts = (bylineEl?.getAttribute("title") ?? bylineEl?.textContent ?? "")
     .split("•")
     .map((part) => part.trim());
-  // All artist links, comma-joined — the byline renders one <a> per artist
-  // and taking only the first dropped co-artists from the display.
-  const artistLinks = links.filter((a) => a.getAttribute("href")?.startsWith("channel/"));
-  const artist = artistLinks.length
-    ? artistLinks.map((a) => a.textContent?.trim()).filter(Boolean).join(", ")
+  // The byline renders one <a> per artist; keep them structured so the popup
+  // can link each artist to their own page.
+  const artists = links
+    .filter((a) => a.getAttribute("href")?.startsWith("channel/"))
+    .map((a) => ({ name: a.textContent?.trim() ?? "", url: a.getAttribute("href") ?? "" }))
+    .filter((entry) => entry.name);
+  const artist = artists.length
+    ? artists.map((entry) => entry.name).join(", ")
     : bylineParts[0] ?? "";
   const album =
     links.find((a) => a.getAttribute("href")?.startsWith("browse/"))?.textContent?.trim() ?? "";
@@ -183,6 +186,7 @@ function readState() {
     available: Boolean(bar && title),
     title,
     artist,
+    artists,
     album,
     year,
     videoId: pageStatus?.videoId ?? location.href.match(/[?&]v=([^&]+)/)?.[1] ?? "",
@@ -494,6 +498,13 @@ const commands = {
   probeLibrary,
   goToArtist: () => clickIfFound(bylineLink("channel/")),
   goToAlbum: () => clickIfFound(bylineLink("browse/")),
+  // Click a specific byline anchor (per-artist navigation), SPA-safe.
+  openByline(payload) {
+    const anchors = playerBar()?.querySelectorAll(".byline a") ?? [];
+    return clickIfFound(
+      [...anchors].find((a) => a.getAttribute("href") === payload.href)
+    );
+  },
   // payload may carry playlistId/params so YTM builds the proper queue
   playVideoById: (payload) => askBridgeAsync("playVideoById", payload),
   playPlaylist: (payload) => askBridgeAsync("playPlaylist", { playlistId: payload.playlistId }),
