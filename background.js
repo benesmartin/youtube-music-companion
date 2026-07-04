@@ -36,45 +36,72 @@ async function statusDotEnabled() {
   }
 }
 
+// The J10 mark (mirrors icons/icon.svg) as canvas geometry in a 128 grid.
+// Drawing it vectorially at each output size keeps the toolbar icon crisp —
+// rescaling the PNG (and the old 92% shrink for dot room) blurred it badly.
+const ICON_CARD = "#d93a32";
+const ICON_RING = "rgba(255, 255, 255, 0.9)";
+// [x, y1, y2] per audio line
+const ICON_LINES = [
+  [32, 57.6, 67.2],
+  [44.8, 44.8, 80],
+  [57.6, 35.2, 92.8],
+  [70.4, 51.2, 73.6],
+  [83.2, 41.6, 83.2],
+  [96, 57.6, 67.2],
+];
+
+function drawIconBase(ctx, size) {
+  const k = size / 128;
+  ctx.beginPath();
+  ctx.roundRect(2 * k, 2 * k, 124 * k, 124 * k, 30 * k);
+  ctx.fillStyle = ICON_CARD;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(10 * k, 10 * k, 108 * k, 108 * k, 24 * k);
+  ctx.strokeStyle = ICON_RING;
+  ctx.lineWidth = Math.max(1, 3.5 * k);
+  ctx.stroke();
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineCap = "round";
+  ctx.lineWidth = Math.max(1, 8 * k);
+  ctx.beginPath();
+  for (const [x, y1, y2] of ICON_LINES) {
+    ctx.moveTo(x * k, y1 * k);
+    ctx.lineTo(x * k, y2 * k);
+  }
+  ctx.stroke();
+}
+
 async function setIndicator(indicator) {
   requestedIndicator = indicator;
-  // Setting off → plain icon, no dot at all.
+  // Setting off → no dot, but still the crisp vector-drawn icon.
   const target = (await statusDotEnabled()) ? indicator : "plain";
   if (target === currentIndicator) return;
   currentIndicator = target;
-  if (target === "plain") {
-    try {
-      await ext.action.setIcon({ path: { 16: "icons/icon16.png", 32: "icons/icon32.png" } });
-    } catch {
-      // leave whatever icon is currently set
-    }
-    return;
-  }
   try {
     const imageData = {};
-    for (const size of [16, 32]) {
-      const response = await fetch(ext.runtime.getURL(`icons/icon${size}.png`));
-      const bitmap = await createImageBitmap(await response.blob());
+    // 64 serves HiDPI toolbars asking for 32@2x.
+    for (const size of [16, 32, 64]) {
       const canvas = new OffscreenCanvas(size, size);
       const ctx = canvas.getContext("2d");
-      // Icon centered and as large as the dot allows; the dot overlaps the
-      // top-right corner like a notification badge.
-      const scale = 0.92;
-      const inset = (size * (1 - scale)) / 2;
-      ctx.drawImage(bitmap, inset, inset, size * scale, size * scale);
-      const radius = Math.max(3, Math.round(size * 0.2));
-      ctx.beginPath();
-      ctx.arc(size - radius - 0.5, radius + 0.5, radius, 0, Math.PI * 2);
-      ctx.fillStyle = DOT_COLORS[indicator] ?? DOT_COLORS.none;
-      ctx.fill();
-      ctx.lineWidth = Math.max(1, size / 16);
-      ctx.strokeStyle = "#1a1a1a";
-      ctx.stroke();
+      drawIconBase(ctx, size);
+      if (target !== "plain") {
+        // Dot overlaps the top-right corner like a notification badge.
+        const radius = Math.max(3, Math.round(size * 0.2));
+        ctx.beginPath();
+        ctx.arc(size - radius - 0.5, radius + 0.5, radius, 0, Math.PI * 2);
+        ctx.fillStyle = DOT_COLORS[target] ?? DOT_COLORS.none;
+        ctx.fill();
+        ctx.lineWidth = Math.max(1, size / 16);
+        ctx.strokeStyle = "#1a1a1a";
+        ctx.stroke();
+      }
       imageData[size] = ctx.getImageData(0, 0, size, size);
     }
     await ext.action.setIcon({ imageData });
   } catch {
-    // Canvas unavailable — leave the static icon.
+    // Canvas unavailable — leave the static manifest icon.
   }
 }
 
