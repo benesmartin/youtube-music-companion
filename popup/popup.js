@@ -569,6 +569,12 @@ el("settings-open").addEventListener("click", () => {
   switchTab(activeTab === "settings" ? "queue" : "settings");
 });
 
+try {
+  el("about-version").textContent = `v${ext.runtime.getManifest().version}`;
+} catch {
+  // manifest unavailable; leave the version out
+}
+
 // ---- keyboard shortcuts ----
 // Firefox supports commands.update(), so shortcuts are editable right here:
 // click a chip, press a combo. Chrome only allows editing on its own page.
