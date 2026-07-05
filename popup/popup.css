@@ -860,12 +860,24 @@ input[type="range"]::-moz-range-thumb {
 
 /* quiet credits footer */
 #about {
+  display: flex;
+  align-items: center;
+  gap: 11px;
   margin-top: 2px;
   padding-top: 10px;
   border-top: 1px solid var(--surface-2);
   font-size: 10.5px;
   line-height: 1.7;
   color: var(--text-dim);
+}
+
+/* the SVG source renders vector-crisp at any popup DPI */
+#about-icon {
+  flex: none;
+}
+
+#about-text {
+  min-width: 0;
 }
 
 #about strong {
