@@ -1,23 +1,40 @@
-# YouTube Music Companion
+# Companion for YouTube Music
 
-A browser extension for Firefox and Chrome that lets you control YouTube Music playback from a mini player: song info, play/pause, next/previous, and more.
+A browser extension for Firefox and Chrome that turns YouTube Music into a
+mini player in your toolbar: full playback control, queue management, history,
+search, playlists and synced lyrics — without ever leaving the tab you're in.
 
-> ⚠️ Early development — nothing to see here yet.
+## Features
 
-## Features (planned)
-
-- Mini player popup: album art, playback controls, seek, volume
-- Keyboard shortcuts: play/pause, next, previous, like — plus unbound volume
-  up/down and dislike commands. All bindings are editable right in the popup's
-  settings on Firefox (Chrome: chrome://extensions/shortcuts)
-- Queue: view, jump, play next, remove, reorder
-- Playback history — your real YouTube Music history, grouped by day
-- Lyrics via [LRCLIB](https://lrclib.net) — time-synced with click-to-seek, opt-in, official songs only
-- Search and playlists
-- Themes
+- **Mini player**: album art, per-artist links, play/pause, previous/next,
+  like/dislike, shuffle, repeat, seek, volume
+- **Queue**: view with artwork, jump to any track, play next, remove,
+  drag to reorder; autoplay suggestions labeled and toggleable
+- **History** — your real YouTube Music listening history, click to replay
+- **Search** — songs and videos, play or queue straight from results
+- **Playlists** — browse your library, play a playlist, open its tracks,
+  add the current song to any of your playlists
+- **Lyrics** via [LRCLIB](https://lrclib.net) — time-synced highlight with
+  click-to-seek; strictly opt-in (sends title/artist to lrclib.net),
+  official songs only
+- **Sleep timer** with presets and custom minutes
+- **Themes**: dark, light, or follow the system, with eight accent colors —
+  optionally tinting the toolbar icon to match
+- **Keyboard shortcuts**: play/pause, next, previous, like — plus unbound
+  volume up/down and dislike commands. Rebind everything right in the
+  popup's settings on Firefox (Chrome: chrome://extensions/shortcuts)
+- Toolbar status dot (green playing, yellow paused), can be turned off
 - Works on both Firefox (MV3 background scripts) and Chrome (MV3 service worker)
 
-See [ROADMAP.md](ROADMAP.md) for build order and decisions.
+See [ROADMAP.md](ROADMAP.md) for how it was built and what was deliberately
+left out.
+
+## Privacy
+
+Everything runs against the YouTube Music tab you already have open, using
+your existing session. No analytics, no tracking, no data collection. The
+only external request is the opt-in lyrics lookup, which sends the current
+track's title and artist to lrclib.net — and nothing else, nowhere else.
 
 ## Known limitations
 
@@ -28,10 +45,13 @@ See [ROADMAP.md](ROADMAP.md) for build order and decisions.
 - **Keyboard shortcuts are browser-global, not OS-global** — they fire while
   the browser has focus. WebExtensions can't register system-wide hotkeys;
   use your OS media keys for that.
+- YouTube Music has no public API, so the extension reads the page and its
+  internal endpoints. When Google changes internals, features may break until
+  updated — bug reports welcome.
 
 ## Development
 
-There is no build step yet. Load the extension unpacked:
+There is no build step. Load the extension unpacked:
 
 - **Firefox:** `about:debugging` → This Firefox → Load Temporary Add-on
 - **Chrome:** `chrome://extensions` → Developer mode → Load unpacked

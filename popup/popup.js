@@ -398,6 +398,9 @@ let lastSelectedIndex = null;
 
 function renderQueue(queue) {
   const list = el("queue-list");
+  // A queue push mid-drag would destroy the row being dragged; skip the
+  // render — the post-drop push repaints the final truth anyway.
+  if (list.querySelector(".qrow.dragging")) return;
   list.textContent = "";
   if (!queue.length) {
     const note = document.createElement("div");
@@ -926,7 +929,7 @@ function buildTrackRow(item) {
   return row;
 }
 
-// ---- search (songs only) ----
+// ---- search (songs + videos, filtered server-side) ----
 
 let searchTimer = null;
 
