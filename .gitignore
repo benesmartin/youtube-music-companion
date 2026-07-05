@@ -16,3 +16,6 @@ web-ext-artifacts/
 # Private dev notes (backed up manually)
 NOTES.md
 ROADMAP.md
+
+# Store/listing assets (hosted via GitHub release attachments)
+promo/
