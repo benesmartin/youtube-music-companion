@@ -148,6 +148,7 @@
           <div id="theme-options">
             <button class="theme-opt" data-theme="dark">Dark</button>
             <button class="theme-opt" data-theme="light">Light</button>
+            <button class="theme-opt" data-theme="system">System</button>
           </div>
         </div>
         <div class="settings-section">
@@ -163,12 +164,29 @@
             </div>
             <button class="switch" id="set-lyrics" role="switch"></button>
           </div>
+          <div class="setting-row" id="lyrics-size-row" hidden>
+            <div class="setting-text">
+              <div class="setting-name">Lyrics text size</div>
+            </div>
+            <div id="lyrics-size" class="mini-pills">
+              <button data-size="s">S</button>
+              <button data-size="m">M</button>
+              <button data-size="l">L</button>
+            </div>
+          </div>
           <div class="setting-row">
             <div class="setting-text">
               <div class="setting-name">Toolbar status dot</div>
               <div class="setting-sub">Green playing, yellow paused on the icon</div>
             </div>
             <button class="switch" id="set-status-dot" role="switch"></button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-text">
+              <div class="setting-name">Accent-colored toolbar icon</div>
+              <div class="setting-sub">Tint the icon to match your accent</div>
+            </div>
+            <button class="switch" id="set-accent-icon" role="switch"></button>
           </div>
           <div class="setting-row">
             <div class="setting-text">

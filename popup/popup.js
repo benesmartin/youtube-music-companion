@@ -504,7 +504,14 @@ function renderQueue(queue) {
 
 // ---- settings (theme) ----
 
-const DEFAULT_SETTINGS = { theme: "dark", accent: "red", statusDot: true, showDislike: true };
+const DEFAULT_SETTINGS = {
+  theme: "dark", // "dark" | "light" | "system"
+  accent: "red",
+  statusDot: true,
+  showDislike: true,
+  accentIcon: false,
+  lyricsSize: "m",
+};
 // Each accent is a named hue with a per-theme variant: bright enough to read
 // on near-black, deep enough to hold contrast on light grey.
 const ACCENTS = [
@@ -519,8 +526,11 @@ const ACCENTS = [
 ];
 let settings = { ...DEFAULT_SETTINGS };
 
+const systemLightQuery = window.matchMedia("(prefers-color-scheme: light)");
+
 function applySettings() {
-  const light = settings.theme === "light";
+  const light =
+    settings.theme === "light" || (settings.theme === "system" && systemLightQuery.matches);
   const accent = ACCENTS.find((a) => a.name === settings.accent) ?? ACCENTS[0];
   document.body.classList.toggle("light", light);
   document.documentElement.style.setProperty("--accent", light ? accent.light : accent.dark);
@@ -536,7 +546,18 @@ function applySettings() {
   el("set-status-dot").classList.toggle("on", settings.statusDot !== false);
   el("set-dislike").classList.toggle("on", settings.showDislike !== false);
   el("dislike").hidden = settings.showDislike === false;
+  el("set-accent-icon").classList.toggle("on", settings.accentIcon === true);
+  const sizes = { s: "11.5px", m: "12.5px", l: "14px" };
+  el("lyrics-pane").style.fontSize = sizes[settings.lyricsSize] ?? sizes.m;
+  for (const option of document.querySelectorAll("#lyrics-size button")) {
+    option.classList.toggle("active", (settings.lyricsSize ?? "m") === option.dataset.size);
+  }
 }
+
+// Live-follow the OS when the theme is set to System.
+systemLightQuery.addEventListener("change", () => {
+  if (settings.theme === "system") applySettings();
+});
 
 function saveSettings() {
   applySettings();
@@ -563,6 +584,7 @@ async function loadSettings() {
     lyricsEnabled = false;
   }
   el("set-lyrics").classList.toggle("on", lyricsEnabled);
+  updateLyricsTab();
   applySettings();
 }
 
@@ -594,6 +616,19 @@ el("set-dislike").addEventListener("click", () => {
   settings.showDislike = settings.showDislike === false;
   saveSettings();
 });
+
+// The background script watches settings and redraws the toolbar icon.
+el("set-accent-icon").addEventListener("click", () => {
+  settings.accentIcon = settings.accentIcon !== true;
+  saveSettings();
+});
+
+for (const option of document.querySelectorAll("#lyrics-size button")) {
+  option.addEventListener("click", () => {
+    settings.lyricsSize = option.dataset.size;
+    saveSettings();
+  });
+}
 
 // Lyrics opt-in lives under its own storage key (the content script's
 // prefetch reads it too); this switch and the in-tab Enable button are two
@@ -1162,13 +1197,22 @@ function renderLyricsOptIn() {
 function setLyricsEnabled(value) {
   lyricsEnabled = value;
   el("set-lyrics").classList.toggle("on", value);
+  updateLyricsTab();
   try {
     ext.storage.local.set({ lyricsEnabled: value });
   } catch {
     // session-only preference
   }
   lyricsKey = null; // force the pane to re-evaluate (fetch or opt-in prompt)
-  if (activeTab === "lyrics") renderLyrics();
+  if (!value && activeTab === "lyrics") switchTab("queue");
+  else if (activeTab === "lyrics") renderLyrics();
+}
+
+// Lyrics off → no dead tab with a nag prompt; the settings switch is the
+// opt-in surface and brings the tab (and its size control) back.
+function updateLyricsTab() {
+  document.querySelector('.tab[data-tab="lyrics"]').hidden = !lyricsEnabled;
+  el("lyrics-size-row").hidden = !lyricsEnabled;
 }
 
 // LRC format: one or more [mm:ss.xx] stamps per line.

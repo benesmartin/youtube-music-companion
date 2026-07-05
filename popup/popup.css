@@ -744,6 +744,32 @@ input[type="range"]::-moz-range-thumb {
   color: var(--text-dim);
 }
 
+/* small S/M/L pick pills */
+.mini-pills {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
+.mini-pills button {
+  width: 26px;
+  height: 22px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+  background: var(--surface);
+}
+
+.mini-pills button:hover {
+  color: var(--text);
+}
+
+.mini-pills button.active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* pill switch */
 .switch {
   position: relative;

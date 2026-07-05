@@ -28,18 +28,21 @@ const DOT_COLORS = { playing: "#22c55e", paused: "#eab308", none: "#9ca3af" };
 let currentIndicator = null;
 let requestedIndicator = "none";
 
-async function statusDotEnabled() {
-  try {
-    return (await ext.storage.local.get("settings")).settings?.statusDot !== false;
-  } catch {
-    return true;
-  }
-}
-
 // The J10 mark (mirrors icons/icon.svg) as canvas geometry in a 128 grid.
 // Drawing it vectorially at each output size keeps the toolbar icon crisp —
 // rescaling the PNG (and the old 92% shrink for dot room) blurred it badly.
-const ICON_CARD = "#d93a32";
+// Per-accent card colors — the palette's deep (light-theme) variants, which
+// hold the best contrast under the white ring and lines.
+const ICON_CARDS = {
+  red: "#d93a32",
+  orange: "#e07b1a",
+  yellow: "#c99b06",
+  green: "#1e9e44",
+  teal: "#0f8a96",
+  blue: "#2673d4",
+  purple: "#7c5ce0",
+  pink: "#d94a8c",
+};
 const ICON_RING = "rgba(255, 255, 255, 0.9)";
 // [x, y1, y2] per audio line
 const ICON_LINES = [
@@ -51,11 +54,11 @@ const ICON_LINES = [
   [96, 57.6, 67.2],
 ];
 
-function drawIconBase(ctx, size) {
+function drawIconBase(ctx, size, card) {
   const k = size / 128;
   ctx.beginPath();
   ctx.roundRect(2 * k, 2 * k, 124 * k, 124 * k, 30 * k);
-  ctx.fillStyle = ICON_CARD;
+  ctx.fillStyle = card;
   ctx.fill();
   ctx.beginPath();
   ctx.roundRect(10 * k, 10 * k, 108 * k, 108 * k, 24 * k);
@@ -75,17 +78,25 @@ function drawIconBase(ctx, size) {
 
 async function setIndicator(indicator) {
   requestedIndicator = indicator;
+  let stored = null;
+  try {
+    stored = (await ext.storage.local.get("settings")).settings ?? null;
+  } catch {
+    stored = null;
+  }
   // Setting off → no dot, but still the crisp vector-drawn icon.
-  const target = (await statusDotEnabled()) ? indicator : "plain";
-  if (target === currentIndicator) return;
-  currentIndicator = target;
+  const target = stored?.statusDot !== false ? indicator : "plain";
+  const card = stored?.accentIcon ? ICON_CARDS[stored.accent] ?? ICON_CARDS.red : ICON_CARDS.red;
+  const cacheKey = `${target}|${card}`;
+  if (cacheKey === currentIndicator) return;
+  currentIndicator = cacheKey;
   try {
     const imageData = {};
     // 64 serves HiDPI toolbars asking for 32@2x.
     for (const size of [16, 32, 64]) {
       const canvas = new OffscreenCanvas(size, size);
       const ctx = canvas.getContext("2d");
-      drawIconBase(ctx, size);
+      drawIconBase(ctx, size, card);
       if (target !== "plain") {
         // Dot overlaps the top-right corner like a notification badge.
         const radius = Math.max(3, Math.round(size * 0.2));
