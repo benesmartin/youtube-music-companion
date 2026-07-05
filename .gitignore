@@ -19,3 +19,6 @@ ROADMAP.md
 
 # Store/listing assets (hosted via GitHub release attachments)
 promo/
+
+# Private test suite (runs against unmodified production files)
+tests/
