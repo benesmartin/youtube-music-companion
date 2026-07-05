@@ -53,6 +53,12 @@ There is no build step. Load the extension unpacked:
 - **Firefox:** `about:debugging` → This Firefox → Load Temporary Add-on
 - **Chrome:** `chrome://extensions` → Developer mode → Load unpacked
 
+## Support
+
+If this extension makes your listening a little nicer, you can
+[buy me a coffee on Ko-fi](https://ko-fi.com/benesmartin). Never expected,
+always appreciated.
+
 ## License
 
 © 2026 Martin Beneš. Licensed under the [GNU General Public License v3.0](LICENSE) —

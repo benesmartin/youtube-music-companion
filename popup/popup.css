@@ -895,6 +895,31 @@ input[type="range"]::-moz-range-thumb {
   color: var(--text);
 }
 
+/* support link: tiny heart, warms up on hover */
+#about .support {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+#about .support svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#about .support:hover {
+  color: var(--accent);
+}
+
+#about .support:hover svg {
+  fill: currentColor;
+}
+
 #queue-list,
 #history-list,
 #lyrics-pane {
