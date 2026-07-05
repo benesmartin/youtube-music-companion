@@ -26,9 +26,6 @@ search, playlists and synced lyrics — without ever leaving the tab you're in.
 - Toolbar status dot (green playing, yellow paused), can be turned off
 - Works on both Firefox (MV3 background scripts) and Chrome (MV3 service worker)
 
-See [ROADMAP.md](ROADMAP.md) for how it was built and what was deliberately
-left out.
-
 ## Privacy
 
 Everything runs against the YouTube Music tab you already have open, using
