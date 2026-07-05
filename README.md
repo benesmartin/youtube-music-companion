@@ -60,7 +60,8 @@
 
 - **Firefox**: from [addons.mozilla.org](https://addons.mozilla.org/) *(listing in review - link coming)*
 - **Chrome**: planned after the Firefox release settles
-- **From source**: clone the repo and load it unpacked - see Development below
+- **From source**: clone the repo and load it unpacked, no build step
+  (Firefox: `about:debugging` → Load Temporary Add-on; Chrome: `chrome://extensions` → Load unpacked)
 
 Requires an open music.youtube.com tab; the popup becomes its remote control.
 
