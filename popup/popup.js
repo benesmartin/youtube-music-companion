@@ -39,8 +39,7 @@ let emptyTimer = null;
 
 function render(state) {
   if (!state.available) {
-    // SPA navigation (e.g. playing from history) blanks the player bar for
-    // a moment; only fall back to the empty view if it stays unavailable.
+    // SPA navigation blanks the bar briefly — only bail if it stays gone.
     if (lastState?.available) {
       if (!emptyTimer) {
         emptyTimer = setTimeout(() => {
@@ -59,8 +58,7 @@ function render(state) {
   playerView.hidden = false;
   emptyView.hidden = true;
 
-  // A track change invalidates any in-flight drag: without this, releasing
-  // the seek slider just after a transition seeks the NEW song to its end.
+  // A track change invalidates an in-flight seek drag.
   const track = `${state.title}|${state.artist}`;
   if (track !== currentTrack) {
     currentTrack = track;
@@ -76,9 +74,7 @@ function render(state) {
   el("album").title = el("album").scrollWidth > el("album").clientWidth ? state.album : "";
 
   lastState = state;
-  // Lyrics refresh must run AFTER lastState is updated — renderLyrics reads
-  // it, and refreshing from the track-change branch above fed it the OLD
-  // track, which made the pane keep the previous song's lyrics.
+  // Must run AFTER lastState updates — renderLyrics reads it.
   if (activeTab === "lyrics") {
     const lyricsStateKey = state.videoId || `${state.title}|${state.artist}`;
     if (lyricsStateKey !== lyricsRenderKey) renderLyrics();
@@ -89,9 +85,7 @@ function render(state) {
   el("copy-link").disabled = !state.videoId;
   el("copy-info").disabled = !state.title;
 
-  // Library reflects the probed state; "Add" is the default until known.
-  // User uploads have no library action — keep the row (stable spacing)
-  // but disable it.
+  // "Add" until probed; uploads have no library action — keep row, disable.
   el("library").disabled = !state.videoId || state.libraryAvailable === false;
   el("library").classList.toggle("in", state.inLibrary === true);
   el("library-label").textContent =
@@ -114,16 +108,14 @@ function render(state) {
     el("seek").value = Math.floor(state.position);
     updateFill(el("seek"));
   }
-  // While the user drags the volume, echoed state would yank the knob to a
-  // stale value — hold off until the drag has settled.
+  // Echoed state would yank the knob mid-drag — wait for the settle window.
   if (!volumeBusy()) {
     el("volume").value = state.muted ? 0 : state.volume;
     updateFill(el("volume"));
   }
 }
 
-// Each artist gets its own clickable span so collabs can navigate to either
-// artist — one collective link always went to the first one.
+// One clickable span per artist — a collective link only reached the first.
 let artistsSig = null;
 
 function renderArtists(state) {
@@ -154,8 +146,7 @@ function renderArtists(state) {
     wrap.scrollWidth > wrap.clientWidth ? list.map((entry) => entry.name).join(", ") : "";
 }
 
-// One look for every toast; "success" confirmations just leave sooner than
-// notices/errors, which need reading time.
+// One toast look; "success" just leaves sooner than notices/errors.
 let toastTimer = null;
 function showToast(text, kind = "notice") {
   el("toast").textContent = text;
@@ -255,9 +246,7 @@ const POPUP_MAX_HEIGHT = 600;
 function toggleMenu(open) {
   const show = open ?? el("more-menu").hidden;
   if (show) {
-    // Anchor just below the ⋯ button. If the popup is currently shorter than
-    // the menu needs (e.g. a one-song queue), grow the body so the menu can
-    // open at full height — the popup window resizes with the document.
+    // Grow the body if needed so the menu opens at full height.
     const menu = el("more-menu");
     const anchor = el("more").getBoundingClientRect();
     const top = anchor.bottom + 6;
@@ -292,8 +281,7 @@ document.addEventListener("click", (e) => {
   if (!el("more-menu").hidden && !el("more-menu").contains(e.target)) toggleMenu(false);
 });
 
-// Radio is started by the content script clicking YTM's own "Start mix" menu
-// item — SPA navigation, playback keeps running, no beforeunload dialog.
+// Radio via YTM's own menu item — SPA navigation, playback keeps running.
 el("radio").addEventListener("click", () => send("startRadio"));
 
 el("library").addEventListener("click", () => send("toggleLibrary"));
@@ -375,8 +363,7 @@ el("sleep-off").addEventListener("click", async () => {
 
 // ---- navigation ----
 
-// Focus the YTM tab; navigation itself (if any) happens via YTM's own
-// anchors clicked by the content script, so playback keeps running.
+// Focus the YTM tab; navigation happens via YTM's own anchors (SPA-safe).
 async function focusYtmTab() {
   if (currentTabId === null) return;
   const tab = await ext.tabs.update(currentTabId, { active: true });
@@ -398,8 +385,7 @@ let lastSelectedIndex = null;
 
 function renderQueue(queue) {
   const list = el("queue-list");
-  // A queue push mid-drag would destroy the row being dragged; skip the
-  // render — the post-drop push repaints the final truth anyway.
+  // A push mid-drag would destroy the dragged row; the post-drop push repaints.
   if (list.querySelector(".qrow.dragging")) return;
   list.textContent = "";
   if (!queue.length) {
@@ -413,10 +399,8 @@ function renderQueue(queue) {
 
   let automixHeaderAdded = false;
   for (const item of queue) {
-    // Belt and suspenders: with autoplay off, suggestions never render —
-    // even if a stale push still carries them.
+    // Autoplay off: never render suggestions, even from a stale push.
     if (item.automix && lastAutoplay === false) continue;
-    // Everything below this line is YTM's suggestions, not the real queue.
     if (item.automix && !automixHeaderAdded) {
       automixHeaderAdded = true;
       const header = document.createElement("div");
@@ -463,8 +447,7 @@ function renderQueue(queue) {
         button.addEventListener("click", (e) => {
           e.stopPropagation();
           send(command, { index: item.index });
-          // Play-next is invisible from here; removal shows itself (the row
-          // disappears), so only the former gets a toast — same as YTM.
+          // Removal shows itself; only play-next toasts (YTM parity).
           if (command === "queuePlayNext") showToast("Song will play next", "success");
         });
         actions.append(button);
@@ -474,10 +457,8 @@ function renderQueue(queue) {
 
     row.addEventListener("click", () => send("playQueueItem", { index: item.index }));
 
-    // Drag to reorder: the popup previews the move locally; the drop sends
-    // one queueMove and the next queue push confirms (or snaps back).
-    // Autoplay suggestions aren't movable (they live outside the queue store's
-    // reorderable items), so they don't even offer the drag.
+    // Local drag preview; the drop sends one queueMove and the next push
+    // confirms or snaps back. Automix rows aren't movable.
     row.draggable = !item.automix;
     row.dataset.qindex = String(item.index);
     row.addEventListener("dragstart", (e) => {
@@ -515,8 +496,7 @@ const DEFAULT_SETTINGS = {
   accentIcon: false,
   lyricsSize: "m",
 };
-// Each accent is a named hue with a per-theme variant: bright enough to read
-// on near-black, deep enough to hold contrast on light grey.
+// Named hues with per-theme variants (bright on dark, deep on light).
 const ACCENTS = [
   { name: "red", dark: "#ff4e45", light: "#d93a32" },
   { name: "orange", dark: "#ff9f43", light: "#e07b1a" },
@@ -649,8 +629,7 @@ try {
 }
 
 // ---- keyboard shortcuts ----
-// Firefox supports commands.update(), so shortcuts are editable right here:
-// click a chip, press a combo. Chrome only allows editing on its own page.
+// Editable in-popup on Firefox (commands.update); Chrome only via its page.
 
 const canEditShortcuts = typeof ext.commands?.update === "function";
 let shortcutCapture = null; // cleanup fn of the active capture, if any
@@ -662,9 +641,7 @@ function comboFromEvent(e) {
   if (e.metaKey) mods.push("Command");
   if (e.shiftKey) mods.push("Shift");
   if (!mods.length) return null; // a plain key can't be a global shortcut
-  // Use the PHYSICAL key (e.code): with Shift held, e.key turns Period into
-  // ">" (or a diacritic on non-US layouts) and every such combo would be
-  // rejected — including our own defaults.
+  // e.code = physical key; e.key breaks with Shift and non-US layouts.
   const code = e.code;
   let key = null;
   if (/^Key[A-Z]$/.test(code)) key = code.slice(3);
@@ -732,8 +709,7 @@ async function renderShortcuts() {
   } catch {
     // commands API unavailable
   }
-  // Rebuilding empties the pane for a moment, which would clamp its scroll
-  // back to the top mid-edit — hold the position across the rebuild.
+  // Rebuilding collapses the pane briefly — hold the scroll position.
   const pane = el("settings-pane");
   const scroll = pane.scrollTop;
   wrap.textContent = "";
@@ -833,9 +809,8 @@ el("queue-list").addEventListener("dragover", (e) => {
 });
 
 // ---- history ----
-// The user's real YouTube Music history (music.youtube.com/history), fetched
-// through the page's own internal API by the bridge. Loaded once per popup;
-// a failed load retries the next time the tab is opened.
+// Real YTM account history via the bridge; loaded once per popup, failed
+// loads retry on the next tab open.
 
 let historyLoaded = false;
 
@@ -870,8 +845,7 @@ function renderHistory(history) {
   }
   const list = el("history-list");
   list.textContent = "";
-  // Period headers ("Today", …) come with the data but aren't rendered —
-  // one flat, uncluttered list reads better in a popup this size.
+  // Period headers arrive with the data but stay unrendered — flat reads better.
   for (const section of history.sections) {
     for (const item of section.items) list.append(buildTrackRow(item));
   }
@@ -1010,8 +984,7 @@ for (const pill of document.querySelectorAll("#search-filters .pill")) {
 }
 
 // ---- playlists ----
-// Library playlists → drill into tracks. Rows offer "play all" and "add the
-// currently playing song" (edit_playlist via the bridge).
+// Library list → drill into tracks; rows offer play-all and add-current-song.
 
 let playlistsLoaded = false;
 let playlistDetailId = null; // browseId the detail view shows (stale guard)
@@ -1140,10 +1113,7 @@ el("playlist-back").addEventListener("click", () => {
 });
 
 // ---- lyrics (LRCLIB) ----
-// Opt-in (sends title/artist to lrclib.net), official songs only. Synced
-// entries get a live highlight + click-to-seek; the highlighted line is the
-// one with the CLOSEST timestamp, which halves the average error when the
-// community timing is offset from YTM's version of a track.
+// Opt-in (sends title/artist to lrclib.net), official songs only.
 
 const LYRICS_TYPES = new Set(["MUSIC_VIDEO_TYPE_ATV", "MUSIC_VIDEO_TYPE_OMV"]);
 
@@ -1196,7 +1166,7 @@ function renderLyricsOptIn() {
   pane.append(note, button);
 }
 
-// Single switch behind both the in-tab Enable button and the settings toggle.
+// One flag behind both the in-tab Enable button and the settings switch.
 function setLyricsEnabled(value) {
   lyricsEnabled = value;
   el("set-lyrics").classList.toggle("on", value);
@@ -1211,8 +1181,7 @@ function setLyricsEnabled(value) {
   else if (activeTab === "lyrics") renderLyrics();
 }
 
-// Lyrics off → no dead tab with a nag prompt; the settings switch is the
-// opt-in surface and brings the tab (and its size control) back.
+// Lyrics off → the tab (and its size control) disappears entirely.
 function updateLyricsTab() {
   document.querySelector('.tab[data-tab="lyrics"]').hidden = !lyricsEnabled;
   el("lyrics-size-row").hidden = !lyricsEnabled;
@@ -1270,8 +1239,7 @@ function showLyricsEntry(entry) {
 
 function updateLyricsHighlight(position, force = false) {
   if (!lyricsLines || el("lyrics-pane").hidden) return;
-  // Closest timestamp wins — not "last line started" — so a constant timing
-  // offset in the source is only ever half a line-gap wrong.
+  // Closest stamp wins — source offsets err by half a gap instead of a full one.
   let current = -1;
   let best = Infinity;
   for (let i = 0; i < lyricsLines.length; i++) {
@@ -1297,8 +1265,7 @@ el("lyrics-pane").addEventListener("wheel", () => {
 
 async function renderLyrics() {
   const state = lastState;
-  // Remember what this run reflects, whatever the outcome (note, prompt,
-  // fetch) — render() re-invokes only when this key changes.
+  // render() re-invokes only when this key changes, whatever the outcome.
   lyricsRenderKey =
     state?.available && state.title ? state.videoId || `${state.title}|${state.artist}` : null;
   if (!state?.available || !state.title) {
@@ -1324,8 +1291,7 @@ async function renderLyrics() {
   lyricsKey = key;
   lyricsNote("Looking up lyrics…");
   const fetchId = ++lyricsFetchId;
-  // The background script fetches and caches; usually the content script has
-  // already prefetched on song start, making this an instant cache hit.
+  // Background fetches+caches; the prefetch usually made this a cache hit.
   let entry = null;
   try {
     entry = await ext.runtime.sendMessage({
@@ -1345,10 +1311,8 @@ async function renderLyrics() {
   showLyricsEntry(entry ?? { synced: "", plain: "", instrumental: false });
 }
 
-// After a history play, jump to the Queue tab only once the picked song is
-// confirmed playing (state echoes its videoId) AND a fresh queue push landed —
-// a fixed delay raced YTM's queue rebuild. Fallback fires in case the id
-// never echoes (e.g. the bridge used its raw-player fallback).
+// Jump to Queue once the picked song is confirmed playing AND a fresh queue
+// push landed; 3s fallback covers ids that never echo.
 let queueSwitchVideoId = null;
 let queueSwitchLoaded = false;
 let queueSwitchFallback = null;

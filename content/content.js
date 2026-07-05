@@ -4,9 +4,8 @@
 const ext = globalThis.browser ?? globalThis.chrome;
 
 // --- Page bridge ---
-// Volume must go through YTM's own player API (page context), otherwise the
-// page slider desyncs and YTM snaps the volume back. The bridge reports the
-// authoritative volume/mute state; the <video> element is only a fallback.
+// The bridge (page context) is the authority on volume/mute/player state;
+// the <video> element is only a fallback.
 
 let pageStatus = null;
 
@@ -108,9 +107,8 @@ function sliderVolume() {
   return Number.isFinite(value) ? value : null;
 }
 
-// Position/duration come from the page's progress bar (in seconds), NOT the
-// <video> element — the first video element in the DOM can go stale across
-// track changes and keep reporting the previous song's time and duration.
+// From the progress bar, not <video> — the first video element can go stale
+// across track changes.
 function progressInfo() {
   const slider = playerBar()?.querySelector("#progress-bar");
   const position = Number(slider?.getAttribute("aria-valuenow"));
@@ -119,8 +117,7 @@ function progressInfo() {
   return { position, duration };
 }
 
-// The player bar reflects the repeat mode into an attribute (NONE/ALL/ONE).
-// Returns null when the attribute is missing so the popup can hide the state.
+// repeat-mode attribute: NONE/ALL/ONE; null = unknown.
 function repeatMode() {
   const bar = playerBar();
   const raw = bar?.getAttribute("repeat-mode_") ?? bar?.getAttribute("repeat-mode");
@@ -138,16 +135,14 @@ function readState() {
   const media = video();
   const title = bar?.querySelector(".title")?.textContent?.trim() ?? "";
 
-  // Byline is "Artist • Album • Year" where artist is a channel/ link and the
-  // album a browse/ link. Music videos have no album link — only view counts
-  // as plain text — so the album is trusted only when its link exists.
+  // Byline: "Artist • Album • Year" — album trusted only when its link exists
+  // (music videos have none).
   const bylineEl = bar?.querySelector(".byline");
   const links = bylineEl ? [...bylineEl.querySelectorAll("a")] : [];
   const bylineParts = (bylineEl?.getAttribute("title") ?? bylineEl?.textContent ?? "")
     .split("•")
     .map((part) => part.trim());
-  // The byline renders one <a> per artist; keep them structured so the popup
-  // can link each artist to their own page.
+  // One <a> per artist — structured for per-artist links in the popup.
   const artists = links
     .filter((a) => a.getAttribute("href")?.startsWith("channel/"))
     .map((a) => ({ name: a.textContent?.trim() ?? "", url: a.getAttribute("href") ?? "" }))
@@ -164,14 +159,11 @@ function readState() {
     libraryTitle = title;
     libraryState = null;
     libraryAvailable = null;
-    // Track changes often rebuild the queue; push it fresh once YTM has
-    // re-rendered. Several passes — the rebuild can land late, and after a
-    // history play the data store fills its thumbnails later still.
+    // Re-push the queue as YTM rebuilds it (can land late).
     setTimeout(pushQueue, 500);
     setTimeout(pushQueue, 1600);
     setTimeout(pushQueue, 3500);
-    // Warm the lyrics cache as soon as possible; the early attempt bails if
-    // duration hasn't settled yet and the later one picks it up.
+    // Warm the lyrics cache; the early try bails until duration settles.
     setTimeout(prefetchLyrics, 800);
     setTimeout(prefetchLyrics, 2500);
   }
@@ -224,11 +216,8 @@ function bylineLink(hrefPrefix) {
   );
 }
 
-// Opens the player-bar menu invisibly (popup container hidden via injected
-// CSS) and runs the worker until it reports done. Labels are localized, so
-// workers must key on language-independent traits (hrefs, icon paths).
-// Clicking YTM's own items keeps navigation inside the SPA router, so
-// playback continues and no beforeunload dialog fires.
+// Opens the player-bar menu invisibly; workers key on language-independent
+// traits (hrefs, icon paths) — labels are localized.
 async function withHiddenMenu(worker) {
   const menuButton = playerBar()?.querySelector("ytmusic-menu-renderer #button-shape button");
   if (!menuButton) return false;
@@ -261,8 +250,7 @@ function startRadio() {
   return withHiddenMenu(() => {
     const link = document.querySelector('ytmusic-menu-navigation-item-renderer a[href*="list=RD"]');
     if (!link) return null;
-    // A leftover menu from the previous track carries its radio link;
-    // wait for the re-render matching the current video.
+    // Stale menus carry the previous track's radio link — verify the id.
     const id = pageStatus?.videoId;
     if (id && !link.getAttribute("href")?.includes(id)) return null;
     link.click();
@@ -270,8 +258,7 @@ function startRadio() {
   });
 }
 
-// Library state lives in Polymer element data only the page context can
-// read (both menu variants share one icon), so the bridge does the work.
+// Library state needs page-context Polymer data — the bridge does the work.
 function applyLibraryResult(result) {
   if (!result) return;
   libraryAvailable = result.available;
@@ -303,10 +290,8 @@ function clickIfFound(el) {
 
 // ---- queue ----
 
-// Queue entries are often wrapped in a playlist-panel-video-wrapper holding
-// TWO queue-items: the visible one (#primary-renderer) and a hidden
-// song/video counterpart (#counterpart-renderer). Only the primary counts —
-// including counterparts duplicates every track.
+// Wrapper entries hold a visible primary and a hidden counterpart item;
+// counting both duplicates every track.
 function queueItemElements() {
   const scope = document.querySelector("ytmusic-player-queue") ?? document;
   return [...scope.querySelectorAll("ytmusic-player-queue-item")].filter(
@@ -315,14 +300,12 @@ function queueItemElements() {
 }
 
 function readQueue() {
-  // With autoplay off, YTM keeps the automix rows in the DOM (hidden) —
-  // they're not upcoming playback, so drop them. Filtering happens after
-  // mapping so item.index still matches queueItemElements() positions.
+  // Autoplay off leaves automix rows hidden in the DOM — drop them (filter
+  // after mapping so item.index keeps matching DOM positions).
   const autoplayOff = autoplayState() === false;
   return queueItemElements()
     .map((item, index) => {
-      // Lazy-loaded thumbnails start as a 1×1 data: GIF; report those as
-      // missing — the src observer pushes again once the real image lands.
+      // Lazy thumbs start as a 1×1 data: GIF — report as missing.
       const src = item.querySelector("img")?.src ?? "";
       return {
         index,
@@ -331,16 +314,13 @@ function readQueue() {
         duration: item.querySelector(".duration")?.textContent?.trim() ?? "",
         thumb: src.startsWith("data:") ? "" : src,
         selected: item.hasAttribute("selected"),
-        // Autoplay continuations render in their own container — they're
-        // suggestions, not part of the user's actual queue.
         automix: item.closest("#automix-contents") !== null,
       };
     })
     .filter((entry) => entry.title && !(autoplayOff && entry.automix));
 }
 
-// Fill placeholder thumbnails from the page's queue data store (via the
-// bridge) — DOM images only load when YTM's own panel scrolls near them.
+// Fill thumbs/artists from the queue store — DOM images lazy-load late.
 async function queueWithThumbs() {
   const queue = readQueue();
   if (queue.length) {
@@ -353,14 +333,11 @@ async function queueWithThumbs() {
         data.filter((entry) => entry.artist).map((entry) => [entry.title, entry.artist])
       );
       for (const item of queue) {
-        // Auto-generated queues (playing from history) can render DOM titles
-        // that don't exactly match the store's, so fall back to position —
-        // store items map 1:1 onto the visible (non-counterpart) rows.
+        // Title match first, position fallback (store maps 1:1 onto rows).
         if (!item.thumb) {
           item.thumb = thumbByTitle.get(item.title) ?? data[item.index]?.thumb ?? "";
         }
-        // Prefer the store's comma-joined artists over the DOM byline, which
-        // uses a localized "and" between names.
+        // Store artists are comma-joined; the DOM byline uses localized "and".
         const artist = artistByTitle.get(item.title) ?? data[item.index]?.artist ?? "";
         if (artist) item.artist = artist;
       }
@@ -369,12 +346,11 @@ async function queueWithThumbs() {
   return queue;
 }
 
-// YTM's autoplay toggle lives in the queue tab header; its checked attribute
-// is the state, clicking it flips it. null = toggle not rendered (yet).
+// YTM's autoplay toggle; null = not rendered yet.
 function autoplayState() {
   const toggle = document.querySelector("tp-yt-paper-toggle-button#automix");
   if (!toggle) return null;
-  // The live property beats attribute reflection, which can lag a re-render.
+  // Live property first — attribute reflection lags a re-render.
   if (typeof toggle.checked === "boolean") return toggle.checked;
   return toggle.hasAttribute("checked") || toggle.getAttribute("aria-pressed") === "true";
 }
@@ -403,8 +379,7 @@ let observedQueue = null;
 function watchQueue() {
   const container = document.querySelector("ytmusic-player-queue");
   if (!container || container === observedQueue) return;
-  // The container is replaced when a new queue is built (radio, jumping
-  // around) — drop the detached one and observe the replacement.
+  // The container is replaced on queue rebuilds — re-observe the new one.
   observedQueue = container;
   queueObserver.disconnect();
   queueObserver.observe(container, {
@@ -416,8 +391,7 @@ function watchQueue() {
   });
 }
 
-// Per-row menu actions: open the row's own menu invisibly and click the
-// matching item, identified by its icon path (labels are localized).
+// Per-row menu actions, items identified by icon path (labels localized).
 const QUEUE_MENU_ICONS = {
   playNext: 'path[d^="M6 2.86"]',
   removeFromQueue: 'path[d*="Zm3 6H6"]',
@@ -435,8 +409,7 @@ async function queueItemMenuAction(index, iconSelector) {
     menuButton.click();
     for (let attempt = 0; attempt < 20; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
-      // Scope to the OPEN dropdown — stale menus from earlier opens linger
-      // in the popup container and would match too.
+      // Scope to the OPEN dropdown — stale menus linger and would match.
       const path = document.querySelector(
         `ytmusic-popup-container tp-yt-iron-dropdown:not([aria-hidden="true"]) ${iconSelector}`
       );
@@ -471,8 +444,7 @@ const commands = {
       video()?.pause();
       return true;
     }
-    // Starting playback can hit the autoplay policy; the bridge tries the
-    // muted-start workaround and reports whether anything actually plays.
+    // Play can hit the autoplay policy; the bridge tries the muted-start trick.
     const result = await askBridgeAsync("forcePlay", {}, 3000);
     if (result === true) return true;
     if (result === null) {
@@ -559,8 +531,7 @@ const commands = {
   toggleLike: () => clickIfFound(likeButton()),
   toggleDislike: () => clickIfFound(dislikeButton()),
   seek(payload) {
-    // Clamp inside the track: an out-of-range position makes YTM skip tracks.
-    // The 1s end margin keeps seeks clear of the ended/transition race.
+    // Clamp: out-of-range seeks make YTM skip; 1s margin avoids the end race.
     const progress = progressInfo();
     if (progress) {
       const target = Math.min(Math.max(0, payload.position), Math.max(0, progress.duration - 1));

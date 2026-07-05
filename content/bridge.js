@@ -7,9 +7,8 @@
   const FROM_BRIDGE = "ytmc-bridge";
   const FROM_CONTENT = "ytmc-content";
 
-  // Extension reloads inject a fresh copy of this script while older copies
-  // keep their listeners alive in the page. Only the newest generation may
-  // act, or the content script races duplicate (stale-code) responses.
+  // Reloads inject fresh copies while old ones keep listening — only the
+  // newest generation may act.
   const generation = (window.__ytmcBridgeGeneration =
     (window.__ytmcBridgeGeneration ?? 0) + 1);
   const isCurrent = () => window.__ytmcBridgeGeneration === generation;
@@ -36,9 +35,7 @@
     );
   }
 
-  // YTM's app state lives in its volume slider, not in the movie_player API —
-  // setVolume() alone changes the audio but the app overwrites it later. Drive
-  // the slider like a user would and let YTM propagate it everywhere itself.
+  // App state lives in the volume slider; setVolume() alone gets snapped back.
   function setVolume(value) {
     const clamped = Math.min(100, Math.max(0, value));
     const slider = volumeSlider();
@@ -53,8 +50,7 @@
 
   // ---- library toggle (needs Polymer element data, page-context only) ----
 
-  // Menu automations must never overlap: a second menuButton.click() while
-  // a probe holds the menu open would close it and kill both operations.
+  // Menu automations must not overlap — a second open kills both.
   let menuBusy = Promise.resolve();
   function withHiddenMenu(worker) {
     const run = menuBusy.then(() => runWithHiddenMenu(worker));
@@ -80,8 +76,7 @@
       }
       return null;
     } finally {
-      // Give YTM a beat to process the clicked item before closing the menu;
-      // an instant close can cancel the service action.
+      // A beat before closing, or the clicked action gets cancelled.
       await new Promise((resolve) => setTimeout(resolve, 200));
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
       document.body.click();
@@ -89,14 +84,8 @@
     }
   }
 
-  // The add/remove library menu items share one icon; only the localized text
-  // differs. The Polymer data object carries language-independent iconTypes
-  // (e.g. LIBRARY_ADD) plus both text variants — comparing the rendered text
-  // against defaultText reveals which state is currently shown.
-  // Both library states render the SAME bookmark icon (path M14.25 1.5…), so
-  // the icon identifies the item but not the state. Polymer data is
-  // unreadable on current builds, so the state comes from keyword-matching
-  // the localized label.
+  // Both library states share one bookmark icon; state comes from Polymer
+  // data when readable, else from keyword-matching the localized label.
   const LIBRARY_ICON = 'path[d^="M14.25 1.5"]';
   const REMOVE_WORDS =
     /odstranit|odebrat|remove|entfernen|supprimer|retirer|eliminar|quitar|rimuovi|remover|usuń|verwijder|ta bort|poista|fjern|удалить|убрать|削除|삭제|移除|删除/i;
@@ -109,9 +98,7 @@
     return null;
   }
 
-  // Menu rendered at all? (distinguishes "not ready yet" from "no library
-  // item exists" — user uploads have no library action, only liked/pin
-  // toggles, and clicking those by mistake acts like a like button)
+  // Distinguishes "menu not ready" from "no library item" (user uploads).
   function menuRendered() {
     return document.querySelector("ytmusic-menu-popup-renderer [role='menuitem']") !== null;
   }
@@ -160,8 +147,7 @@
 
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  // Autoplay-policy workaround: normal play → muted play (always allowed) →
-  // unmute. Some browsers re-block on the unmute; report honestly.
+  // Autoplay workaround: play → muted play → unmute; report re-blocks honestly.
   async function forcePlay() {
     const p = player();
     const media = document.querySelector("video");
@@ -189,9 +175,7 @@
     return true;
   }
 
-  // Play through the app router (yt-navigate) so the whole UI — player bar,
-  // queue, watch page — follows along; loadVideoById alone switches the audio
-  // but leaves the app frozen on the previous track.
+  // yt-navigate keeps the whole app in sync; loadVideoById is fallback only.
   async function playVideo({ videoId, playlistId, params } = {}) {
     if (!videoId) return false;
     const app = document.querySelector("ytmusic-app");
@@ -226,10 +210,7 @@
     );
   }
 
-  // "Play next" for a track that is NOT in the queue (history rows): there is
-  // no per-row menu to click, so resolve the track's queue renderer via the
-  // internal get_queue endpoint and insert it after the current item straight
-  // into the app's queue store.
+  // Play-next for out-of-queue tracks: get_queue renderer → ADD_ITEMS.
   async function queueVideoNext(videoId) {
     if (!videoId) return false;
     const store = document.querySelector("ytmusic-player-queue")?.queue?.store?.store;
@@ -260,9 +241,7 @@
     return (store.getState()?.queue?.items?.length ?? 0) > existing.length;
   }
 
-  // Reorder within the queue store. Only the real queue (items) is movable —
-  // autoplay/radio continuations live in automixItems, which MOVE_ITEM
-  // doesn't reach, so indices past the items array are rejected.
+  // MOVE_ITEM only reaches queue.items — automix indices are rejected.
   async function queueMove(fromIndex, toIndex) {
     const store = document.querySelector("ytmusic-player-queue")?.queue?.store?.store;
     if (!store?.dispatch || !store?.getState) return false;
@@ -290,14 +269,11 @@
     return order(store.getState()?.queue?.items) !== before;
   }
 
-  // The queue element's data store knows every item's thumbnail URL and
-  // videoId even when the DOM images haven't lazy-loaded yet.
+  // The queue store knows thumbs/videoIds before DOM images lazy-load.
   function readQueueData() {
     const queueEl = document.querySelector("ytmusic-player-queue");
     let items = null;
-    // Read the raw store state first: radio queues (playing from history)
-    // keep the generated part in automixItems, which getItems() omits —
-    // it reports a single item for a 50-row queue.
+    // automixItems holds radio continuations; getItems() omits them.
     try {
       const state =
         queueEl?.queue?.store?.store?.getState?.() ?? queueEl?.queue?.store?.getState?.();
@@ -314,9 +290,7 @@
       }
     }
     if (!Array.isArray(items) || !items.length) {
-      // Rebuilt queues (playing from history) sometimes expose no readable
-      // store, but the player API still knows the playlist order — and every
-      // videoId has a guaranteed static thumbnail.
+      // Store unreadable → player playlist; every videoId has a static thumb.
       const ids = player()?.getPlaylist?.() ?? null;
       if (Array.isArray(ids) && ids.length) {
         console.debug("[YTM Companion] queue store empty, using player playlist:", ids.length);
@@ -330,10 +304,8 @@
       return null;
     }
     console.debug("[YTM Companion] queue store items:", items.length);
-    // Artists from a queue renderer's bylines. Prefer runs linking to an
-    // artist/channel page; queue bylines are often endpoint-less though, in
-    // which case artists and localized "and" separators (" a " in Czech)
-    // alternate as runs — drop the separator runs and comma-join the rest.
+    // Prefer artist-linked runs; endpoint-less bylines alternate names with
+    // localized "and" runs — drop separators, comma-join.
     const ARTIST_PAGE = /ARTIST|USER_CHANNEL/;
     const SEPARATOR_RUN = /^[\s ]*(•|,|&|\+|a|and|y|e|i|et|en|ve|und|och|og|ja|и)[\s ]*$/i;
     const linkedArtists = (byline) =>
@@ -359,8 +331,7 @@
     };
     const mapped = items.map((entry) => {
       const renderer = queueRendererOf(entry);
-      // Wrapped (video-with-song) entries sometimes only carry a thumbnail
-      // on the hidden counterpart renderer.
+      // Wrapped entries may only carry a thumb on the hidden counterpart.
       const counterpart =
         entry?.playlistPanelVideoWrapperRenderer?.counterpart?.[0]?.counterpartRenderer
           ?.playlistPanelVideoRenderer ?? null;
@@ -371,9 +342,6 @@
         videoId,
         title: (renderer?.title?.runs ?? []).map((run) => run.text).join(""),
         artist: bylineArtists(renderer),
-        // Every YouTube video has a guaranteed static thumbnail URL; use it
-        // when the store entry carries no thumbnail of its own (common right
-        // after a queue rebuild).
         thumb: thumbs.length
           ? thumbs[thumbs.length - 1].url
           : videoId
@@ -381,8 +349,7 @@
             : "",
       };
     });
-    // Store entries with unrecognized renderers yield no videoId/thumb;
-    // patch those from the player's playlist when the orders line up.
+    // Patch unrecognized renderers from the player playlist when aligned.
     const ids = player()?.getPlaylist?.() ?? null;
     if (Array.isArray(ids) && ids.length === mapped.length) {
       mapped.forEach((entry, i) => {
@@ -395,10 +362,7 @@
 
   // ---- internal API plumbing ----
 
-  // Internal ("InnerTube") endpoints are called from the page context so they
-  // reuse YTM's own config (ytcfg) and cookies; the only extra requirement is
-  // the SAPISIDHASH Authorization header Google demands on
-  // cookie-authenticated API requests.
+  // Page context reuses ytcfg + cookies; SAPISIDHASH auths the calls.
   const cfgGet = (key) => window.ytcfg?.get?.(key) ?? window.ytcfg?.data_?.[key];
 
   async function sapisidHash() {
@@ -441,10 +405,8 @@
       .map((run) => run.text)
       .join("");
 
-  // The byline column mixes artists with albums, view counts and dates
-  // ("Channel • 1.4M views • today", "Artist • Album • 3:14"). Prefer runs
-  // that link to an artist/channel page, then any linked run, then the text
-  // before the first bullet.
+  // Byline mixes artists/album/views/date: prefer artist-page runs, then any
+  // linked run, then text before the first bullet.
   function artistText(column) {
     const runs = column?.musicResponsiveListItemFlexColumnRenderer?.text?.runs ?? [];
     const pageTypeOf = (run) =>
@@ -463,8 +425,7 @@
     const renderer = entry?.musicResponsiveListItemRenderer;
     if (!renderer) return null;
     const thumbs = renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? [];
-    // The play overlay carries the full watch endpoint; playlistId/params make
-    // playback build the same autoplay queue as clicking the item on the page.
+    // playlistId/params from the play overlay make playback build the proper queue.
     const endpoint =
       renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer
         ?.playNavigationEndpoint?.watchEndpoint ?? null;
@@ -515,8 +476,7 @@
 
   // ---- search (internal search API, same row shape as history) ----
 
-  // Filter params as sent by YTM's own "Songs" / "Videos" chips. Videos
-  // matter because plenty of songs only exist as user uploads.
+  // Filter params as sent by YTM's own "Songs" / "Videos" chips.
   const SEARCH_FILTERS = {
     songs: "EgWKAQIIAWoMEA4QChADEAQQCRAF",
     videos: "EgWKAQIQAWoMEA4QChADEAQQCRAF",
@@ -554,8 +514,7 @@
 
   // ---- playlists (library list, tracks, play, add-current) ----
 
-  // Collects playlist tiles from a batch of grid items; returns the
-  // continuation token if one rides along as a continuationItemRenderer.
+  // Collects tiles; returns a continuation token if one rides along.
   function collectPlaylistItems(items, playlists) {
     let token = null;
     for (const item of items ?? []) {
@@ -593,9 +552,7 @@
         [];
       const grid = sections.find((s) => s.gridRenderer)?.gridRenderer;
       const playlists = [];
-      // The grid is paginated (~25 tiles per page) — follow continuations
-      // until the library is exhausted. Token arrives either as a trailing
-      // continuationItemRenderer or in the legacy continuations array.
+      // ~25 tiles per page — follow continuations (new or legacy format).
       let token =
         collectPlaylistItems(grid?.items, playlists) ??
         grid?.continuations?.[0]?.nextContinuationData?.continuation ??
@@ -642,8 +599,7 @@
     }
   }
 
-  // Play a whole playlist through the app router, same as clicking its
-  // play button on the library page.
+  // Whole-playlist play via the app router.
   async function playPlaylist(playlistId) {
     const app = document.querySelector("ytmusic-app");
     if (!app || !playlistId) return false;

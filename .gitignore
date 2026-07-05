@@ -12,3 +12,6 @@ node_modules/
 *.xpi
 *.crx
 web-ext-artifacts/
+
+# Private dev notes (backed up manually)
+NOTES.md

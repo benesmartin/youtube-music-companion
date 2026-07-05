@@ -28,11 +28,8 @@ const DOT_COLORS = { playing: "#22c55e", paused: "#eab308", none: "#9ca3af" };
 let currentIndicator = null;
 let requestedIndicator = "none";
 
-// The J10 mark (mirrors icons/icon.svg) as canvas geometry in a 128 grid.
-// Drawing it vectorially at each output size keeps the toolbar icon crisp —
-// rescaling the PNG (and the old 92% shrink for dot room) blurred it badly.
-// Per-accent card colors — the palette's deep (light-theme) variants, which
-// hold the best contrast under the white ring and lines.
+// The icon mark (mirrors icons/icon.svg) drawn vectorially per size — scaled
+// rasters looked mushy. Card colors are the palette's deep variants.
 const ICON_CARDS = {
   red: "#d93a32",
   orange: "#e07b1a",
@@ -126,12 +123,10 @@ ext.storage.onChanged.addListener((changes, area) => {
 });
 
 // ---- lyrics (LRCLIB) ----
-// Fetching lives here so the content script can prefetch the moment a song
-// starts and the popup's Lyrics tab gets an instant cache hit.
+// Fetching lives here so content can prefetch and the popup gets cache hits.
 
 const LYRICS_CACHE_LIMIT = 40;
-// Bump when matching logic changes — drops previously cached (possibly
-// mismatched) entries in one go.
+// Bump when matching logic changes to drop stale cached entries.
 const LYRICS_CACHE_VERSION = 2;
 
 async function readLyricsCache() {
@@ -139,8 +134,7 @@ async function readLyricsCache() {
   return stored.lyricsCacheVersion === LYRICS_CACHE_VERSION ? stored.lyricsCache ?? {} : {};
 }
 
-// Lowercase, strip diacritics and parenthesized suffixes ("(Remastered)"),
-// collapse punctuation — so cosmetic differences don't block a match.
+// Fold case/diacritics/"(Remastered)"-suffixes so cosmetics don't block matches.
 function normalizeName(name) {
   return (name ?? "")
     .toLowerCase()
@@ -170,9 +164,7 @@ async function lrclibLookup(track) {
   if (!res.ok) return null;
   const hits = await res.json();
   if (!Array.isArray(hits) || !hits.length) return null;
-  // The search is fuzzy and happily returns a different song by a similarly
-  // named artist ("Milky" → Milky Chance). Demand a real title match and
-  // artist overlap; only then does closest-duration pick among versions.
+  // Fuzzy search returns wrong songs — demand a title match + artist overlap.
   const title = normalizeName(track.title);
   const artist = normalizeName(track.artist);
   const candidates = hits.filter((hit) => {
@@ -188,8 +180,7 @@ async function lrclibLookup(track) {
   return Math.abs((candidates[0].duration ?? 0) - track.duration) <= 10 ? candidates[0] : null;
 }
 
-// One lookup per track at a time: the popup joins the content script's
-// in-flight prefetch instead of racing a duplicate (slow) request.
+// One lookup per track at a time — the popup joins the in-flight prefetch.
 const lyricsInflight = new Map();
 
 function getLyrics(track) {
@@ -246,8 +237,7 @@ ext.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return false;
 });
 
-// No YTM tab left → back to the disconnected dot. The closing/navigating
-// tab can still show up in tabs.query for a moment, so exclude it by id.
+// No YTM tab left → disconnected dot (the closing tab may still be queryable).
 async function checkTabsGone(excludeTabId) {
   const tabs = await ext.tabs.query({ url: "https://music.youtube.com/*" });
   if (tabs.every((tab) => tab.id === excludeTabId)) setIndicator("none");
