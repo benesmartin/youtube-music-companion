@@ -85,8 +85,13 @@ function render(state) {
   el("copy-link").disabled = !state.videoId;
   el("copy-info").disabled = !state.title;
 
+  const gated = state.signedIn === false;
+  el("like").classList.toggle("gated", gated);
+  el("dislike").classList.toggle("gated", gated);
+  el("library").classList.toggle("gated", gated);
   // "Add" until probed; uploads have no library action - keep row, disable.
-  el("library").disabled = !state.videoId || state.libraryAvailable === false;
+  // Signed out it stays clickable so the click can explain itself.
+  el("library").disabled = gated ? false : !state.videoId || state.libraryAvailable === false;
   el("library").classList.toggle("in", state.inLibrary === true);
   el("library-label").textContent =
     state.inLibrary === true ? "Remove from library" : "Add to library";
@@ -166,11 +171,27 @@ function send(command, payload = {}) {
   port?.postMessage({ type: "command", command, payload });
 }
 
+// Signed-out sessions: account actions stay clickable but explain themselves
+// instead of silently opening a sign-in dialog in the hidden tab.
+function requireSignIn(what) {
+  if (lastState?.signedIn === false) {
+    showToast(`Sign in to YouTube Music to ${what}.`);
+    return true;
+  }
+  return false;
+}
+
 el("play-pause").addEventListener("click", () => send("playPause"));
 el("next").addEventListener("click", () => send("next"));
 el("previous").addEventListener("click", () => send("previous"));
-el("like").addEventListener("click", () => send("toggleLike"));
-el("dislike").addEventListener("click", () => send("toggleDislike"));
+el("like").addEventListener("click", () => {
+  if (requireSignIn("like songs")) return;
+  send("toggleLike");
+});
+el("dislike").addEventListener("click", () => {
+  if (requireSignIn("rate songs")) return;
+  send("toggleDislike");
+});
 el("shuffle").addEventListener("click", () => send("shuffle"));
 el("repeat").addEventListener("click", () => send("toggleRepeat"));
 el("mute").addEventListener("click", () => send("toggleMute"));
@@ -263,7 +284,8 @@ function toggleMenu(open) {
   el("more").classList.toggle("open", show);
   if (show) {
     showSleepPage(false);
-    send("probeLibrary");
+    // No point churning YTM's menu for library state while signed out.
+    if (lastState?.signedIn !== false) send("probeLibrary");
     refreshSleep();
     updateOverflowTitles();
     sleepTicker = setInterval(refreshSleep, 10000);
@@ -284,7 +306,10 @@ document.addEventListener("click", (e) => {
 // Radio via YTM's own menu item - SPA navigation, playback keeps running.
 el("radio").addEventListener("click", () => send("startRadio"));
 
-el("library").addEventListener("click", () => send("toggleLibrary"));
+el("library").addEventListener("click", () => {
+  if (requireSignIn("use your library")) return;
+  send("toggleLibrary");
+});
 
 async function copyToClipboard(button, text) {
   await navigator.clipboard.writeText(text);
@@ -1010,7 +1035,11 @@ function renderPlaylists(playlists) {
   playlistsLoaded = Boolean(playlists);
   const list = el("playlists-list");
   if (!playlists) {
-    noteInto(list, "Couldn’t load playlists. Are you signed in?");
+    noteInto(list, "Couldn’t load playlists from YouTube Music.");
+    return;
+  }
+  if (playlists.signedOut) {
+    noteInto(list, "Sign in to YouTube Music to see your playlists.");
     return;
   }
   if (!playlists.length) {
@@ -1050,6 +1079,7 @@ function renderPlaylists(playlists) {
         "Add current song",
         "#i-plus",
         () => {
+          if (requireSignIn("save to playlists")) return;
           if (!lastState?.videoId) {
             showToast("Nothing is playing to add.");
             return;

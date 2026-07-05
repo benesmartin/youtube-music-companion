@@ -533,6 +533,7 @@
 
   async function getPlaylists() {
     try {
+      if (!(await sapisidHash())) return { signedOut: true };
       const data = await innertubeRequest("browse", { browseId: "FEmusic_liked_playlists" });
       if (!data) return null;
       const sections =

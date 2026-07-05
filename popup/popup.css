@@ -304,6 +304,13 @@ input[type="range"]::-moz-range-thumb {
   height: 15px;
 }
 
+/* signed-out: account actions dim but stay clickable to explain themselves */
+#like.gated,
+#dislike.gated,
+#more-menu #library.gated {
+  opacity: 0.35;
+}
+
 /* outlined by default, filled white when active */
 #like.active,
 #dislike.active {

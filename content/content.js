@@ -9,6 +9,10 @@ const ext = globalThis.browser ?? globalThis.chrome;
 
 let pageStatus = null;
 
+// SAPISID only exists for signed-in sessions; YTM fully reloads on
+// login/logout, so a load-time check stays accurate.
+const signedIn = /(?:^|;\s*)(?:SAPISID|__Secure-3PAPISID)=/.test(document.cookie);
+
 function injectBridge() {
   const script = document.createElement("script");
   script.src = ext.runtime.getURL("content/bridge.js");
@@ -176,6 +180,7 @@ function readState() {
 
   return {
     available: Boolean(bar && title),
+    signedIn,
     title,
     artist,
     artists,
