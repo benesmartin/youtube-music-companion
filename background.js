@@ -8,7 +8,7 @@ const SHORTCUT_COMMANDS = {
   "next-track": "next",
   "previous-track": "previous",
   "toggle-like": "toggleLike",
-  // No default keys (browsers cap suggested keys at four) — users bind them
+  // No default keys (browsers cap suggested keys at four) - users bind them
   // via Manage Extension Shortcuts / chrome://extensions/shortcuts.
   "volume-up": "volumeUp",
   "volume-down": "volumeDown",
@@ -28,7 +28,7 @@ const DOT_COLORS = { playing: "#22c55e", paused: "#eab308", none: "#9ca3af" };
 let currentIndicator = null;
 let requestedIndicator = "none";
 
-// The icon mark (mirrors icons/icon.svg) drawn vectorially per size — scaled
+// The icon mark (mirrors icons/icon.svg) drawn vectorially per size - scaled
 // rasters looked mushy. Card colors are the palette's deep variants.
 const ICON_CARDS = {
   red: "#d93a32",
@@ -109,7 +109,7 @@ async function setIndicator(indicator) {
     }
     await ext.action.setIcon({ imageData });
   } catch {
-    // Canvas unavailable — leave the static manifest icon.
+    // Canvas unavailable - leave the static manifest icon.
   }
 }
 
@@ -146,7 +146,7 @@ function normalizeName(name) {
 }
 
 async function lrclibLookup(track) {
-  // Exact lookup first — duration (±2s server-side) is what makes it precise.
+  // Exact lookup first - duration (±2s server-side) is what makes it precise.
   const params = new URLSearchParams({
     track_name: track.title,
     artist_name: track.artist,
@@ -155,7 +155,7 @@ async function lrclibLookup(track) {
   if (track.album) params.set("album_name", track.album);
   let res = await fetch(`https://lrclib.net/api/get?${params}`);
   if (res.ok) return res.json();
-  // Miss — search and take the closest duration within reason.
+  // Miss - search and take the closest duration within reason.
   const searchParams = new URLSearchParams({
     track_name: track.title,
     artist_name: track.artist,
@@ -164,7 +164,7 @@ async function lrclibLookup(track) {
   if (!res.ok) return null;
   const hits = await res.json();
   if (!Array.isArray(hits) || !hits.length) return null;
-  // Fuzzy search returns wrong songs — demand a title match + artist overlap.
+  // Fuzzy search returns wrong songs - demand a title match + artist overlap.
   const title = normalizeName(track.title);
   const artist = normalizeName(track.artist);
   const candidates = hits.filter((hit) => {
@@ -180,7 +180,7 @@ async function lrclibLookup(track) {
   return Math.abs((candidates[0].duration ?? 0) - track.duration) <= 10 ? candidates[0] : null;
 }
 
-// One lookup per track at a time — the popup joins the in-flight prefetch.
+// One lookup per track at a time - the popup joins the in-flight prefetch.
 const lyricsInflight = new Map();
 
 function getLyrics(track) {

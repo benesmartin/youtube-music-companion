@@ -39,7 +39,7 @@ let emptyTimer = null;
 
 function render(state) {
   if (!state.available) {
-    // SPA navigation blanks the bar briefly — only bail if it stays gone.
+    // SPA navigation blanks the bar briefly - only bail if it stays gone.
     if (lastState?.available) {
       if (!emptyTimer) {
         emptyTimer = setTimeout(() => {
@@ -74,7 +74,7 @@ function render(state) {
   el("album").title = el("album").scrollWidth > el("album").clientWidth ? state.album : "";
 
   lastState = state;
-  // Must run AFTER lastState updates — renderLyrics reads it.
+  // Must run AFTER lastState updates - renderLyrics reads it.
   if (activeTab === "lyrics") {
     const lyricsStateKey = state.videoId || `${state.title}|${state.artist}`;
     if (lyricsStateKey !== lyricsRenderKey) renderLyrics();
@@ -85,7 +85,7 @@ function render(state) {
   el("copy-link").disabled = !state.videoId;
   el("copy-info").disabled = !state.title;
 
-  // "Add" until probed; uploads have no library action — keep row, disable.
+  // "Add" until probed; uploads have no library action - keep row, disable.
   el("library").disabled = !state.videoId || state.libraryAvailable === false;
   el("library").classList.toggle("in", state.inLibrary === true);
   el("library-label").textContent =
@@ -108,14 +108,14 @@ function render(state) {
     el("seek").value = Math.floor(state.position);
     updateFill(el("seek"));
   }
-  // Echoed state would yank the knob mid-drag — wait for the settle window.
+  // Echoed state would yank the knob mid-drag - wait for the settle window.
   if (!volumeBusy()) {
     el("volume").value = state.muted ? 0 : state.volume;
     updateFill(el("volume"));
   }
 }
 
-// One clickable span per artist — a collective link only reached the first.
+// One clickable span per artist - a collective link only reached the first.
 let artistsSig = null;
 
 function renderArtists(state) {
@@ -205,7 +205,7 @@ el("volume").addEventListener("input", () => {
   updateFill(el("volume"));
   el("mute").classList.toggle("high", Number(el("volume").value) >= 50);
   if (!volumeDragging) {
-    // Keyboard adjustment — settle window keeps echoes at bay.
+    // Keyboard adjustment - settle window keeps echoes at bay.
     clearTimeout(volumeSettleTimer);
     volumeSettleTimer = setTimeout(() => {
       volumeSettleTimer = null;
@@ -281,7 +281,7 @@ document.addEventListener("click", (e) => {
   if (!el("more-menu").hidden && !el("more-menu").contains(e.target)) toggleMenu(false);
 });
 
-// Radio via YTM's own menu item — SPA navigation, playback keeps running.
+// Radio via YTM's own menu item - SPA navigation, playback keeps running.
 el("radio").addEventListener("click", () => send("startRadio"));
 
 el("library").addEventListener("click", () => send("toggleLibrary"));
@@ -297,7 +297,7 @@ el("copy-link").addEventListener("click", () => {
 });
 
 el("copy-info").addEventListener("click", () => {
-  if (lastState?.title) copyToClipboard(el("copy-info"), `${lastState.artist} – ${lastState.title}`);
+  if (lastState?.title) copyToClipboard(el("copy-info"), `${lastState.artist} - ${lastState.title}`);
 });
 
 // ---- sleep timer ----
@@ -391,7 +391,7 @@ function renderQueue(queue) {
   if (!queue.length) {
     const note = document.createElement("div");
     note.id = "queue-note";
-    note.textContent = "Nothing in the queue — try Start radio from the ⋯ menu.";
+    note.textContent = "Nothing in the queue. Try Start radio from the ⋯ menu.";
     list.append(note);
     lastSelectedIndex = null;
     return;
@@ -428,7 +428,7 @@ function renderQueue(queue) {
     duration.textContent = item.duration;
     row.append(thumb, meta, duration);
 
-    // Hover actions — not on the playing row, where they make no sense.
+    // Hover actions - not on the playing row, where they make no sense.
     if (!item.selected) {
       row.classList.add("has-actions");
       const actions = document.createElement("div");
@@ -685,7 +685,7 @@ function beginShortcutCapture(name, chip) {
       try {
         await ext.commands.update({ name, shortcut: combo });
       } catch {
-        showToast(`${combo} isn’t allowed as a shortcut — try Ctrl/Alt (+Shift) + a key.`);
+        showToast(`${combo} isn’t allowed as a shortcut. Try Ctrl/Alt (+Shift) + a key.`);
       }
     } else {
       showToast("Shortcuts need Ctrl, Alt or Command plus a regular key.");
@@ -709,7 +709,7 @@ async function renderShortcuts() {
   } catch {
     // commands API unavailable
   }
-  // Rebuilding collapses the pane briefly — hold the scroll position.
+  // Rebuilding collapses the pane briefly - hold the scroll position.
   const pane = el("settings-pane");
   const scroll = pane.scrollTop;
   wrap.textContent = "";
@@ -779,7 +779,7 @@ el("autoplay-toggle").addEventListener("click", () => {
 });
 
 // Live drag preview: the dragged row follows the pointer through the list.
-// Autoplay rows are excluded — the real queue ends at the Autoplay header.
+// Autoplay rows are excluded - the real queue ends at the Autoplay header.
 function dragRowAfter(container, y) {
   const rows = [...container.querySelectorAll(".qrow:not(.dragging):not(.automix)")];
   let closest = { offset: -Infinity, element: null };
@@ -840,12 +840,12 @@ function renderHistory(history) {
     return;
   }
   if (!history.sections.length) {
-    historyNote("No history yet — songs you play will show up here.");
+    historyNote("No history yet. Songs you play will show up here.");
     return;
   }
   const list = el("history-list");
   list.textContent = "";
-  // Period headers arrive with the data but stay unrendered — flat reads better.
+  // Period headers arrive with the data but stay unrendered - flat reads better.
   for (const section of history.sections) {
     for (const item of section.items) list.append(buildTrackRow(item));
   }
@@ -886,7 +886,7 @@ function buildTrackRow(item) {
     button.addEventListener("click", (e) => {
       e.stopPropagation();
       send("queueVideoNext", { videoId: item.videoId });
-      // Optimistic — the content script pushes an error toast if it fails.
+      // Optimistic - the content script pushes an error toast if it fails.
       showToast("Song will play next", "success");
     });
     actions.append(button);
@@ -949,7 +949,7 @@ function renderSearchResults(msg) {
   searchResultsData = msg.results ?? null;
   if (!msg.results) {
     el("search-filters").hidden = true;
-    searchNote("Search failed — try again.");
+    searchNote("Search failed. Try again.");
     return;
   }
   if (!msg.results.songs.length && !msg.results.videos.length) {
@@ -1010,7 +1010,7 @@ function renderPlaylists(playlists) {
   playlistsLoaded = Boolean(playlists);
   const list = el("playlists-list");
   if (!playlists) {
-    noteInto(list, "Couldn’t load playlists — are you signed in?");
+    noteInto(list, "Couldn’t load playlists. Are you signed in?");
     return;
   }
   if (!playlists.length) {
@@ -1239,7 +1239,7 @@ function showLyricsEntry(entry) {
 
 function updateLyricsHighlight(position, force = false) {
   if (!lyricsLines || el("lyrics-pane").hidden) return;
-  // Closest stamp wins — source offsets err by half a gap instead of a full one.
+  // Closest stamp wins - source offsets err by half a gap instead of a full one.
   let current = -1;
   let best = Infinity;
   for (let i = 0; i < lyricsLines.length; i++) {
@@ -1379,7 +1379,7 @@ async function connect() {
       }
       render(msg.state);
     } else if (msg.type === "queue") {
-      // Autoplay state first — renderQueue keys the suggestions section on it.
+      // Autoplay state first - renderQueue keys the suggestions section on it.
       updateAutoplayToggle(msg.autoplay);
       renderQueue(msg.queue);
       if (queueSwitchLoaded && msg.queue.some((item) => item.selected)) doQueueSwitch();

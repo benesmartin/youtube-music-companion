@@ -62,7 +62,7 @@ button svg {
 
 /* ---- header: art left, panel right ---- */
 
-/* fixed card height — no track type may change the popup's size */
+/* fixed card height - no track type may change the popup's size */
 #header {
   display: flex;
   height: 176px;
@@ -580,7 +580,7 @@ input[type="range"]::-moz-range-thumb {
 
 /* ---- tabs + queue ---- */
 
-/* chip tabs — deliberately not the underlined paper-tab look. The row sits
+/* chip tabs - deliberately not the underlined paper-tab look. The row sits
    on its own tinted band so it reads as a divider between player and lists. */
 #tabs {
   display: flex;

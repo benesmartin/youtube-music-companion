@@ -1,13 +1,13 @@
 // Runs in the PAGE context (injected by content.js), where YTM's internal
 // player API is reachable. Talks to the content script via window.postMessage.
-// Keep this layer as thin as possible — it's the first thing to break when
+// Keep this layer as thin as possible - it's the first thing to break when
 // YTM changes internals.
 
 (() => {
   const FROM_BRIDGE = "ytmc-bridge";
   const FROM_CONTENT = "ytmc-content";
 
-  // Reloads inject fresh copies while old ones keep listening — only the
+  // Reloads inject fresh copies while old ones keep listening - only the
   // newest generation may act.
   const generation = (window.__ytmcBridgeGeneration =
     (window.__ytmcBridgeGeneration ?? 0) + 1);
@@ -50,7 +50,7 @@
 
   // ---- library toggle (needs Polymer element data, page-context only) ----
 
-  // Menu automations must not overlap — a second open kills both.
+  // Menu automations must not overlap - a second open kills both.
   let menuBusy = Promise.resolve();
   function withHiddenMenu(worker) {
     const run = menuBusy.then(() => runWithHiddenMenu(worker));
@@ -121,7 +121,6 @@
     } else {
       inLibrary = libraryStateFromText(shownText);
     }
-    console.debug("[YTM Companion] library item:", JSON.stringify(shownText), "→ inLibrary:", inLibrary);
     return { item, inLibrary };
   }
 
@@ -138,7 +137,6 @@
       const found = findLibrary();
       if (!found) return { available: false, inLibrary: null };
       found.item.click();
-      console.debug("[YTM Companion] library toggled, was:", found.inLibrary);
       return {
         available: true,
         inLibrary: found.inLibrary === null ? null : !found.inLibrary,
@@ -166,7 +164,7 @@
     media.muted = false;
     await wait(350);
     if (media.paused || media.muted) {
-      // Unmute got re-blocked — don't leave it playing silently.
+      // Unmute got re-blocked - don't leave it playing silently.
       p.pauseVideo?.();
       media.muted = false;
       return false;
@@ -195,7 +193,7 @@
         if (player()?.getVideoData?.()?.video_id === videoId) return true;
       }
     }
-    // Fallback: raw player API — at least the audio switches.
+    // Fallback: raw player API - at least the audio switches.
     const p = player();
     if (!p?.loadVideoById) return false;
     p.loadVideoById(videoId);
@@ -234,14 +232,13 @@
         },
       });
     } catch (err) {
-      console.debug("[YTM Companion] queue insert failed:", err);
       return false;
     }
     // The dispatch is fire-and-forget; report success only if the queue grew.
     return (store.getState()?.queue?.items?.length ?? 0) > existing.length;
   }
 
-  // MOVE_ITEM only reaches queue.items — automix indices are rejected.
+  // MOVE_ITEM only reaches queue.items - automix indices are rejected.
   async function queueMove(fromIndex, toIndex) {
     const store = document.querySelector("ytmusic-player-queue")?.queue?.store?.store;
     if (!store?.dispatch || !store?.getState) return false;
@@ -262,7 +259,6 @@
     try {
       store.dispatch({ type: "MOVE_ITEM", payload: { fromIndex, toIndex } });
     } catch (err) {
-      console.debug("[YTM Companion] queue move failed:", err);
       return false;
     }
     // The dispatch is fire-and-forget; success = the order actually changed.
@@ -293,19 +289,16 @@
       // Store unreadable → player playlist; every videoId has a static thumb.
       const ids = player()?.getPlaylist?.() ?? null;
       if (Array.isArray(ids) && ids.length) {
-        console.debug("[YTM Companion] queue store empty, using player playlist:", ids.length);
         return ids.map((id) => ({
           videoId: id ?? null,
           title: "",
           thumb: id ? `https://i.ytimg.com/vi/${id}/mqdefault.jpg` : "",
         }));
       }
-      console.debug("[YTM Companion] queue data store unreadable");
       return null;
     }
-    console.debug("[YTM Companion] queue store items:", items.length);
     // Prefer artist-linked runs; endpoint-less bylines alternate names with
-    // localized "and" runs — drop separators, comma-join.
+    // localized "and" runs - drop separators, comma-join.
     const ARTIST_PAGE = /ARTIST|USER_CHANNEL/;
     const SEPARATOR_RUN = /^[\s ]*(•|,|&|\+|a|and|y|e|i|et|en|ve|und|och|og|ja|и)[\s ]*$/i;
     const linkedArtists = (byline) =>
@@ -367,7 +360,7 @@
 
   async function sapisidHash() {
     const match = document.cookie.match(/(?:^|;\s*)(?:SAPISID|__Secure-3PAPISID)=([^;]+)/);
-    if (!match) return null; // signed out — there is no account history
+    if (!match) return null; // signed out - there is no account history
     const ts = Math.floor(Date.now() / 1000);
     const input = new TextEncoder().encode(`${ts} ${match[1]} ${location.origin}`);
     const digest = await crypto.subtle.digest("SHA-1", input);
@@ -469,7 +462,6 @@
       }
       return { signedOut: false, sections };
     } catch (err) {
-      console.debug("[YTM Companion] history fetch failed:", err);
       return null;
     }
   }
@@ -507,7 +499,6 @@
       if (!songs && !videos) return null;
       return { songs: songs ?? [], videos: videos ?? [] };
     } catch (err) {
-      console.debug("[YTM Companion] search failed:", err);
       return null;
     }
   }
@@ -552,7 +543,7 @@
         [];
       const grid = sections.find((s) => s.gridRenderer)?.gridRenderer;
       const playlists = [];
-      // ~25 tiles per page — follow continuations (new or legacy format).
+      // ~25 tiles per page - follow continuations (new or legacy format).
       let token =
         collectPlaylistItems(grid?.items, playlists) ??
         grid?.continuations?.[0]?.nextContinuationData?.continuation ??
@@ -574,7 +565,6 @@
       }
       return playlists;
     } catch (err) {
-      console.debug("[YTM Companion] playlists fetch failed:", err);
       return null;
     }
   }
@@ -594,7 +584,6 @@
       if (!shelf) return null;
       return (shelf.contents ?? []).map(parseListItem).filter((t) => t?.title);
     } catch (err) {
-      console.debug("[YTM Companion] playlist tracks fetch failed:", err);
       return null;
     }
   }
@@ -627,7 +616,6 @@
       });
       return data?.status === "STATUS_SUCCEEDED";
     } catch (err) {
-      console.debug("[YTM Companion] add to playlist failed:", err);
       return false;
     }
   }

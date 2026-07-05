@@ -84,7 +84,7 @@ function dislikeButton() {
   );
 }
 
-// Class selectors first — aria-labels are localized (Czech UI says "Další",
+// Class selectors first - aria-labels are localized (Czech UI says "Další",
 // not "Next"), so label matching is only a last-resort fallback.
 function barButton(className, labelPattern) {
   const bar = playerBar();
@@ -107,7 +107,7 @@ function sliderVolume() {
   return Number.isFinite(value) ? value : null;
 }
 
-// From the progress bar, not <video> — the first video element can go stale
+// From the progress bar, not <video> - the first video element can go stale
 // across track changes.
 function progressInfo() {
   const slider = playerBar()?.querySelector("#progress-bar");
@@ -135,14 +135,14 @@ function readState() {
   const media = video();
   const title = bar?.querySelector(".title")?.textContent?.trim() ?? "";
 
-  // Byline: "Artist • Album • Year" — album trusted only when its link exists
+  // Byline: "Artist • Album • Year" - album trusted only when its link exists
   // (music videos have none).
   const bylineEl = bar?.querySelector(".byline");
   const links = bylineEl ? [...bylineEl.querySelectorAll("a")] : [];
   const bylineParts = (bylineEl?.getAttribute("title") ?? bylineEl?.textContent ?? "")
     .split("•")
     .map((part) => part.trim());
-  // One <a> per artist — structured for per-artist links in the popup.
+  // One <a> per artist - structured for per-artist links in the popup.
   const artists = links
     .filter((a) => a.getAttribute("href")?.startsWith("channel/"))
     .map((a) => ({ name: a.textContent?.trim() ?? "", url: a.getAttribute("href") ?? "" }))
@@ -217,7 +217,7 @@ function bylineLink(hrefPrefix) {
 }
 
 // Opens the player-bar menu invisibly; workers key on language-independent
-// traits (hrefs, icon paths) — labels are localized.
+// traits (hrefs, icon paths) - labels are localized.
 async function withHiddenMenu(worker) {
   const menuButton = playerBar()?.querySelector("ytmusic-menu-renderer #button-shape button");
   if (!menuButton) return false;
@@ -250,7 +250,7 @@ function startRadio() {
   return withHiddenMenu(() => {
     const link = document.querySelector('ytmusic-menu-navigation-item-renderer a[href*="list=RD"]');
     if (!link) return null;
-    // Stale menus carry the previous track's radio link — verify the id.
+    // Stale menus carry the previous track's radio link - verify the id.
     const id = pageStatus?.videoId;
     if (id && !link.getAttribute("href")?.includes(id)) return null;
     link.click();
@@ -258,7 +258,7 @@ function startRadio() {
   });
 }
 
-// Library state needs page-context Polymer data — the bridge does the work.
+// Library state needs page-context Polymer data - the bridge does the work.
 function applyLibraryResult(result) {
   if (!result) return;
   libraryAvailable = result.available;
@@ -266,7 +266,7 @@ function applyLibraryResult(result) {
 }
 
 async function probeLibrary() {
-  // Already known for this track — don't churn the menu again.
+  // Already known for this track - don't churn the menu again.
   if (libraryAvailable === false || libraryState !== null) {
     broadcast();
     return true;
@@ -300,12 +300,12 @@ function queueItemElements() {
 }
 
 function readQueue() {
-  // Autoplay off leaves automix rows hidden in the DOM — drop them (filter
+  // Autoplay off leaves automix rows hidden in the DOM - drop them (filter
   // after mapping so item.index keeps matching DOM positions).
   const autoplayOff = autoplayState() === false;
   return queueItemElements()
     .map((item, index) => {
-      // Lazy thumbs start as a 1×1 data: GIF — report as missing.
+      // Lazy thumbs start as a 1×1 data: GIF - report as missing.
       const src = item.querySelector("img")?.src ?? "";
       return {
         index,
@@ -320,7 +320,7 @@ function readQueue() {
     .filter((entry) => entry.title && !(autoplayOff && entry.automix));
 }
 
-// Fill thumbs/artists from the queue store — DOM images lazy-load late.
+// Fill thumbs/artists from the queue store - DOM images lazy-load late.
 async function queueWithThumbs() {
   const queue = readQueue();
   if (queue.length) {
@@ -350,7 +350,7 @@ async function queueWithThumbs() {
 function autoplayState() {
   const toggle = document.querySelector("tp-yt-paper-toggle-button#automix");
   if (!toggle) return null;
-  // Live property first — attribute reflection lags a re-render.
+  // Live property first - attribute reflection lags a re-render.
   if (typeof toggle.checked === "boolean") return toggle.checked;
   return toggle.hasAttribute("checked") || toggle.getAttribute("aria-pressed") === "true";
 }
@@ -379,7 +379,7 @@ let observedQueue = null;
 function watchQueue() {
   const container = document.querySelector("ytmusic-player-queue");
   if (!container || container === observedQueue) return;
-  // The container is replaced on queue rebuilds — re-observe the new one.
+  // The container is replaced on queue rebuilds - re-observe the new one.
   observedQueue = container;
   queueObserver.disconnect();
   queueObserver.observe(container, {
@@ -424,7 +424,7 @@ async function queueItemMenuAction(index, iconSelector) {
     }
     for (let attempt = 0; attempt < 20; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
-      // Scope to the OPEN dropdown — stale menus linger and would match.
+      // Scope to the OPEN dropdown - stale menus linger and would match.
       const path = document.querySelector(
         `ytmusic-popup-container tp-yt-iron-dropdown:not([aria-hidden="true"]) ${iconSelector}`
       );
@@ -463,7 +463,7 @@ const commands = {
     const result = await askBridgeAsync("forcePlay", {}, 3000);
     if (result === true) return true;
     if (result === null) {
-      // Bridge unavailable — fall back to the plain button click.
+      // Bridge unavailable - fall back to the plain button click.
       const pageButton = barButton("play-pause-button", "^(play|pause)$");
       if (pageButton) return clickIfFound(pageButton);
       return false;
@@ -504,7 +504,7 @@ const commands = {
       fromIndex: payload.fromIndex,
       toIndex: payload.toIndex,
     }).then((ok) => {
-      if (!ok) notifyPorts("That row can’t be reordered — autoplay suggestions stay put.");
+      if (!ok) notifyPorts("That row can’t be reordered. Autoplay suggestions stay put.");
       // Re-push either way: confirms the new order or snaps the preview back.
       setTimeout(pushQueue, 400);
       return ok;
@@ -519,12 +519,12 @@ const commands = {
   },
   queuePlayNext: (payload) =>
     queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.playNext).then((ok) => {
-      if (!ok) notifyPorts("Couldn’t move that song — try again.");
+      if (!ok) notifyPorts("Couldn’t move that song. Try again.");
       return ok;
     }),
   queueRemove: (payload) =>
     queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.removeFromQueue).then((ok) => {
-      if (!ok) notifyPorts("Couldn’t remove that song — try again.");
+      if (!ok) notifyPorts("Couldn’t remove that song. Try again.");
       return ok;
     }),
   playQueueItem(payload) {
@@ -595,7 +595,7 @@ function runCommand(name, payload = {}) {
 
 const ports = new Set();
 
-// Error toasts in any open popup — corrects the popup's optimistic toasts.
+// Error toasts in any open popup - corrects the popup's optimistic toasts.
 function notifyPorts(text) {
   for (const port of ports) {
     port.postMessage({ type: "notice", text });
@@ -640,7 +640,7 @@ async function prefetchLyrics() {
       },
     });
   } catch {
-    // background unavailable — the popup fetches on demand instead
+    // background unavailable - the popup fetches on demand instead
   }
 }
 
