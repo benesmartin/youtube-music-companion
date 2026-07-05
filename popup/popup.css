@@ -1178,17 +1178,22 @@ input[type="range"]::-moz-range-thumb {
 
 /* ---- toast ---- */
 
+/* one unified toast: a centered pill in plain surface colors (YTM-style);
+   confirmations and errors differ only in how long they stay */
 #toast {
   position: fixed;
-  left: 10px;
-  right: 10px;
-  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 10px;
+  width: fit-content;
+  max-width: calc(100% - 20px);
   background: var(--surface-2);
   color: var(--text);
-  border-radius: 8px;
-  padding: 8px 12px;
+  border-radius: 999px;
+  padding: 7px 16px;
   font-size: 12px;
   line-height: 1.4;
+  text-align: center;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
   z-index: 50;
 }

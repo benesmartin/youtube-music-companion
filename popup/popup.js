@@ -154,14 +154,16 @@ function renderArtists(state) {
     wrap.scrollWidth > wrap.clientWidth ? list.map((entry) => entry.name).join(", ") : "";
 }
 
+// One look for every toast; "success" confirmations just leave sooner than
+// notices/errors, which need reading time.
 let toastTimer = null;
-function showToast(text) {
+function showToast(text, kind = "notice") {
   el("toast").textContent = text;
   el("toast").hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     el("toast").hidden = true;
-  }, 6000);
+  }, kind === "success" ? 2000 : 6000);
 }
 
 function showEmpty() {
@@ -458,6 +460,9 @@ function renderQueue(queue) {
         button.addEventListener("click", (e) => {
           e.stopPropagation();
           send(command, { index: item.index });
+          // Play-next is invisible from here; removal shows itself (the row
+          // disappears), so only the former gets a toast — same as YTM.
+          if (command === "queuePlayNext") showToast("Song will play next", "success");
         });
         actions.append(button);
       }
@@ -869,6 +874,8 @@ function buildTrackRow(item) {
     button.addEventListener("click", (e) => {
       e.stopPropagation();
       send("queueVideoNext", { videoId: item.videoId });
+      // Optimistic — the content script pushes an error toast if it fails.
+      showToast("Song will play next", "success");
     });
     actions.append(button);
     row.append(actions);
@@ -1370,7 +1377,10 @@ async function connect() {
     else if (msg.type === "playlists") renderPlaylists(msg.playlists);
     else if (msg.type === "playlistTracks") renderPlaylistTracks(msg);
     else if (msg.type === "addToPlaylistResult") {
-      showToast(msg.ok ? `Added to ${msg.name}.` : "Couldn’t add to that playlist.");
+      showToast(
+        msg.ok ? `Added to ${msg.name}` : "Couldn’t add to that playlist.",
+        msg.ok ? "success" : "notice"
+      );
       if (msg.ok) {
         // Refresh so track counts (and the open detail view) match reality.
         requestPlaylists(true);

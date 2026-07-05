@@ -481,12 +481,9 @@ const commands = {
       if (pageButton) return clickIfFound(pageButton);
       return false;
     }
-    for (const port of ports) {
-      port.postMessage({
-        type: "notice",
-        text: "Playback was blocked by the browser. Allow autoplay for music.youtube.com, or press play in the tab once.",
-      });
-    }
+    notifyPorts(
+      "Playback was blocked by the browser. Allow autoplay for music.youtube.com, or press play in the tab once."
+    );
     return false;
   },
   next: () => clickIfFound(barButton("next-button", "^next")),
@@ -520,14 +517,7 @@ const commands = {
       fromIndex: payload.fromIndex,
       toIndex: payload.toIndex,
     }).then((ok) => {
-      if (!ok) {
-        for (const p of ports) {
-          p.postMessage({
-            type: "notice",
-            text: "That row can’t be reordered — autoplay suggestions stay put.",
-          });
-        }
-      }
+      if (!ok) notifyPorts("That row can’t be reordered — autoplay suggestions stay put.");
       // Re-push either way: confirms the new order or snaps the preview back.
       setTimeout(pushQueue, 400);
       return ok;
@@ -535,12 +525,21 @@ const commands = {
   },
   queueVideoNext(payload) {
     return askBridgeAsync("queueVideoNext", { videoId: payload.videoId }).then((ok) => {
+      if (!ok) notifyPorts("Couldn’t add that song to the queue.");
       setTimeout(pushQueue, 700);
       return ok;
     });
   },
-  queuePlayNext: (payload) => queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.playNext),
-  queueRemove: (payload) => queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.removeFromQueue),
+  queuePlayNext: (payload) =>
+    queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.playNext).then((ok) => {
+      if (!ok) notifyPorts("Couldn’t move that song — try again.");
+      return ok;
+    }),
+  queueRemove: (payload) =>
+    queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.removeFromQueue).then((ok) => {
+      if (!ok) notifyPorts("Couldn’t remove that song — try again.");
+      return ok;
+    }),
   playQueueItem(payload) {
     const items = queueItemElements();
     const item = items[payload.index];
@@ -609,6 +608,13 @@ function runCommand(name, payload = {}) {
 // --- State streaming to popups over long-lived ports ---
 
 const ports = new Set();
+
+// Error toasts in any open popup — corrects the popup's optimistic toasts.
+function notifyPorts(text) {
+  for (const port of ports) {
+    port.postMessage({ type: "notice", text });
+  }
+}
 
 // Keep the toolbar icon's state dot current even when no popup is open.
 let lastIndicator = null;
