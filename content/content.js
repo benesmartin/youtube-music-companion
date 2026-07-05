@@ -399,14 +399,29 @@ const QUEUE_MENU_ICONS = {
 
 async function queueItemMenuAction(index, iconSelector) {
   const item = queueItemElements()[index];
-  const menuButton = item?.querySelector("ytmusic-menu-renderer #button-shape button");
-  if (!menuButton) return false;
+  if (!item) return false;
+  const menuButton = item.querySelector("ytmusic-menu-renderer #button-shape button");
   const veil = document.createElement("style");
   veil.textContent =
     "ytmusic-popup-container { opacity: 0 !important; pointer-events: none !important; }";
   document.head.append(veil);
   try {
-    menuButton.click();
+    if (menuButton) {
+      menuButton.click();
+    } else {
+      // Automix rows have no ⋯ button; the right-click menu carries the
+      // same service items with the same icons.
+      const rect = item.getBoundingClientRect();
+      item.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          composed: true,
+          cancelable: true,
+          clientX: rect.left + rect.width / 2,
+          clientY: rect.top + rect.height / 2,
+        })
+      );
+    }
     for (let attempt = 0; attempt < 20; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       // Scope to the OPEN dropdown — stale menus linger and would match.
