@@ -1,36 +1,55 @@
 {
   "manifest_version": 3,
   "name": "Companion for YouTube Music",
-  "version": "1.0.1",
-  "description": "Control YouTube Music from a compact popup: track info, playback controls, seek, volume, and keyboard shortcuts.",
+  "version": "1.0.2",
+  "description": "Mini player for YouTube Music: playback controls, queue, history, search, playlists and synced lyrics in a toolbar popup.",
   "browser_specific_settings": {
     "gecko": {
       "id": "youtube-music-companion@benesmartin",
       "strict_min_version": "140.0",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": [
+          "none"
+        ]
       }
     },
     "gecko_android": {
       "strict_min_version": "142.0"
     }
   },
-  "permissions": ["storage", "clipboardWrite", "alarms"],
-  "host_permissions": ["https://music.youtube.com/*", "https://lrclib.net/*"],
+  "permissions": [
+    "storage",
+    "clipboardWrite",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://music.youtube.com/*",
+    "https://lrclib.net/*"
+  ],
   "background": {
-    "scripts": ["background.js"],
+    "scripts": [
+      "background.js"
+    ],
     "service_worker": "background.js"
   },
   "web_accessible_resources": [
     {
-      "resources": ["content/bridge.js"],
-      "matches": ["https://music.youtube.com/*"]
+      "resources": [
+        "content/bridge.js"
+      ],
+      "matches": [
+        "https://music.youtube.com/*"
+      ]
     }
   ],
   "content_scripts": [
     {
-      "matches": ["https://music.youtube.com/*"],
-      "js": ["content/content.js"],
+      "matches": [
+        "https://music.youtube.com/*"
+      ],
+      "js": [
+        "content/content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
@@ -53,19 +72,27 @@
   },
   "commands": {
     "play-pause": {
-      "suggested_key": { "default": "Alt+Shift+Space" },
+      "suggested_key": {
+        "default": "Alt+Shift+Space"
+      },
       "description": "Play or pause the current track"
     },
     "next-track": {
-      "suggested_key": { "default": "Alt+Shift+Period" },
+      "suggested_key": {
+        "default": "Alt+Shift+Period"
+      },
       "description": "Next track"
     },
     "previous-track": {
-      "suggested_key": { "default": "Alt+Shift+Comma" },
+      "suggested_key": {
+        "default": "Alt+Shift+Comma"
+      },
       "description": "Previous track"
     },
     "toggle-like": {
-      "suggested_key": { "default": "Alt+Shift+L" },
+      "suggested_key": {
+        "default": "Alt+Shift+L"
+      },
       "description": "Like or unlike the current track"
     },
     "toggle-dislike": {
