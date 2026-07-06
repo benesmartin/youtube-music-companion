@@ -743,7 +743,10 @@ async function renderShortcuts() {
     row.className = "shortcut-row";
     const label = document.createElement("div");
     label.className = "shortcut-name";
-    label.textContent = command.description || command.name;
+    // Browsers add reserved commands (no description) on their own,
+    // e.g. Chrome's _execute_action.
+    label.textContent =
+      command.name === "_execute_action" ? "Open the popup" : command.description || command.name;
     const chip = document.createElement("button");
     chip.className = "shortcut-chip";
     chip.textContent = command.shortcut || "Not set";
