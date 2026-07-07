@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://chromewebstore.google.com/detail/companion-for-youtube-mus/iifmpealppkjdljfhbjcdgdgglflnfkl"><img alt="Chrome Web Store" src="https://img.shields.io/chrome-web-store/v/iifmpealppkjdljfhbjcdgdgglflnfkl?label=Chrome%20Web%20Store"></a>
   <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-blue"></a>
   <img alt="Firefox and Chrome, Manifest V3" src="https://img.shields.io/badge/WebExtension-MV3-orange">
   <a href="https://ko-fi.com/benesmartin"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Ko--fi-support-ff5e5b"></a>
@@ -58,8 +59,8 @@
 
 ## Install
 
+- **Chrome**: [Chrome Web Store](https://chromewebstore.google.com/detail/companion-for-youtube-mus/iifmpealppkjdljfhbjcdgdgglflnfkl)
 - **Firefox**: from [addons.mozilla.org](https://addons.mozilla.org/) *(listing in review - link coming)*
-- **Chrome**: planned after the Firefox release settles
 - **From source**: clone the repo and load it unpacked, no build step
   (Firefox: `about:debugging` → Load Temporary Add-on; Chrome: `chrome://extensions` → Load unpacked)
 
