@@ -1393,7 +1393,17 @@ for (const tab of document.querySelectorAll(".tab")) {
 
 async function connect() {
   const tabs = await ext.tabs.query({ url: "https://music.youtube.com/*" });
-  const tab = tabs.find((t) => t.audible) ?? tabs[0];
+  // Audible tabs first, discarded ones last (they have no content script),
+  // most recently used within each group.
+  const rank = (t) => (t.audible ? 0 : t.discarded ? 2 : 1);
+  const candidates = tabs
+    .slice()
+    .sort((a, b) => rank(a) - rank(b) || (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0));
+  tryTab(candidates, 0);
+}
+
+function tryTab(candidates, index) {
+  const tab = candidates[index];
   if (!tab) {
     showEmpty();
     return;
@@ -1402,10 +1412,13 @@ async function connect() {
   try {
     port = ext.tabs.connect(tab.id, { name: "popup" });
   } catch {
-    showEmpty();
+    port = null;
+    tryTab(candidates, index + 1);
     return;
   }
+  let alive = false;
   port.onMessage.addListener((msg) => {
+    alive = true;
     if (msg.type === "state") {
       if (queueSwitchVideoId && msg.state.available && msg.state.videoId === queueSwitchVideoId) {
         queueSwitchLoaded = true;
@@ -1438,7 +1451,10 @@ async function connect() {
   port.postMessage({ type: "getQueue" });
   port.onDisconnect.addListener(() => {
     port = null;
-    showEmpty();
+    // A dead tab (no content script) drops the port before ever speaking -
+    // fall through to the next candidate. A live one closing means retry all.
+    if (alive) connect();
+    else tryTab(candidates, index + 1);
   });
 }
 
