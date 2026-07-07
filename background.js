@@ -127,7 +127,7 @@ ext.storage.onChanged.addListener((changes, area) => {
 
 const LYRICS_CACHE_LIMIT = 40;
 // Bump when matching logic changes to drop stale cached entries.
-const LYRICS_CACHE_VERSION = 2;
+const LYRICS_CACHE_VERSION = 3;
 
 async function readLyricsCache() {
   const stored = await ext.storage.local.get(["lyricsCache", "lyricsCacheVersion"]);
@@ -145,26 +145,9 @@ function normalizeName(name) {
     .trim();
 }
 
-async function lrclibLookup(track) {
-  // Exact lookup first - duration (±2s server-side) is what makes it precise.
-  const params = new URLSearchParams({
-    track_name: track.title,
-    artist_name: track.artist,
-    duration: String(Math.round(track.duration)),
-  });
-  if (track.album) params.set("album_name", track.album);
-  let res = await fetch(`https://lrclib.net/api/get?${params}`);
-  if (res.ok) return res.json();
-  // Miss - search and take the closest duration within reason.
-  const searchParams = new URLSearchParams({
-    track_name: track.title,
-    artist_name: track.artist,
-  });
-  res = await fetch(`https://lrclib.net/api/search?${searchParams}`);
-  if (!res.ok) return null;
-  const hits = await res.json();
+// Fuzzy search returns wrong songs - demand a title match + artist overlap.
+function pickLyricsHit(hits, track) {
   if (!Array.isArray(hits) || !hits.length) return null;
-  // Fuzzy search returns wrong songs - demand a title match + artist overlap.
   const title = normalizeName(track.title);
   const artist = normalizeName(track.artist);
   const candidates = hits.filter((hit) => {
@@ -178,6 +161,35 @@ async function lrclibLookup(track) {
       Math.abs((a.duration ?? 0) - track.duration) - Math.abs((b.duration ?? 0) - track.duration)
   );
   return Math.abs((candidates[0].duration ?? 0) - track.duration) <= 10 ? candidates[0] : null;
+}
+
+async function lrclibSearch(query) {
+  const res = await fetch(`https://lrclib.net/api/search?${new URLSearchParams(query)}`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
+async function lrclibLookup(track) {
+  // Exact lookup first - duration (±2s server-side) is what makes it precise.
+  const params = new URLSearchParams({
+    track_name: track.title,
+    artist_name: track.artist,
+    duration: String(Math.round(track.duration)),
+  });
+  if (track.album) params.set("album_name", track.album);
+  const res = await fetch(`https://lrclib.net/api/get?${params}`);
+  if (res.ok) return res.json();
+  // Miss - search and take the closest duration within reason.
+  let hit = pickLyricsHit(
+    await lrclibSearch({ track_name: track.title, artist_name: track.artist }),
+    track
+  );
+  if (!hit) {
+    // Multi-artist bylines match no LRCLIB credit as a filter - retry on
+    // title alone; pickLyricsHit still demands the artist overlap.
+    hit = pickLyricsHit(await lrclibSearch({ track_name: track.title }), track);
+  }
+  return hit;
 }
 
 // One lookup per track at a time - the popup joins the in-flight prefetch.
