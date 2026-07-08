@@ -10,14 +10,10 @@
 </p>
 
 <p align="center">
+  <a href="https://addons.mozilla.org/firefox/addon/companion-for-youtube-music/"><img alt="Firefox Add-ons" src="https://img.shields.io/amo/v/companion-for-youtube-music?label=Firefox%20Add-ons"></a>
   <a href="https://chromewebstore.google.com/detail/companion-for-youtube-mus/iifmpealppkjdljfhbjcdgdgglflnfkl"><img alt="Chrome Web Store" src="https://img.shields.io/chrome-web-store/v/iifmpealppkjdljfhbjcdgdgglflnfkl?label=Chrome%20Web%20Store"></a>
   <a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-blue"></a>
-  <img alt="Firefox and Chrome, Manifest V3" src="https://img.shields.io/badge/WebExtension-MV3-orange">
   <a href="https://ko-fi.com/benesmartin"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Ko--fi-support-ff5e5b"></a>
-  <!-- after AMO approval, replace the line above with:
-  <a href="https://addons.mozilla.org/firefox/addon/AMO_SLUG/"><img alt="Firefox Add-ons" src="https://img.shields.io/amo/v/AMO_SLUG?label=Firefox%20Add-ons"></a>
-  <a href="https://addons.mozilla.org/firefox/addon/AMO_SLUG/"><img alt="Users" src="https://img.shields.io/amo/users/AMO_SLUG"></a>
-  -->
 </p>
 
 <p align="center">
@@ -59,8 +55,8 @@
 
 ## Install
 
+- **Firefox**: [Firefox Add-ons](https://addons.mozilla.org/firefox/addon/companion-for-youtube-music/)
 - **Chrome**: [Chrome Web Store](https://chromewebstore.google.com/detail/companion-for-youtube-mus/iifmpealppkjdljfhbjcdgdgglflnfkl)
-- **Firefox**: from [addons.mozilla.org](https://addons.mozilla.org/) *(listing in review - link coming)*
 - **From source**: clone the repo and load it unpacked, no build step
   (Firefox: `about:debugging` → Load Temporary Add-on; Chrome: `chrome://extensions` → Load unpacked)
 
