@@ -1173,7 +1173,6 @@ body.light #artwork-idle {
 #playlist-capture {
   position: sticky;
   top: -4px; /* flush when stuck, like #playlist-bar */
-  margin-top: -4px;
   z-index: 1;
   width: 100%;
   justify-content: flex-start;
