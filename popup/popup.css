@@ -526,7 +526,12 @@ input[type="range"]::-moz-range-thumb {
   color: var(--accent);
 }
 
-#sleep-off svg {
+/* doubled id outranks #bottom-row button svg - the menu sits in that row */
+#more-menu #sleep-off svg {
+  /* lucide's square fills 18/24 of the viewBox; 12px lands the glyph at
+     the same 9px the old hand-shrunk icon had */
+  width: 12px;
+  height: 12px;
   fill: currentColor;
   stroke: none;
 }
@@ -1337,13 +1342,14 @@ input[type="range"]::-moz-range-thumb {
   position: relative;
 }
 
+/* hover play overlay - the glyph is Lucide's play triangle */
 .qrow:not(.now):hover .qthumb::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.5)
-    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><polygon points="8 5 19 12 8 19 8 5"/></svg>')
+    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"/></svg>')
     center/14px no-repeat;
 }
 
