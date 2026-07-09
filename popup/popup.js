@@ -54,9 +54,24 @@ function renderIdle() {
   el("artist").textContent = "Search or pick a playlist to get going";
   el("album").textContent = "";
   el("album-year").textContent = "";
+  el("album").classList.remove("link");
   el("seek").value = 0;
+  updateFill(el("seek"));
   el("position").textContent = "0:00";
   el("duration").textContent = "0:00";
+  // Nothing from the previous track may survive: transport states, account
+  // flags and the sheet's song tiles (reachable via the sleep chip).
+  el("play-pause").classList.remove("playing");
+  el("like").classList.remove("active", "gated");
+  el("dislike").classList.remove("active", "gated");
+  el("repeat").classList.remove("active", "one");
+  el("library").classList.remove("in", "gated");
+  el("library").disabled = true;
+  el("library").title = "";
+  el("library-label").textContent = "Add to library";
+  el("radio").disabled = true;
+  el("copy-link").disabled = true;
+  el("copy-info").disabled = true;
   updateCaptureBar();
 }
 
