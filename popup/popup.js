@@ -334,7 +334,12 @@ el("library").addEventListener("click", () => {
 });
 
 async function copyToClipboard(button, text) {
-  await navigator.clipboard.writeText(text);
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    showToast("Couldn’t copy to the clipboard.");
+    return;
+  }
   button.classList.add("copied");
   setTimeout(() => button.classList.remove("copied"), 1200);
 }
