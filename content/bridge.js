@@ -438,8 +438,26 @@
     const endpoint =
       renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer
         ?.playNavigationEndpoint?.watchEndpoint ?? null;
+    // YTM's own "Remove from playlist" menu entry carries the exact edit
+    // payload - replay it verbatim instead of hand-building one. Rows
+    // that can't be removed (other people's playlists, Liked Music)
+    // simply don't have the entry.
+    const removeEndpoint =
+      (renderer.menu?.menuRenderer?.items ?? [])
+        .map((item) => item?.menuServiceItemRenderer?.serviceEndpoint?.playlistEditEndpoint)
+        .find((ep) =>
+          // The action name is often absent in menu payloads - the
+          // removedVideoId/setVideoId pair is what identifies removal.
+          ep?.actions?.some(
+            (a) =>
+              a?.action === "ACTION_REMOVE_VIDEO_FROM_PLAYLIST" ||
+              (a?.removedVideoId && a?.setVideoId)
+          )
+        ) ?? null;
     return {
       videoId: renderer.playlistItemData?.videoId ?? endpoint?.videoId ?? null,
+      setVideoId: renderer.playlistItemData?.playlistSetVideoId ?? null,
+      removeEndpoint,
       playlistId: endpoint?.playlistId ?? null,
       params: endpoint?.params ?? null,
       title: columnText(renderer.flexColumns?.[0]),
@@ -691,6 +709,24 @@
     }
   }
 
+  // The endpoint comes verbatim from the row's own menu (parseListItem).
+  async function removeFromPlaylist(endpoint) {
+    if (!endpoint?.playlistId || !endpoint?.actions?.length) return false;
+    try {
+      const data = await innertubeRequest("browse/edit_playlist", {
+        ...endpoint,
+        // Menu payloads may omit the action name; the API wants it.
+        actions: endpoint.actions.map((a) => ({
+          action: "ACTION_REMOVE_VIDEO_FROM_PLAYLIST",
+          ...a,
+        })),
+      });
+      return data?.status === "STATUS_SUCCEEDED";
+    } catch (err) {
+      return false;
+    }
+  }
+
   window.addEventListener("message", async (e) => {
     if (!isCurrent()) return;
     if (e.source !== window || e.data?.source !== FROM_CONTENT) return;
@@ -739,13 +775,15 @@
       command === "getPlaylists" ||
       command === "getPlaylistTracks" ||
       command === "playPlaylist" ||
-      command === "addToPlaylist"
+      command === "addToPlaylist" ||
+      command === "removeFromPlaylist"
     ) {
       const handlers = {
         getPlaylists: () => getPlaylists(),
         getPlaylistTracks: () => getPlaylistTracks(payload.browseId, payload.continuation),
         playPlaylist: () => playPlaylist(payload.playlistId, payload.shuffle),
         addToPlaylist: () => addToPlaylist(payload.playlistId, payload.videoId),
+        removeFromPlaylist: () => removeFromPlaylist(payload.endpoint),
       };
       const result = await handlers[command]();
       window.postMessage(

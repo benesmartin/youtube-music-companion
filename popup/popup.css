@@ -1081,6 +1081,55 @@ input[type="range"]::-moz-range-thumb {
   text-align: left;
 }
 
+/* connected but idle: placeholder header, dimmed transport, live tabs.
+   The artwork slot shows the extension's wave mark, barely-there. */
+#artwork-idle {
+  display: none;
+  width: 176px;
+  height: 176px;
+  flex: none;
+  padding: 52px; /* 72px glyph */
+  background: var(--surface);
+  fill: none;
+  stroke: #3f3f3f;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  cursor: pointer; /* same focus-the-tab click as the real artwork */
+}
+body.light #artwork-idle {
+  stroke: #c9c9c9;
+}
+#player.idle #artwork {
+  display: none;
+}
+#player.idle #artwork-idle {
+  display: block;
+}
+#player.idle #title {
+  color: var(--text-dim);
+}
+#player.idle #controls button,
+#player.idle #like,
+#player.idle #dislike,
+#player.idle #more,
+#player.idle #seek,
+#player.idle #mute,
+#player.idle #volume,
+#player.idle #autoplay-toggle {
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+/* armed remove button: destructive red regardless of the chosen accent */
+.qactions button.confirm {
+  background: color-mix(in srgb, #ff4e45 24%, transparent);
+  color: #ff4e45;
+}
+.qactions button.confirm:hover {
+  background: color-mix(in srgb, #ff4e45 36%, transparent);
+}
+
 /* capture bar: a native-looking row that arms save-to-playlist mode */
 #playlist-capture {
   position: sticky;

@@ -917,9 +917,10 @@ function renderHistory(history) {
   }
 }
 
-// Track row shared by the History and Search tabs: click plays (with the
-// item's own queue context), hover exposes Play next.
-function buildTrackRow(item) {
+// Track row shared by the History, Search and Playlists tabs: click plays
+// (with the item's own queue context), hover exposes Play next - plus
+// Remove when the caller supplies onRemove (playlist detail only).
+function buildTrackRow(item, { onRemove } = {}) {
   const row = document.createElement("div");
   row.className = "qrow";
   const thumb = document.createElement("div");
@@ -956,6 +957,33 @@ function buildTrackRow(item) {
       showToast("Song will play next", "success");
     });
     actions.append(button);
+    if (onRemove) {
+      // Destructive, so it takes two clicks: the first arms the button
+      // (turns red), the second within 2.5s actually removes.
+      const remove = document.createElement("button");
+      remove.title = "Remove from playlist";
+      const removeSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const removeUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      removeUse.setAttribute("href", "#i-remove");
+      removeSvg.append(removeUse);
+      remove.append(removeSvg);
+      let confirmTimer = null;
+      remove.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!remove.classList.contains("confirm")) {
+          remove.classList.add("confirm");
+          remove.title = "Click again to remove";
+          confirmTimer = setTimeout(() => {
+            remove.classList.remove("confirm");
+            remove.title = "Remove from playlist";
+          }, 2500);
+          return;
+        }
+        clearTimeout(confirmTimer);
+        onRemove();
+      });
+      actions.append(remove);
+    }
     row.append(actions);
     row.addEventListener("click", () => {
       send("playVideoById", {
@@ -1054,6 +1082,7 @@ for (const pill of document.querySelectorAll("#search-filters .pill")) {
 
 let playlistsLoaded = false;
 let playlistDetailId = null; // browseId the detail view shows (stale guard)
+let playlistDetailTitle = ""; // for toasts about the open playlist
 
 function noteInto(container, text) {
   container.textContent = "";
@@ -1237,6 +1266,7 @@ new IntersectionObserver(
 
 function openPlaylist(pl) {
   playlistDetailId = pl.id;
+  playlistDetailTitle = pl.title;
   playlistNextToken = null;
   playlistLoadingMore = false;
   playlistsScrollTop = el("playlists-pane").scrollTop;
@@ -1280,9 +1310,33 @@ function renderPlaylistTracks(msg) {
   } else {
     playlistMore.remove();
   }
-  for (const item of msg.tracks) list.append(buildTrackRow(item));
+  for (const item of msg.tracks) list.append(buildPlaylistTrackRow(item, msg.browseId));
   playlistNextToken = msg.continuation;
   if (playlistNextToken) list.append(playlistMore);
+}
+
+// Rows whose own YTM menu offers removal get the remove action; the
+// endpoint is replayed verbatim, so rows without one (other people's
+// playlists, Liked Music) never show the button.
+function buildPlaylistTrackRow(item, browseId) {
+  const removable = Boolean(item.removeEndpoint && item.setVideoId);
+  const row = buildTrackRow(
+    item,
+    removable
+      ? {
+          onRemove: () =>
+            port?.postMessage({
+              type: "removeFromPlaylist",
+              endpoint: item.removeEndpoint,
+              playlistId: browseId,
+              setVideoId: item.setVideoId,
+              name: playlistDetailTitle,
+            }),
+        }
+      : {}
+  );
+  if (removable) row.dataset.setVideoId = item.setVideoId;
+  return row;
 }
 
 el("playlist-back").addEventListener("click", () => {
@@ -1607,6 +1661,20 @@ function tryTab(candidates, index) {
         if (playlistDetailId === msg.playlistId) {
           port?.postMessage({ type: "getPlaylistTracks", browseId: msg.playlistId });
         }
+      }
+    }
+    else if (msg.type === "removeFromPlaylistResult") {
+      if (msg.ok) {
+        showToast(`Removed from ${msg.name}`, "success");
+        // Drop the row in place - a refetch would reset infinite scroll.
+        if (playlistDetailId === msg.playlistId) {
+          el("playlist-tracks")
+            .querySelector(`[data-set-video-id="${msg.setVideoId}"]`)
+            ?.remove();
+        }
+        requestPlaylists(true); // keep list track counts honest
+      } else {
+        showToast("Couldn’t remove that song.");
       }
     }
     else if (msg.type === "notice") showToast(msg.text);

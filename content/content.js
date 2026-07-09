@@ -726,6 +726,16 @@ ext.runtime.onConnect.addListener((port) => {
             playlistId: msg.playlistId,
           })
         );
+    } else if (msg.type === "removeFromPlaylist") {
+      askBridgeAsync("removeFromPlaylist", { endpoint: msg.endpoint }, 8000).then((ok) =>
+        port.postMessage({
+          type: "removeFromPlaylistResult",
+          ok: Boolean(ok),
+          name: msg.name,
+          playlistId: msg.playlistId,
+          setVideoId: msg.setVideoId,
+        })
+      );
     } else if (msg.type === "search") {
       askBridgeAsync("search", { query: msg.query }, 8000).then((results) =>
         port.postMessage({ type: "searchResults", query: msg.query, results })
