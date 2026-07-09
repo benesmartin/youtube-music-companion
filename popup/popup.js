@@ -74,6 +74,7 @@ function render(state) {
   el("album").title = el("album").scrollWidth > el("album").clientWidth ? state.album : "";
 
   lastState = state;
+  updateCaptureBar();
   // Must run AFTER lastState updates - renderLyrics reads it.
   if (activeTab === "lyrics") {
     const lyricsStateKey = state.videoId || `${state.title}|${state.artist}`;
@@ -1112,23 +1113,6 @@ function renderPlaylists(playlists) {
           armQueueSwitch(null); // playlistStarted or the fallback switches
         },
       ],
-      [
-        "Add current song",
-        "#i-plus",
-        () => {
-          if (requireSignIn("save to playlists")) return;
-          if (!lastState?.videoId) {
-            showToast("Nothing is playing to add.");
-            return;
-          }
-          port?.postMessage({
-            type: "addToPlaylist",
-            playlistId: pl.id,
-            videoId: lastState.videoId,
-            name: pl.title,
-          });
-        },
-      ],
     ]) {
       const button = document.createElement("button");
       button.title = label;
@@ -1161,12 +1145,66 @@ function renderPlaylists(playlists) {
     row.append(open);
 
     row.addEventListener("click", () => {
+      // Armed capture bar repurposes the click: file the song, don't play.
+      if (captureArmed) {
+        if (requireSignIn("save to playlists")) return;
+        if (!lastState?.videoId) {
+          showToast("Nothing is playing to add.");
+          return;
+        }
+        port?.postMessage({
+          type: "addToPlaylist",
+          playlistId: pl.id,
+          videoId: lastState.videoId,
+          name: pl.title,
+        });
+        return; // stays armed - filing into several playlists in a row
+      }
       send("playPlaylist", { playlistId: pl.id });
       armQueueSwitch(null); // playlistStarted or the fallback switches
     });
     list.append(row);
   }
 }
+
+// ---- capture bar: "save the playing song to a playlist" as a mode ----
+
+let captureArmed = false;
+
+function updateCaptureBar() {
+  const bar = el("playlist-capture");
+  const playing = lastState?.videoId && lastState?.title;
+  // Capture targets playlist rows - hide alongside the list view.
+  bar.hidden = !playing || lastState?.signedIn === false || Boolean(playlistDetailId);
+  if (bar.hidden) captureArmed = false;
+  bar.classList.toggle("armed", captureArmed);
+  // Armed mode paints a plus badge on every playlist thumb.
+  el("playlists-list").classList.toggle("capture-armed", captureArmed);
+  if (bar.hidden) return;
+  bar.querySelector("use").setAttribute("href", captureArmed ? "#i-x" : "#i-plus");
+  bar.querySelector(".ctitle").textContent = captureArmed
+    ? "Choose a playlist below"
+    : "Save current song";
+  // The song name truncates; the tail (artist / cancel hint) always shows.
+  const song = bar.querySelector(".csub-main");
+  const side = bar.querySelector(".csub-side");
+  if (captureArmed) {
+    song.textContent = "or click here to cancel";
+    side.textContent = "";
+  } else {
+    song.textContent = lastState.title;
+    side.textContent = lastState.artist ? ` - ${lastState.artist}` : "";
+  }
+  // Tooltips only where text actually truncates (same pattern as the player).
+  song.title =
+    !captureArmed && song.scrollWidth > song.clientWidth ? lastState.title : "";
+  side.title = side.scrollWidth > side.clientWidth ? (lastState.artist ?? "") : "";
+}
+
+el("playlist-capture").addEventListener("click", () => {
+  captureArmed = !captureArmed;
+  updateCaptureBar();
+});
 
 let playlistsScrollTop = 0; // list position, restored after the back button
 
@@ -1203,6 +1241,7 @@ function openPlaylist(pl) {
   el("playlists-list").hidden = true;
   el("playlist-detail").hidden = false;
   el("playlist-title").textContent = pl.title;
+  updateCaptureBar();
   noteInto(el("playlist-tracks"), "Loading tracks…");
   port?.postMessage({ type: "getPlaylistTracks", browseId: pl.id });
 }
@@ -1247,6 +1286,7 @@ el("playlist-back").addEventListener("click", () => {
   playlistDetailId = null;
   el("playlist-detail").hidden = true;
   el("playlists-list").hidden = false;
+  updateCaptureBar();
   el("playlists-pane").scrollTop = playlistsScrollTop;
 });
 
@@ -1551,10 +1591,14 @@ function tryTab(candidates, index) {
     }
     else if (msg.type === "addToPlaylistResult") {
       showToast(
-        msg.ok ? `Added to ${msg.name}` : "Couldn’t add to that playlist.",
-        msg.ok ? "success" : "notice"
+        msg.result === "added"
+          ? `Added to ${msg.name}`
+          : msg.result === "duplicate"
+            ? `Already in ${msg.name}`
+            : "Couldn’t add to that playlist.",
+        msg.result === "added" ? "success" : "notice"
       );
-      if (msg.ok) {
+      if (msg.result === "added") {
         // Refresh so track counts (and the open detail view) match reality.
         requestPlaylists(true);
         if (playlistDetailId === msg.playlistId) {

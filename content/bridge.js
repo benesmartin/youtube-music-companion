@@ -667,16 +667,27 @@
     return false;
   }
 
+  // Returns "added", "duplicate" or "error". DEDUPE_OPTION_CHECK makes the
+  // API refuse songs already in the playlist (STATUS_FAILED) instead of
+  // silently adding them twice.
   async function addToPlaylist(playlistId, videoId) {
-    if (!playlistId || !videoId) return false;
+    if (!playlistId || !videoId) return "error";
     try {
       const data = await innertubeRequest("browse/edit_playlist", {
         playlistId: playlistId.replace(/^VL/, ""),
-        actions: [{ action: "ACTION_ADD_VIDEO", addedVideoId: videoId }],
+        actions: [
+          {
+            action: "ACTION_ADD_VIDEO",
+            addedVideoId: videoId,
+            dedupeOption: "DEDUPE_OPTION_CHECK",
+          },
+        ],
       });
-      return data?.status === "STATUS_SUCCEEDED";
+      if (data?.status === "STATUS_SUCCEEDED") return "added";
+      if (data?.status === "STATUS_FAILED") return "duplicate";
+      return "error";
     } catch (err) {
-      return false;
+      return "error";
     }
   }
 

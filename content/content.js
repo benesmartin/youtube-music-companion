@@ -718,10 +718,10 @@ ext.runtime.onConnect.addListener((port) => {
       );
     } else if (msg.type === "addToPlaylist") {
       askBridgeAsync("addToPlaylist", { playlistId: msg.playlistId, videoId: msg.videoId }, 8000)
-        .then((ok) =>
+        .then((result) =>
           port.postMessage({
             type: "addToPlaylistResult",
-            ok,
+            result: result ?? "error",
             name: msg.name,
             playlistId: msg.playlistId,
           })

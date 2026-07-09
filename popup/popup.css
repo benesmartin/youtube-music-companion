@@ -1076,6 +1076,109 @@ input[type="range"]::-moz-range-thumb {
   text-align: left;
 }
 
+/* capture bar: a native-looking row that arms save-to-playlist mode */
+#playlist-capture {
+  position: sticky;
+  top: -4px; /* flush when stuck, like #playlist-bar */
+  margin-top: -4px;
+  z-index: 1;
+  width: 100%;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 5px 8px;
+  margin-bottom: 2px;
+  border-radius: 8px;
+  /* opaque: rows scroll underneath while stuck */
+  background: var(--bg);
+  text-align: left;
+}
+#playlist-capture:hover {
+  background: var(--surface);
+}
+#playlist-capture.armed {
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+}
+#playlist-capture .cthumb {
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg));
+}
+#playlist-capture .cthumb svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--accent);
+}
+#playlist-capture .cmeta {
+  min-width: 0;
+  flex: 1; /* definite width, so the children's ellipsis can kick in */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+#playlist-capture .ctitle {
+  font-size: 12.5px; /* same as .qtitle */
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#playlist-capture.armed .ctitle {
+  color: var(--accent);
+}
+#playlist-capture .csub {
+  font-size: 11px; /* same as .qartist */
+  color: var(--text-dim);
+  width: 100%;
+  display: flex;
+  min-width: 0;
+}
+/* fixed columns: song and artist each keep a stable zone, so the layout
+   doesn't jump around as tracks change */
+#playlist-capture .csub-main {
+  flex: none;
+  width: 55%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#playlist-capture .csub-side {
+  flex: 1;
+  min-width: 0;
+  white-space: pre; /* keeps the leading space before "-" and "·" */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* armed: rows are pure save targets - no shuffle, no drill-in */
+#playlists-list.capture-armed .qactions,
+#playlists-list.capture-armed .pl-open {
+  display: none;
+}
+
+/* armed: every playlist thumb wears a plus badge - the mode is painted on
+   the targets, not just announced up top */
+#playlists-list.capture-armed .qthumb {
+  position: relative;
+}
+#playlists-list.capture-armed .qthumb::after {
+  content: "+";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 4px;
+}
+
 /* visible drill-in zone at the row's end; the row itself plays */
 .pl-open {
   width: 30px;
