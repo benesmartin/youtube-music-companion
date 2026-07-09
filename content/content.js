@@ -703,9 +703,18 @@ ext.runtime.onConnect.addListener((port) => {
         port.postMessage({ type: "playlists", playlists })
       );
     } else if (msg.type === "getPlaylistTracks") {
-      // Long playlists page through many continuations - give them room.
-      askBridgeAsync("getPlaylistTracks", { browseId: msg.browseId }, 20000).then((tracks) =>
-        port.postMessage({ type: "playlistTracks", browseId: msg.browseId, tracks })
+      askBridgeAsync(
+        "getPlaylistTracks",
+        { browseId: msg.browseId, continuation: msg.continuation },
+        8000
+      ).then((result) =>
+        port.postMessage({
+          type: "playlistTracks",
+          browseId: msg.browseId,
+          append: Boolean(msg.continuation),
+          tracks: result?.tracks ?? null,
+          continuation: result?.continuation ?? null,
+        })
       );
     } else if (msg.type === "addToPlaylist") {
       askBridgeAsync("addToPlaylist", { playlistId: msg.playlistId, videoId: msg.videoId }, 8000)

@@ -1170,8 +1170,34 @@ function renderPlaylists(playlists) {
 
 let playlistsScrollTop = 0; // list position, restored after the back button
 
+// Infinite scroll: one ~100-track page at a time. The sentinel rides at the
+// list's tail whenever a continuation token remains; scrolling it near the
+// viewport fetches the next page.
+let playlistNextToken = null;
+let playlistLoadingMore = false;
+
+const playlistMore = document.createElement("div");
+playlistMore.className = "list-note";
+playlistMore.textContent = "Loading more…";
+
+new IntersectionObserver(
+  (entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    if (!playlistNextToken || playlistLoadingMore || !playlistDetailId) return;
+    playlistLoadingMore = true;
+    port?.postMessage({
+      type: "getPlaylistTracks",
+      browseId: playlistDetailId,
+      continuation: playlistNextToken,
+    });
+  },
+  { root: el("playlists-pane"), rootMargin: "200px" }
+).observe(playlistMore);
+
 function openPlaylist(pl) {
   playlistDetailId = pl.id;
+  playlistNextToken = null;
+  playlistLoadingMore = false;
   playlistsScrollTop = el("playlists-pane").scrollTop;
   el("playlists-pane").scrollTop = 0;
   el("playlists-list").hidden = true;
@@ -1195,16 +1221,26 @@ for (const [id, shuffle] of [
 function renderPlaylistTracks(msg) {
   if (msg.browseId !== playlistDetailId) return; // navigated away meanwhile
   const list = el("playlist-tracks");
+  playlistLoadingMore = false;
   if (!msg.tracks) {
-    noteInto(list, "Couldn’t load this playlist.");
+    // A failed continuation just stops paging; keep what's rendered.
+    if (msg.append) playlistMore.remove();
+    else noteInto(list, "Couldn’t load this playlist.");
     return;
   }
-  if (!msg.tracks.length) {
-    noteInto(list, "This playlist is empty.");
-    return;
+  if (!msg.append) {
+    list.textContent = "";
+    if (!msg.tracks.length && !msg.continuation) {
+      noteInto(list, "This playlist is empty.");
+      playlistNextToken = null;
+      return;
+    }
+  } else {
+    playlistMore.remove();
   }
-  list.textContent = "";
   for (const item of msg.tracks) list.append(buildTrackRow(item));
+  playlistNextToken = msg.continuation;
+  if (playlistNextToken) list.append(playlistMore);
 }
 
 el("playlist-back").addEventListener("click", () => {

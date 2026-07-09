@@ -602,43 +602,44 @@
     return token;
   }
 
-  async function getPlaylistTracks(browseId) {
+  // One ~100-row page per call; the popup pages via the returned token
+  // (infinite scroll). Loading everything up front took ~30 sequential
+  // requests on a 3000-track library.
+  async function getPlaylistTracks(browseId, continuation) {
     try {
-      const data = await innertubeRequest("browse", { browseId });
-      if (!data) return null;
-      const sections =
-        data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content
-          ?.sectionListRenderer?.contents ??
-        data?.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer
-          ?.contents ??
-        [];
-      const shelf = sections.find((s) => s.musicPlaylistShelfRenderer)
-        ?.musicPlaylistShelfRenderer;
-      if (!shelf) return null;
-      const tracks = [];
-      // ~100 rows per page - follow continuations (new or legacy format),
-      // like getPlaylists. The cap bounds worst-case latency, not the data:
-      // 20 pages ≈ 2000 tracks under the content script's request timeout.
-      let token =
-        collectShelfTracks(shelf.contents, tracks) ??
-        shelf.continuations?.[0]?.nextContinuationData?.continuation ??
-        null;
-      for (let page = 0; token && page < 20; page++) {
-        const query = `ctoken=${encodeURIComponent(token)}&continuation=${encodeURIComponent(token)}&type=next`;
-        const next = await innertubeRequest(`browse?${query}`, { continuation: token });
-        if (!next) break;
-        const shelfCont = next?.continuationContents?.musicPlaylistShelfContinuation;
-        const contItems =
-          shelfCont?.contents ??
+      let items;
+      let contSource; // wherever a legacy continuation might ride
+      if (continuation) {
+        const query = `ctoken=${encodeURIComponent(continuation)}&continuation=${encodeURIComponent(continuation)}&type=next`;
+        const next = await innertubeRequest(`browse?${query}`, { continuation });
+        if (!next) return null;
+        contSource = next?.continuationContents?.musicPlaylistShelfContinuation;
+        items =
+          contSource?.contents ??
           (next?.onResponseReceivedActions ?? []).flatMap(
             (action) => action?.appendContinuationItemsAction?.continuationItems ?? []
           );
-        token =
-          collectShelfTracks(contItems, tracks) ??
-          shelfCont?.continuations?.[0]?.nextContinuationData?.continuation ??
-          null;
+      } else {
+        const data = await innertubeRequest("browse", { browseId });
+        if (!data) return null;
+        const sections =
+          data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content
+            ?.sectionListRenderer?.contents ??
+          data?.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer
+            ?.contents ??
+          [];
+        const shelf = sections.find((s) => s.musicPlaylistShelfRenderer)
+          ?.musicPlaylistShelfRenderer;
+        if (!shelf) return null;
+        contSource = shelf;
+        items = shelf.contents;
       }
-      return tracks;
+      const tracks = [];
+      const token =
+        collectShelfTracks(items, tracks) ??
+        contSource?.continuations?.[0]?.nextContinuationData?.continuation ??
+        null;
+      return { tracks, continuation: token };
     } catch (err) {
       return null;
     }
@@ -731,7 +732,7 @@
     ) {
       const handlers = {
         getPlaylists: () => getPlaylists(),
-        getPlaylistTracks: () => getPlaylistTracks(payload.browseId),
+        getPlaylistTracks: () => getPlaylistTracks(payload.browseId, payload.continuation),
         playPlaylist: () => playPlaylist(payload.playlistId, payload.shuffle),
         addToPlaylist: () => addToPlaylist(payload.playlistId, payload.videoId),
       };
