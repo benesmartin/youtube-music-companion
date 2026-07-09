@@ -1106,11 +1106,11 @@ input[type="range"]::-moz-range-thumb {
   background: var(--surface);
 }
 #playlist-play {
-  background: var(--accent);
-  color: #fff;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
 }
 #playlist-play:hover {
-  filter: brightness(1.1);
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
 }
 #playlist-shuffle:hover {
   background: var(--surface-2);
