@@ -1691,10 +1691,26 @@ function tryTab(candidates, index) {
         msg.result === "added" ? "success" : "notice"
       );
       if (msg.result === "added") {
-        // Refresh so track counts (and the open detail view) match reality.
+        // Refresh so the list view's track counts match reality.
         requestPlaylists(true);
-        if (playlistDetailId === msg.playlistId) {
-          port?.postMessage({ type: "getPlaylistTracks", browseId: msg.playlistId });
+        // An open, fully loaded detail gets the new row appended in place -
+        // a refetch would reset infinite scroll. Partially loaded lists pick
+        // the song up when paging reaches the end anyway.
+        if (playlistDetailId === msg.playlistId && !playlistNextToken && lastState?.videoId) {
+          const list = el("playlist-tracks");
+          list.querySelector(".list-note")?.remove(); // "empty playlist" note
+          list.append(
+            buildPlaylistTrackRow(
+              {
+                videoId: lastState.videoId,
+                title: lastState.title,
+                artist: lastState.artist,
+                duration: formatTime(lastState.duration),
+                thumb: lastState.artwork,
+              },
+              msg.playlistId
+            )
+          );
         }
       }
     }
