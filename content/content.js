@@ -491,7 +491,11 @@ const commands = {
   previous: () => clickIfFound(barButton("previous-button", "^previous")),
   shuffle: () => clickIfFound(barButton("shuffle", "shuffle")),
   toggleRepeat: () => clickIfFound(barButton("repeat", "repeat")),
-  startRadio,
+  startRadio: () =>
+    Promise.resolve(startRadio()).then((ok) => {
+      if (!ok) notifyPorts("Couldn’t start a radio for this song. Try again.");
+      return ok;
+    }),
   toggleLibrary,
   probeLibrary,
   goToArtist: () => clickIfFound(bylineLink("channel/")),
