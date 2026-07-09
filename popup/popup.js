@@ -31,8 +31,11 @@ function updateFill(slider) {
 
 function formatTime(totalSeconds) {
   const s = Math.floor(totalSeconds % 60);
-  const m = Math.floor(totalSeconds / 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
+  const m = Math.floor(totalSeconds / 60) % 60;
+  const h = Math.floor(totalSeconds / 3600);
+  return h
+    ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+    : `${m}:${String(s).padStart(2, "0")}`;
 }
 
 let emptyTimer = null;
