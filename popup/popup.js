@@ -709,7 +709,9 @@ let settingsReturnTab = "queue";
 
 el("settings-open").addEventListener("click", () => {
   if (activeTab === "settings") {
-    switchTab(settingsReturnTab);
+    // The remembered tab may have been disabled meanwhile (lyrics opt-out).
+    const chip = document.querySelector(`.tab[data-tab="${settingsReturnTab}"]`);
+    switchTab(chip && !chip.hidden ? settingsReturnTab : "queue");
   } else {
     settingsReturnTab = activeTab;
     switchTab("settings");
