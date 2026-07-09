@@ -498,7 +498,6 @@ const commands = {
     }),
   toggleLibrary,
   probeLibrary,
-  goToArtist: () => clickIfFound(bylineLink("channel/")),
   goToAlbum: () => clickIfFound(bylineLink("browse/")),
   // Click a specific byline anchor (per-artist navigation), SPA-safe.
   openByline(payload) {

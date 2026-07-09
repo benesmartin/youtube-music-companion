@@ -1770,4 +1770,3 @@ function tryTab(candidates, index) {
 
 loadSettings();
 connect();
-refreshSleep();

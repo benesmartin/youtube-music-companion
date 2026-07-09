@@ -1538,7 +1538,6 @@ body.light #artwork-idle {
   left: 50%;
   transform: translateX(-50%);
   bottom: 10px;
-  z-index: 20; /* above the action sheet */
   width: fit-content;
   max-width: calc(100% - 20px);
   background: var(--surface-2);
