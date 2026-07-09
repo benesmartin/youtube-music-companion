@@ -40,6 +40,26 @@ function formatTime(totalSeconds) {
 
 let emptyTimer = null;
 
+// Tab connected but no track loaded: placeholder header, dimmed transport,
+// and the tabs stay usable - search or a playlist can start the music.
+function renderIdle() {
+  lastState = null;
+  currentTrack = null;
+  artistsSig = null;
+  playerView.hidden = false;
+  emptyView.hidden = true;
+  playerView.classList.add("idle");
+  el("title").textContent = "Nothing is playing!";
+  el("title").title = "";
+  el("artist").textContent = "Search or pick a playlist to get going";
+  el("album").textContent = "";
+  el("album-year").textContent = "";
+  el("seek").value = 0;
+  el("position").textContent = "0:00";
+  el("duration").textContent = "0:00";
+  updateCaptureBar();
+}
+
 function render(state) {
   if (!state.available) {
     // SPA navigation blanks the bar briefly - only bail if it stays gone.
@@ -47,12 +67,11 @@ function render(state) {
       if (!emptyTimer) {
         emptyTimer = setTimeout(() => {
           emptyTimer = null;
-          lastState = null;
-          showEmpty();
+          renderIdle();
         }, 1500);
       }
     } else {
-      showEmpty();
+      renderIdle();
     }
     return;
   }
@@ -60,6 +79,7 @@ function render(state) {
   emptyTimer = null;
   playerView.hidden = false;
   emptyView.hidden = true;
+  playerView.classList.remove("idle");
 
   // A track change invalidates an in-flight seek drag.
   const track = `${state.title}|${state.artist}`;
@@ -407,6 +427,7 @@ function goTo(command) {
 
 el("album").addEventListener("click", () => lastState?.albumUrl && goTo("goToAlbum"));
 el("artwork").addEventListener("click", focusYtmTab);
+el("artwork-idle").addEventListener("click", focusYtmTab);
 
 // ---- queue ----
 
@@ -420,7 +441,10 @@ function renderQueue(queue) {
   if (!queue.length) {
     const note = document.createElement("div");
     note.id = "queue-note";
-    note.textContent = "Nothing in the queue. Try Start radio from the ⋯ menu.";
+    // Idle: the radio hint would point at a disabled menu.
+    note.textContent = playerView.classList.contains("idle")
+      ? "Nothing in the queue."
+      : "Nothing in the queue. Try Start radio from the ⋯ menu.";
     list.append(note);
     lastSelectedIndex = null;
     return;
