@@ -693,7 +693,8 @@ ext.runtime.onConnect.addListener((port) => {
         port.postMessage({ type: "playlists", playlists })
       );
     } else if (msg.type === "getPlaylistTracks") {
-      askBridgeAsync("getPlaylistTracks", { browseId: msg.browseId }, 8000).then((tracks) =>
+      // Long playlists page through many continuations - give them room.
+      askBridgeAsync("getPlaylistTracks", { browseId: msg.browseId }, 20000).then((tracks) =>
         port.postMessage({ type: "playlistTracks", browseId: msg.browseId, tracks })
       );
     } else if (msg.type === "addToPlaylist") {

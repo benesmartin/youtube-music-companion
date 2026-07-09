@@ -586,6 +586,22 @@
     }
   }
 
+  // Collects shelf rows; returns a continuation token if one rides along.
+  function collectShelfTracks(items, tracks) {
+    let token = null;
+    for (const item of items ?? []) {
+      const riderToken =
+        item?.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token;
+      if (riderToken) {
+        token = riderToken;
+        continue;
+      }
+      const parsed = parseListItem(item);
+      if (parsed?.title) tracks.push(parsed);
+    }
+    return token;
+  }
+
   async function getPlaylistTracks(browseId) {
     try {
       const data = await innertubeRequest("browse", { browseId });
@@ -599,7 +615,30 @@
       const shelf = sections.find((s) => s.musicPlaylistShelfRenderer)
         ?.musicPlaylistShelfRenderer;
       if (!shelf) return null;
-      return (shelf.contents ?? []).map(parseListItem).filter((t) => t?.title);
+      const tracks = [];
+      // ~100 rows per page - follow continuations (new or legacy format),
+      // like getPlaylists. The cap bounds worst-case latency, not the data:
+      // 20 pages ≈ 2000 tracks under the content script's request timeout.
+      let token =
+        collectShelfTracks(shelf.contents, tracks) ??
+        shelf.continuations?.[0]?.nextContinuationData?.continuation ??
+        null;
+      for (let page = 0; token && page < 20; page++) {
+        const query = `ctoken=${encodeURIComponent(token)}&continuation=${encodeURIComponent(token)}&type=next`;
+        const next = await innertubeRequest(`browse?${query}`, { continuation: token });
+        if (!next) break;
+        const shelfCont = next?.continuationContents?.musicPlaylistShelfContinuation;
+        const contItems =
+          shelfCont?.contents ??
+          (next?.onResponseReceivedActions ?? []).flatMap(
+            (action) => action?.appendContinuationItemsAction?.continuationItems ?? []
+          );
+        token =
+          collectShelfTracks(contItems, tracks) ??
+          shelfCont?.continuations?.[0]?.nextContinuationData?.continuation ??
+          null;
+      }
+      return tracks;
     } catch (err) {
       return null;
     }
