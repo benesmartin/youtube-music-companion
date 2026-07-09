@@ -1063,6 +1063,68 @@ input[type="range"]::-moz-range-thumb {
   text-align: left;
 }
 
+/* visible drill-in zone at the row's end; the row itself plays */
+.pl-open {
+  width: 30px;
+  align-self: stretch;
+  flex: none;
+  margin-left: 2px;
+  border-left: 1px solid var(--surface-2);
+  border-radius: 0 8px 8px 0;
+  color: var(--text-dim);
+}
+.pl-open:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.pl-open svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* detail header: count + whole-playlist play/shuffle */
+#playlist-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 8px;
+  border-bottom: 1px solid var(--surface);
+  margin-bottom: 4px;
+}
+#playlist-count {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  margin-right: auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#playlist-play,
+#playlist-shuffle {
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  flex: none;
+}
+#playlist-play {
+  background: var(--accent);
+  color: #fff;
+}
+#playlist-play:hover {
+  filter: brightness(1.1);
+}
+#playlist-shuffle:hover {
+  background: var(--surface-2);
+}
+#playlist-head svg {
+  width: 14px;
+  height: 14px;
+}
+
 /* ---- lyrics ---- */
 
 #lyrics-pane {

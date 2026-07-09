@@ -505,7 +505,17 @@ const commands = {
   },
   // payload may carry playlistId/params so YTM builds the proper queue
   playVideoById: (payload) => askBridgeAsync("playVideoById", payload),
-  playPlaylist: (payload) => askBridgeAsync("playPlaylist", { playlistId: payload.playlistId }),
+  playPlaylist: (payload) =>
+    askBridgeAsync("playPlaylist", {
+      playlistId: payload.playlistId,
+      shuffle: payload.shuffle,
+    }).then((ok) => {
+      // Tell popups directly - the queue-tab switch shouldn't wait out its
+      // 3s fallback when the bridge already confirmed playback.
+      for (const port of ports) port.postMessage({ type: "playlistStarted", ok });
+      setTimeout(pushQueue, 400);
+      return ok;
+    }),
   toggleAutoplay() {
     const toggle = document.querySelector("tp-yt-paper-toggle-button#automix");
     if (!toggle) return false;

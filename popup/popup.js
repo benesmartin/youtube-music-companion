@@ -1105,11 +1105,11 @@ function renderPlaylists(playlists) {
     actions.className = "qactions";
     for (const [label, icon, handler] of [
       [
-        "Play playlist",
-        "#i-play",
+        "Shuffle",
+        "#i-shuffle",
         () => {
-          send("playPlaylist", { playlistId: pl.id });
-          armQueueSwitch(null); // no videoId to confirm; the fallback switches
+          send("playPlaylist", { playlistId: pl.id, shuffle: true });
+          armQueueSwitch(null); // playlistStarted or the fallback switches
         },
       ],
       [
@@ -1144,18 +1144,53 @@ function renderPlaylists(playlists) {
       actions.append(button);
     }
     row.append(actions);
-    row.addEventListener("click", () => openPlaylist(pl));
+
+    // Visible drill-in zone; the row itself plays (play-first model).
+    const open = document.createElement("button");
+    open.className = "pl-open";
+    open.title = "Open playlist";
+    const chevSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const chevUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    chevUse.setAttribute("href", "#i-chevron-right");
+    chevSvg.append(chevUse);
+    open.append(chevSvg);
+    open.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openPlaylist(pl);
+    });
+    row.append(open);
+
+    row.addEventListener("click", () => {
+      send("playPlaylist", { playlistId: pl.id });
+      armQueueSwitch(null); // playlistStarted or the fallback switches
+    });
     list.append(row);
   }
 }
 
+let playlistsScrollTop = 0; // list position, restored after the back button
+
 function openPlaylist(pl) {
   playlistDetailId = pl.id;
+  playlistsScrollTop = el("playlists-pane").scrollTop;
+  el("playlists-pane").scrollTop = 0;
   el("playlists-list").hidden = true;
   el("playlist-detail").hidden = false;
   el("playlist-title").textContent = pl.title;
+  el("playlist-count").textContent = pl.subtitle;
   noteInto(el("playlist-tracks"), "Loading tracks…");
   port?.postMessage({ type: "getPlaylistTracks", browseId: pl.id });
+}
+
+for (const [id, shuffle] of [
+  ["playlist-play", false],
+  ["playlist-shuffle", true],
+]) {
+  el(id).addEventListener("click", () => {
+    if (!playlistDetailId) return;
+    send("playPlaylist", { playlistId: playlistDetailId, shuffle });
+    armQueueSwitch(null); // playlistStarted or the fallback switches
+  });
 }
 
 function renderPlaylistTracks(msg) {
@@ -1177,6 +1212,7 @@ el("playlist-back").addEventListener("click", () => {
   playlistDetailId = null;
   el("playlist-detail").hidden = true;
   el("playlists-list").hidden = false;
+  el("playlists-pane").scrollTop = playlistsScrollTop;
 });
 
 // ---- lyrics (LRCLIB) ----
@@ -1467,6 +1503,17 @@ function tryTab(candidates, index) {
     else if (msg.type === "searchResults") renderSearchResults(msg);
     else if (msg.type === "playlists") renderPlaylists(msg.playlists);
     else if (msg.type === "playlistTracks") renderPlaylistTracks(msg);
+    else if (msg.type === "playlistStarted") {
+      // Only act while a playlist-play switch is armed (videoId-less).
+      if (queueSwitchFallback && queueSwitchVideoId === null) {
+        if (msg.ok) doQueueSwitch();
+        else {
+          clearTimeout(queueSwitchFallback);
+          queueSwitchFallback = null;
+          showToast("Couldn’t start that playlist.");
+        }
+      }
+    }
     else if (msg.type === "addToPlaylistResult") {
       showToast(
         msg.ok ? `Added to ${msg.name}` : "Couldn’t add to that playlist.",

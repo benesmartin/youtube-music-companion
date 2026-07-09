@@ -645,15 +645,18 @@
   }
 
   // Whole-playlist play via the app router.
-  async function playPlaylist(playlistId) {
+  async function playPlaylist(playlistId, shuffle) {
     const app = document.querySelector("ytmusic-app");
     if (!app || !playlistId) return false;
     const pid = playlistId.replace(/^VL/, "");
+    const watchPlaylistEndpoint = { playlistId: pid };
+    // The params blob YTM's own shuffle buttons carry on this endpoint.
+    if (shuffle) watchPlaylistEndpoint.params = "wAEB8gECKAE%3D";
     app.dispatchEvent(
       new CustomEvent("yt-navigate", {
         bubbles: true,
         composed: true,
-        detail: { endpoint: { watchPlaylistEndpoint: { playlistId: pid } } },
+        detail: { endpoint: { watchPlaylistEndpoint } },
       })
     );
     for (let attempt = 0; attempt < 10; attempt++) {
@@ -729,7 +732,7 @@
       const handlers = {
         getPlaylists: () => getPlaylists(),
         getPlaylistTracks: () => getPlaylistTracks(payload.browseId),
-        playPlaylist: () => playPlaylist(payload.playlistId),
+        playPlaylist: () => playPlaylist(payload.playlistId, payload.shuffle),
         addToPlaylist: () => addToPlaylist(payload.playlistId, payload.videoId),
       };
       const result = await handlers[command]();
