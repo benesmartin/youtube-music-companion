@@ -613,9 +613,22 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .tab {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
   padding: 4px 12px 5px;
   border-radius: 999px;
   cursor: pointer;
+}
+
+/* invisible bold ghost reserves the active tab's width - no jiggle */
+.tab::after {
+  content: attr(data-tab);
+  text-transform: capitalize;
+  font-weight: 600;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
 }
 
 .tab:hover {

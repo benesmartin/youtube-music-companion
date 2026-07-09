@@ -677,8 +677,16 @@ for (const option of document.querySelectorAll("#lyrics-size button")) {
 // faces of the same flag.
 el("set-lyrics").addEventListener("click", () => setLyricsEnabled(!lyricsEnabled));
 
+// The gear toggles settings and returns to wherever the user came from.
+let settingsReturnTab = "queue";
+
 el("settings-open").addEventListener("click", () => {
-  switchTab(activeTab === "settings" ? "queue" : "settings");
+  if (activeTab === "settings") {
+    switchTab(settingsReturnTab);
+  } else {
+    settingsReturnTab = activeTab;
+    switchTab("settings");
+  }
 });
 
 try {
