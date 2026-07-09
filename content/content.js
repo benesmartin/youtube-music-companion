@@ -326,27 +326,36 @@ function readQueue() {
 }
 
 // Fill thumbs/artists from the queue store - DOM images lazy-load late.
+// Store rows map 1:1 onto DOM rows, so the row's own index entry is the
+// authority; title-keyed lookup only rescues a misaligned store. It must
+// never win over an aligned index match: title keys collapse duplicate
+// titles onto the last entry, repainting every same-titled row as it
+// (e.g. two covers of one song queued together).
+function applyQueueStoreData(queue, data) {
+  const thumbByTitle = new Map(
+    data.filter((entry) => entry.thumb).map((entry) => [entry.title, entry.thumb])
+  );
+  const artistByTitle = new Map(
+    data.filter((entry) => entry.artist).map((entry) => [entry.title, entry.artist])
+  );
+  for (const item of queue) {
+    const indexed = data[item.index];
+    // Titleless store entries (player-playlist fallback) still align.
+    const aligned = indexed && (!indexed.title || indexed.title === item.title) ? indexed : null;
+    if (!item.thumb) {
+      item.thumb = aligned?.thumb || thumbByTitle.get(item.title) || "";
+    }
+    // Store artists are comma-joined; the DOM byline uses localized "and".
+    const artist = aligned?.artist || artistByTitle.get(item.title) || "";
+    if (artist) item.artist = artist;
+  }
+}
+
 async function queueWithThumbs() {
   const queue = readQueue();
   if (queue.length) {
     const data = await askBridgeAsync("getQueueData", {}, 2000);
-    if (Array.isArray(data)) {
-      const thumbByTitle = new Map(
-        data.filter((entry) => entry.thumb).map((entry) => [entry.title, entry.thumb])
-      );
-      const artistByTitle = new Map(
-        data.filter((entry) => entry.artist).map((entry) => [entry.title, entry.artist])
-      );
-      for (const item of queue) {
-        // Title match first, position fallback (store maps 1:1 onto rows).
-        if (!item.thumb) {
-          item.thumb = thumbByTitle.get(item.title) ?? data[item.index]?.thumb ?? "";
-        }
-        // Store artists are comma-joined; the DOM byline uses localized "and".
-        const artist = artistByTitle.get(item.title) ?? data[item.index]?.artist ?? "";
-        if (artist) item.artist = artist;
-      }
-    }
+    if (Array.isArray(data)) applyQueueStoreData(queue, data);
   }
   return queue;
 }
