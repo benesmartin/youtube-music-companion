@@ -208,6 +208,22 @@
     );
   }
 
+  // The playing row can't be found by videoId alone - queueing the same
+  // track twice makes findIndex land on the first copy, inserting "play
+  // next" items after it instead of after the one actually playing. The
+  // store marks the current row with selected; videoId is the fallback.
+  function currentQueueIndex(entries, currentId) {
+    const selected = entries.findIndex((entry) => {
+      const counterpart =
+        entry?.playlistPanelVideoWrapperRenderer?.counterpart?.[0]?.counterpartRenderer
+          ?.playlistPanelVideoRenderer;
+      return queueRendererOf(entry)?.selected === true || counterpart?.selected === true;
+    });
+    if (selected >= 0) return selected;
+    if (!currentId) return -1;
+    return entries.findIndex((entry) => queueRendererOf(entry)?.videoId === currentId);
+  }
+
   // Play-next for out-of-queue tracks: get_queue renderer → ADD_ITEMS.
   async function queueVideoNext(videoId) {
     if (!videoId) return false;
@@ -219,7 +235,7 @@
     const state = store.getState()?.queue;
     const existing = state?.items ?? [];
     const currentId = player()?.getVideoData?.()?.video_id ?? null;
-    const currentIndex = existing.findIndex((e) => queueRendererOf(e)?.videoId === currentId);
+    const currentIndex = currentQueueIndex(existing, currentId);
     try {
       store.dispatch({
         type: "ADD_ITEMS",
