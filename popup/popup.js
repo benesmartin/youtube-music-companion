@@ -375,7 +375,10 @@ setInterval(refreshSleep, 1000);
 const SLEEP_MAX_MINUTES = 720;
 
 function armSleep(minutes) {
-  if (!Number.isFinite(minutes) || minutes < 1) return;
+  if (!Number.isFinite(minutes) || minutes < 1) {
+    showToast(`Set a timer between 1 and ${SLEEP_MAX_MINUTES} minutes.`);
+    return;
+  }
   const clamped = Math.min(SLEEP_MAX_MINUTES, Math.round(minutes));
   ext.alarms.create("sleep-timer", { delayInMinutes: clamped });
   el("sleep-remaining").textContent = `Pausing in ${formatTime(clamped * 60)}`;
