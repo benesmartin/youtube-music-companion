@@ -1177,7 +1177,6 @@ function openPlaylist(pl) {
   el("playlists-list").hidden = true;
   el("playlist-detail").hidden = false;
   el("playlist-title").textContent = pl.title;
-  el("playlist-count").textContent = pl.subtitle;
   noteInto(el("playlist-tracks"), "Loading tracks…");
   port?.postMessage({ type: "getPlaylistTracks", browseId: pl.id });
 }

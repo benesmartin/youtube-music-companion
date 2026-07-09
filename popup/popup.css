@@ -1031,15 +1031,28 @@ input[type="range"]::-moz-range-thumb {
   scrollbar-color: var(--surface-2) transparent;
 }
 
-#playlist-back {
+/* one sticky bar: back (the wide zone) + whole-playlist play/shuffle.
+   The negative margin swallows the pane's top padding, so the bar sits in
+   the exact same spot at rest and while stuck - no layout shift, and no
+   row can peek above it mid-scroll. */
+#playlist-bar {
   position: sticky;
-  top: 0;
+  top: -4px; /* flush with the pane's visible top when stuck */
+  margin-top: -4px; /* ...and flush at rest too, so nothing shifts */
   z-index: 1;
-  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  padding: 4px 0;
+}
+
+#playlist-back {
+  flex: 1;
+  min-width: 0;
   justify-content: flex-start;
   gap: 8px;
   padding: 6px 8px;
-  background: var(--bg);
   border-radius: 8px;
   font-size: 12.5px;
   font-weight: 600;
@@ -1082,33 +1095,15 @@ input[type="range"]::-moz-range-thumb {
   height: 16px;
 }
 
-/* detail header: count + whole-playlist play/shuffle */
-#playlist-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 8px 8px;
-  border-bottom: 1px solid var(--surface);
-  margin-bottom: 4px;
-}
-#playlist-count {
-  font-size: 11.5px;
-  color: var(--text-dim);
-  margin-right: auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 #playlist-play,
 #playlist-shuffle {
+  flex: none;
   gap: 6px;
   font-size: 12px;
   font-weight: 600;
   padding: 5px 12px;
   border-radius: 999px;
   background: var(--surface);
-  flex: none;
 }
 #playlist-play {
   background: var(--accent);
@@ -1120,7 +1115,8 @@ input[type="range"]::-moz-range-thumb {
 #playlist-shuffle:hover {
   background: var(--surface-2);
 }
-#playlist-head svg {
+#playlist-play svg,
+#playlist-shuffle svg {
   width: 14px;
   height: 14px;
 }
