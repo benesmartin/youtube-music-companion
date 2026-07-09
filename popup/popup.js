@@ -226,6 +226,33 @@ el("seek").addEventListener("input", () => {
   el("position").textContent = formatTime(Number(el("seek").value));
   updateFill(el("seek"));
 });
+
+// Hover (and drag) preview: the time under the cursor, in a bubble above
+// the bar. Native ranges map the value to the thumb's center, hence the
+// half-thumb correction at the edges.
+const SEEK_THUMB = 10; // --thumb in the slider styles
+
+el("seek").addEventListener("pointermove", (e) => {
+  const seek = el("seek");
+  const duration = Number(seek.max);
+  if (duration <= 1 || playerView.classList.contains("idle")) return;
+  const rect = seek.getBoundingClientRect();
+  const fraction = Math.min(
+    1,
+    Math.max(0, (e.clientX - rect.left - SEEK_THUMB / 2) / (rect.width - SEEK_THUMB))
+  );
+  const bubble = el("seek-preview");
+  bubble.textContent = formatTime(fraction * duration);
+  bubble.hidden = false;
+  const half = bubble.offsetWidth / 2;
+  const x = seek.offsetLeft + SEEK_THUMB / 2 + fraction * (seek.offsetWidth - SEEK_THUMB);
+  bubble.style.left = `${Math.min(seek.offsetLeft + seek.offsetWidth - half, Math.max(seek.offsetLeft + half, x))}px`;
+  bubble.style.top = `${seek.offsetTop - 8}px`;
+});
+
+el("seek").addEventListener("pointerleave", () => {
+  el("seek-preview").hidden = true;
+});
 el("seek").addEventListener("change", () => {
   // Only send if the drag wasn't invalidated by a track change mid-drag.
   if (seeking) send("seek", { position: Number(el("seek").value) });

@@ -89,6 +89,23 @@ button svg {
   padding: 10px 14px 8px;
   display: flex;
   flex-direction: column;
+  position: relative; /* anchors the seek-preview bubble */
+}
+
+/* time under the cursor while hovering or dragging the seek bar */
+#seek-preview {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  z-index: 3;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 /* children must never be vertically squeezed into clipping */
