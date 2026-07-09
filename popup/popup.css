@@ -66,6 +66,7 @@ button svg {
 #header {
   display: flex;
   height: 176px;
+  position: relative; /* anchors the sleep chip over the artwork */
 }
 
 #artwork {
@@ -307,7 +308,7 @@ input[type="range"]::-moz-range-thumb {
 /* signed-out: account actions dim but stay clickable to explain themselves */
 #like.gated,
 #dislike.gated,
-#more-menu #library.gated {
+#library.gated {
   opacity: 0.35;
 }
 
@@ -336,230 +337,235 @@ input[type="range"]::-moz-range-thumb {
   pointer-events: none;
 }
 
-/* ---- more-actions dropdown ---- */
-
-#more-wrap {
-  position: relative;
-}
-
-/* fixed overlay so the menu can float over the queue/history lists */
-#more-menu {
-  position: fixed;
-  right: 10px;
-  /* top + max-height set from JS relative to the ⋯ button */
-  width: 224px;
-  overflow-y: auto;
-  background: var(--surface);
-  border: 2px solid var(--surface-2);
-  border-radius: 10px;
-  padding: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-#more-menu[hidden] {
-  display: none;
-}
-
-/* menu entries are rows, overriding the round icon-button styling */
-#more-menu button {
-  width: 100%;
-  height: auto;
-  border-radius: 6px;
-  justify-content: flex-start;
-  gap: 10px;
-  padding: 7px 10px;
-  font-size: 12px;
-  color: var(--text);
-  white-space: nowrap;
-}
-
-#more-menu button:hover {
-  background: var(--surface-2);
-}
+/* ---- more-actions sheet ---- */
 
 #more.open {
   background: var(--surface);
   color: var(--text);
 }
 
-.menu-page {
-  display: flex;
+/* slides over the tab area inside the popup's own footprint */
+#action-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  background: var(--surface);
+  border-top: 2px solid var(--surface-2);
+  border-radius: 12px 12px 0 0;
+  padding: 12px;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  #action-sheet {
+    animation: sheet-in 0.16s ease-out;
+  }
+  @keyframes sheet-in {
+    from {
+      transform: translateY(14px);
+      opacity: 0.5;
+    }
+  }
+}
+
+#sheet-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+#sheet-tiles button {
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 10px 4px;
+  font-size: 10.5px;
+  color: var(--text);
 }
 
-/* page is sized to the main menu's height from JS; the back row stays put
-   like a normal first row and the body spreads into the rest */
-#sleep-body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
+#sheet-tiles button:hover {
+  background: color-mix(in srgb, var(--text) 9%, var(--surface-2));
 }
 
-.menu-page[hidden] {
-  display: none;
+#sheet-tiles button:disabled {
+  opacity: 0.35;
+  pointer-events: none;
 }
 
-#more-menu .label {
-  flex: 1;
-  min-width: 0;
-  text-align: left;
+#sheet-tiles svg {
+  width: 16px;
+  height: 16px;
+}
+
+#sheet-tiles .label {
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-#more-menu svg {
-  flex: none;
-}
-
-#more-menu .chev {
-  width: 13px;
-  height: 13px;
-  opacity: 0.6;
-}
-
-#sleep-status,
-#sleep-remaining {
-  color: var(--text-dim);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* armed timer: letters bob in a gentle wave */
-.wave span {
-  display: inline-block;
-  white-space: pre;
-  animation: sleep-wave 1.4s ease-in-out infinite;
-}
-
-@keyframes sleep-wave {
-  0%,
-  60%,
-  100% {
-    transform: translateY(0);
-  }
-  30% {
-    transform: translateY(-2px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wave span {
-    animation: none;
-  }
-}
-
-#sleep-custom {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 70%;
-  margin: 0 auto;
-  padding: 4px 0 6px;
-}
-
-#sleep-custom input {
-  flex: 1;
-  min-width: 0;
-  background: var(--surface-2);
-  border: none;
-  border-radius: 6px;
-  color: var(--text);
-  font-size: 12px;
-  padding: 4px 8px;
-  outline: none;
-}
-
-#sleep-custom input::placeholder {
-  color: var(--text-dim);
-}
-
-#more-menu #sleep-set {
-  width: auto;
-  padding: 4px 10px;
-  font-size: 11px;
-  border: 1px solid var(--surface-2);
-  border-radius: 6px;
-  color: var(--text-dim);
-}
-
-#more-menu #sleep-set:hover {
-  color: var(--text);
-  background: var(--surface-2);
+  white-space: nowrap;
 }
 
 #library.in svg {
   fill: currentColor;
 }
 
-#sleep-active {
+/* sleep timer: styled like a track row - icon square, title + status,
+   presets and the stop button all on one line */
+#sheet-sleep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+#sleep-thumb {
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 4px 10px;
-  font-size: 12px;
-  color: var(--text-dim);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
 }
 
-#sleep-active > svg {
-  width: 15px;
-  height: 15px;
+#sleep-thumb svg {
+  width: 18px;
+  height: 18px;
   fill: none;
-  stroke: currentColor;
+  stroke: var(--accent);
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-#more-menu #sleep-off {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border-radius: 6px;
-  justify-content: center;
-  color: var(--accent);
+#sleep-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
-/* doubled id outranks #bottom-row button svg - the menu sits in that row */
-#more-menu #sleep-off svg {
-  /* lucide's square fills 18/24 of the viewBox; 12px lands the glyph at
-     the same 9px the old hand-shrunk icon had */
-  width: 12px;
-  height: 12px;
-  fill: currentColor;
-  stroke: none;
+#sleep-title {
+  font-size: 12.5px;
+  white-space: nowrap;
 }
 
-#more-menu #sleep-off:hover {
-  background: var(--surface-2);
+#sleep-remaining {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 #sleep-presets {
   display: flex;
+  align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  margin-left: auto;
 }
 
-#more-menu .sleep-opt {
-  flex: 1;
+.sleep-opt,
+#sleep-set {
   width: auto;
-  justify-content: center;
-  padding: 4px 0;
-  border: 1px solid var(--surface-2);
-  border-radius: 6px;
-  color: var(--text-dim);
-  font-size: 12px;
-}
-
-#more-menu .sleep-opt:hover {
+  height: 24px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1; /* flex centers the label; no baseline slack */
+  padding: 0 10px;
+  border-radius: 999px;
   background: var(--surface-2);
   color: var(--text);
+}
+
+.sleep-opt:hover {
+  background: color-mix(in srgb, var(--text) 9%, var(--surface-2));
+}
+
+/* the confirm action wears the active-tab tint */
+#sleep-set {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+#sleep-set:hover {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+#sleep-custom-min {
+  width: 64px;
+  height: 24px;
+  background: var(--surface-2);
+  border: none;
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 11px;
+  padding: 0 8px;
+  outline: none;
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+#sleep-custom-min::-webkit-outer-spin-button,
+#sleep-custom-min::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+#sleep-custom-min::placeholder {
+  color: var(--text-dim);
+}
+
+/* armed: the presets' spot holds a single stop action, far right */
+#sleep-off {
+  margin-left: auto;
+  width: auto;
+  height: 24px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0 10px;
+  border-radius: 999px;
+  flex: none;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+#sleep-off:hover {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+/* countdown chip: floats dead-center on the artwork, so a running timer
+   is always visible without costing the layout anything */
+#sleep-chip {
+  position: absolute;
+  left: 88px; /* horizontally centered on the artwork (176px square) */
+  bottom: 10px;
+  transform: translateX(-50%);
+  z-index: 2;
+  height: 24px;
+  gap: 5px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(4px); /* busy art smears instead of bleeding through */
+}
+
+#sleep-chip:hover {
+  background: rgba(0, 0, 0, 0.92);
+}
+
+#sleep-chip svg {
+  width: 12px;
+  height: 12px;
+  stroke: var(--accent);
 }
 
 /* artist names / album become links when a target URL is known */
@@ -1482,6 +1488,7 @@ body.light #artwork-idle {
   left: 50%;
   transform: translateX(-50%);
   bottom: 10px;
+  z-index: 20; /* above the action sheet */
   width: fit-content;
   max-width: calc(100% - 20px);
   background: var(--surface-2);

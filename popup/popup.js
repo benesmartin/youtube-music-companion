@@ -117,9 +117,9 @@ function render(state) {
   // Signed out it stays clickable so the click can explain itself.
   el("library").disabled = gated ? false : !state.videoId || state.libraryAvailable === false;
   el("library").classList.toggle("in", state.inLibrary === true);
-  el("library-label").textContent =
-    state.inLibrary === true ? "Remove from library" : "Add to library";
-  if (!el("more-menu").hidden) updateOverflowTitles();
+  // Tile-sized labels; the filled icon carries the "in library" state too.
+  el("library-label").textContent = state.inLibrary === true ? "In library" : "Add to library";
+  el("library").title = state.inLibrary === true ? "Remove from library" : "";
   if (el("artwork").src !== state.artwork) el("artwork").src = state.artwork;
 
   el("play-pause").classList.toggle("playing", state.playing);
@@ -180,6 +180,7 @@ let toastTimer = null;
 function showToast(text, kind = "notice") {
   el("toast").textContent = text;
   el("toast").hidden = false;
+  placeToast();
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     el("toast").hidden = true;
@@ -263,68 +264,38 @@ el("open-ytm").addEventListener("click", async () => {
   window.close();
 });
 
-// ---- more-actions dropdown ----
-// The menu persists until a click lands outside it.
+// ---- more-actions sheet ----
+// Slides over the tab area; persists until a click lands outside it.
 
-let sleepTicker = null;
-
-function showSleepPage(show) {
-  if (show) {
-    // Match the main page's height so the submenu's rows can spread out.
-    el("menu-sleep").style.minHeight = `${el("menu-main").offsetHeight}px`;
-  }
-  el("menu-main").hidden = show;
-  el("menu-sleep").hidden = !show;
-  el("more-menu").scrollTop = 0;
+// Toasts ride above the sheet while it's open, back to the bottom when not.
+function placeToast() {
+  const sheet = el("action-sheet");
+  el("toast").style.bottom = sheet.hidden ? "" : `${sheet.offsetHeight + 10}px`;
 }
-
-// Full-text labels get a tooltip only when actually truncated.
-function updateOverflowTitles() {
-  for (const label of document.querySelectorAll("#more-menu .label")) {
-    label.title = label.scrollWidth > label.clientWidth ? label.textContent : "";
-  }
-}
-
-// Browsers cap action popups around this height; growing past it just clips.
-const POPUP_MAX_HEIGHT = 600;
 
 function toggleMenu(open) {
-  const show = open ?? el("more-menu").hidden;
-  if (show) {
-    // Grow the body if needed so the menu opens at full height.
-    const menu = el("more-menu");
-    const anchor = el("more").getBoundingClientRect();
-    const top = anchor.bottom + 6;
-    menu.style.top = `${top}px`;
-    menu.style.maxHeight = "none";
-    menu.hidden = false; // must be measurable
-    const total = Math.min(POPUP_MAX_HEIGHT, top + menu.scrollHeight + 14);
-    document.body.style.minHeight = `${total}px`;
-    menu.style.maxHeight = `${Math.max(80, total - top - 14)}px`;
-  } else {
-    document.body.style.minHeight = "";
-  }
-  el("more-menu").hidden = !show;
+  const sheet = el("action-sheet");
+  const show = open ?? sheet.hidden;
+  sheet.hidden = !show;
   el("more").classList.toggle("open", show);
   if (show) {
-    showSleepPage(false);
     // No point churning YTM's menu for library state while signed out.
     if (lastState?.signedIn !== false) send("probeLibrary");
     refreshSleep();
-    updateOverflowTitles();
-    sleepTicker = setInterval(refreshSleep, 10000);
-  } else if (sleepTicker) {
-    clearInterval(sleepTicker);
-    sleepTicker = null;
   }
+  placeToast();
 }
 
 el("more").addEventListener("click", (e) => {
   e.stopPropagation();
   toggleMenu();
 });
+el("sleep-chip").addEventListener("click", (e) => {
+  e.stopPropagation();
+  toggleMenu(true);
+});
 document.addEventListener("click", (e) => {
-  if (!el("more-menu").hidden && !el("more-menu").contains(e.target)) toggleMenu(false);
+  if (!el("action-sheet").hidden && !el("action-sheet").contains(e.target)) toggleMenu(false);
 });
 
 // Radio via YTM's own menu item - SPA navigation, playback keeps running.
@@ -351,19 +322,6 @@ el("copy-info").addEventListener("click", () => {
 
 // ---- sleep timer ----
 
-// Each character in its own span so the wave animation can stagger them.
-function waveText(element, text) {
-  element.textContent = "";
-  [...text].forEach((char, i) => {
-    const span = document.createElement("span");
-    span.textContent = char;
-    span.style.animationDelay = `${i * 0.12}s`;
-    element.append(span);
-  });
-}
-
-const setSleepStatus = (text) => waveText(el("sleep-status"), text);
-
 async function refreshSleep() {
   let alarm = null;
   try {
@@ -371,27 +329,41 @@ async function refreshSleep() {
   } catch {
     // API unavailable; leave the timer UI inert.
   }
-  const minutes = alarm
-    ? Math.max(1, Math.ceil((alarm.scheduledTime - Date.now()) / 60000))
-    : 0;
+  const seconds = alarm ? Math.max(1, Math.round((alarm.scheduledTime - Date.now()) / 1000)) : 0;
+  // Armed: presets make way for a single Stop timer action.
   el("sleep-off").hidden = !alarm;
-  el("sleep-remaining").textContent = alarm ? `Pausing in ${minutes} min` : "No timer running";
-  setSleepStatus(alarm ? `${minutes} min` : "");
+  el("sleep-presets").hidden = Boolean(alarm);
+  el("sleep-remaining").textContent = alarm
+    ? `Pausing in ${formatTime(seconds)}`
+    : "No timer running";
+  // The chip keeps a running timer visible without opening the sheet.
+  el("sleep-chip").hidden = !alarm;
+  el("sleep-chip-min").textContent = alarm ? formatTime(seconds) : "";
 }
 
-el("sleep-open").addEventListener("click", () => showSleepPage(true));
-el("sleep-back").addEventListener("click", () => showSleepPage(false));
+// Live countdown while the popup sits open.
+refreshSleep();
+setInterval(refreshSleep, 1000);
+
+const SLEEP_MAX_MINUTES = 720;
 
 function armSleep(minutes) {
   if (!Number.isFinite(minutes) || minutes < 1) return;
-  const clamped = Math.min(720, Math.round(minutes));
+  const clamped = Math.min(SLEEP_MAX_MINUTES, Math.round(minutes));
   ext.alarms.create("sleep-timer", { delayInMinutes: clamped });
-  setSleepStatus(`${clamped} min`);
-  el("sleep-remaining").textContent = `Pausing in ${clamped} min`;
+  el("sleep-remaining").textContent = `Pausing in ${formatTime(clamped * 60)}`;
   el("sleep-off").hidden = false;
-  showSleepPage(false);
+  el("sleep-presets").hidden = true;
+  toggleMenu(false);
   setTimeout(refreshSleep, 150);
 }
+
+// Keep typed values inside the timer's range as they're entered.
+el("sleep-custom-min").addEventListener("input", () => {
+  const input = el("sleep-custom-min");
+  const value = Number(input.value);
+  if (value > SLEEP_MAX_MINUTES) input.value = String(SLEEP_MAX_MINUTES);
+});
 
 for (const option of document.querySelectorAll(".sleep-opt")) {
   option.addEventListener("click", () => armSleep(Number(option.dataset.min)));
@@ -404,8 +376,8 @@ el("sleep-custom-min").addEventListener("keydown", (e) => {
 
 el("sleep-off").addEventListener("click", async () => {
   el("sleep-off").hidden = true;
+  el("sleep-presets").hidden = false;
   el("sleep-remaining").textContent = "No timer running";
-  setSleepStatus("");
   await ext.alarms.clear("sleep-timer");
   refreshSleep();
 });

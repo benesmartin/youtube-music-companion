@@ -30,7 +30,6 @@
         <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
         <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
         <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/> <path d="m6 6 12 12"/></symbol>
-        <symbol id="i-stop" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/></symbol>
         <symbol id="i-play-next" viewBox="0 0 24 24"><path d="M3 5h6"/> <path d="M3 12h13"/> <path d="M3 19h13"/> <path d="m16 8-3-3 3-3"/> <path d="M21 19V7a2 2 0 0 0-2-2h-6"/></symbol>
         <symbol id="i-remove" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/> <path d="M8 12h8"/></symbol>
         <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/> <circle cx="6" cy="18" r="3"/> <circle cx="18" cy="16" r="3"/></symbol>
@@ -47,6 +46,10 @@
       <div id="header">
         <img id="artwork" alt="" />
         <svg id="artwork-idle"><use href="#i-audio-lines"/></svg>
+        <button id="sleep-chip" title="Sleep timer" hidden>
+          <svg><use href="#i-timer"/></svg>
+          <span id="sleep-chip-min"></span>
+        </button>
         <div id="panel">
           <div id="title">-</div>
           <div id="artist-row"><span id="artist">-</span></div>
@@ -69,50 +72,7 @@
           <div id="bottom-row">
             <button id="like" title="Like"><svg><use href="#i-thumb-up"/></svg></button>
             <button id="dislike" title="Dislike"><svg><use href="#i-thumb-down"/></svg></button>
-            <div id="more-wrap">
-              <button id="more" title="More actions"><svg><use href="#i-more"/></svg></button>
-              <div id="more-menu" hidden>
-                <div id="menu-main" class="menu-page">
-                  <button id="sleep-open">
-                    <svg><use href="#i-timer"/></svg>
-                    <span class="label">Sleep timer</span>
-                    <span id="sleep-status" class="wave"></span>
-                    <svg class="chev"><use href="#i-chevron-right"/></svg>
-                  </button>
-                  <button id="radio"><svg><use href="#i-radio"/></svg><span class="label">Start radio</span></button>
-                  <button id="library"><svg><use href="#i-bookmark"/></svg><span class="label" id="library-label">Add to library</span></button>
-                  <button id="copy-link" class="copy-btn">
-                    <svg class="on-idle"><use href="#i-link"/></svg>
-                    <svg class="on-copied"><use href="#i-check"/></svg>
-                    <span class="label">Copy link</span>
-                  </button>
-                  <button id="copy-info" class="copy-btn">
-                    <svg class="on-idle"><use href="#i-clipboard"/></svg>
-                    <svg class="on-copied"><use href="#i-check"/></svg>
-                    <span class="label">Copy title &amp; artist</span>
-                  </button>
-                </div>
-                <div id="menu-sleep" class="menu-page" hidden>
-                  <button id="sleep-back"><svg><use href="#i-chevron-left"/></svg><span class="label">Sleep timer</span></button>
-                  <div id="sleep-body">
-                    <div id="sleep-active">
-                      <svg><use href="#i-timer"/></svg>
-                      <span id="sleep-remaining">No timer running</span>
-                      <button id="sleep-off" title="Stop timer" hidden><svg><use href="#i-stop"/></svg></button>
-                    </div>
-                    <div id="sleep-presets">
-                      <button class="sleep-opt" data-min="15">15m</button>
-                      <button class="sleep-opt" data-min="30">30m</button>
-                      <button class="sleep-opt" data-min="60">60m</button>
-                    </div>
-                    <div id="sleep-custom">
-                      <input id="sleep-custom-min" type="number" min="1" max="720" placeholder="Custom…" />
-                      <button id="sleep-set">Set</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <button id="more" title="More actions"><svg><use href="#i-more"/></svg></button>
             <button id="mute" title="Mute">
               <svg class="on-low"><use href="#i-volume"/></svg>
               <svg class="on-high"><use href="#i-volume-high"/></svg>
@@ -243,6 +203,38 @@
       <p id="empty-sub">Open it in a tab and this popup becomes your player.</p>
       <button id="open-ytm">Open YouTube Music</button>
     </main>
+
+    <div id="action-sheet" hidden>
+      <div id="sheet-tiles">
+        <button id="radio"><svg><use href="#i-radio"/></svg><span class="label">Start radio</span></button>
+        <button id="library"><svg><use href="#i-bookmark"/></svg><span class="label" id="library-label">Add to library</span></button>
+        <button id="copy-link" class="copy-btn">
+          <svg class="on-idle"><use href="#i-link"/></svg>
+          <svg class="on-copied"><use href="#i-check"/></svg>
+          <span class="label">Copy link</span>
+        </button>
+        <button id="copy-info" class="copy-btn">
+          <svg class="on-idle"><use href="#i-clipboard"/></svg>
+          <svg class="on-copied"><use href="#i-check"/></svg>
+          <span class="label">Copy info</span>
+        </button>
+      </div>
+      <div id="sheet-sleep">
+        <span id="sleep-thumb"><svg><use href="#i-timer"/></svg></span>
+        <span id="sleep-meta">
+          <span id="sleep-title">Sleep timer</span>
+          <span id="sleep-remaining">No timer running</span>
+        </span>
+        <div id="sleep-presets">
+          <button class="sleep-opt" data-min="15">15m</button>
+          <button class="sleep-opt" data-min="30">30m</button>
+          <button class="sleep-opt" data-min="60">60m</button>
+          <input id="sleep-custom-min" type="number" min="1" max="720" placeholder="min" />
+          <button id="sleep-set">Set</button>
+        </div>
+        <button id="sleep-off" hidden>Stop timer</button>
+      </div>
+    </div>
 
     <div id="toast" hidden></div>
 
