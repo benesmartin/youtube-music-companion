@@ -1142,11 +1142,11 @@ input[type="range"]::-moz-range-thumb {
   display: flex;
   min-width: 0;
 }
-/* fixed columns: song and artist each keep a stable zone, so the layout
-   doesn't jump around as tracks change */
+/* the song may take up to 55% - short titles keep the artist close, long
+   ones cap so the artist always stays visible */
 #playlist-capture .csub-main {
   flex: none;
-  width: 55%;
+  max-width: 55%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
