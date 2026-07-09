@@ -1056,6 +1056,9 @@ function runSearch() {
   }
   if (!port) return;
   searchNote("Searching…");
+  // The old query's pills would repaint stale results over the note.
+  searchResultsData = null;
+  el("search-filters").hidden = true;
   port.postMessage({ type: "search", query });
 }
 
