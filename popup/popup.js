@@ -277,6 +277,7 @@ function toggleMenu(open) {
   const sheet = el("action-sheet");
   const show = open ?? sheet.hidden;
   sheet.hidden = !show;
+  el("sheet-backdrop").hidden = !show;
   el("more").classList.toggle("open", show);
   if (show) {
     // No point churning YTM's menu for library state while signed out.
@@ -294,9 +295,8 @@ el("sleep-chip").addEventListener("click", (e) => {
   e.stopPropagation();
   toggleMenu(true);
 });
-document.addEventListener("click", (e) => {
-  if (!el("action-sheet").hidden && !el("action-sheet").contains(e.target)) toggleMenu(false);
-});
+// The backdrop swallows the dismissing click - nothing underneath fires.
+el("sheet-backdrop").addEventListener("click", () => toggleMenu(false));
 
 // Radio via YTM's own menu item - SPA navigation, playback keeps running.
 el("radio").addEventListener("click", () => send("startRadio"));
