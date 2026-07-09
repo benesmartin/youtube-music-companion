@@ -1472,6 +1472,10 @@ function showLyricsEntry(entry) {
   const pane = el("lyrics-pane");
   pane.textContent = "";
   lyricsLines = null;
+  if (entry.error) {
+    lyricsNote("Couldn’t reach the lyrics service. It’ll retry on the next play.");
+    return;
+  }
   if (entry.instrumental) {
     lyricsNote("Instrumental track.");
     return;

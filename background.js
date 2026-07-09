@@ -165,7 +165,8 @@ function pickLyricsHit(hits, track) {
 
 async function lrclibSearch(query) {
   const res = await fetch(`https://lrclib.net/api/search?${new URLSearchParams(query)}`);
-  if (!res.ok) return null;
+  // A server error is not a miss - throw so the caller skips the cache.
+  if (!res.ok) throw new Error(`lrclib search failed: ${res.status}`);
   return res.json();
 }
 
@@ -211,18 +212,22 @@ async function doGetLyrics(track) {
       if (cache[track.videoId]) return cache[track.videoId];
     }
     let data = null;
+    let lookupFailed = false;
     try {
       data = await lrclibLookup(track);
     } catch {
-      data = null;
+      // Network/server trouble is not "no lyrics" - never cache it, so the
+      // next play retries instead of showing a permanent miss.
+      lookupFailed = true;
     }
     const entry = {
       synced: data?.syncedLyrics ?? "",
       plain: data?.plainLyrics ?? "",
       instrumental: Boolean(data?.instrumental),
+      error: lookupFailed,
       at: Date.now(),
     };
-    if (track.videoId) {
+    if (track.videoId && !lookupFailed) {
       const cache = await readLyricsCache();
       cache[track.videoId] = entry;
       const keys = Object.keys(cache);
