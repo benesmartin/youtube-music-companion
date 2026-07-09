@@ -1142,6 +1142,12 @@ input[type="range"]::-moz-range-thumb {
   background: var(--surface-2);
 }
 
+/* a drag attempt on an unmovable autoplay suggestion */
+.qrow.drag-refused,
+.qrow.drag-refused * {
+  cursor: not-allowed;
+}
+
 /* boundary between the real queue and YTM's autoplay suggestions */
 .queue-subheader {
   font-size: 10.5px;

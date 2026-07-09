@@ -480,7 +480,41 @@ function renderQueue(queue) {
       row.append(actions);
     }
 
-    row.addEventListener("click", () => send("playQueueItem", { index: item.index }));
+    // Automix rows aren't movable, so a drag attempt used to fall through
+    // to the click handler and play the row on release. Past a jitter
+    // threshold the press counts as a refused drag: show the no-go cursor
+    // and swallow the click. Real rows are covered by native drag - no
+    // click fires after a drop.
+    let dragRefused = false;
+    if (item.automix) {
+      row.addEventListener("mousedown", (e) => {
+        if (e.button !== 0) return;
+        dragRefused = false;
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const onMove = (ev) => {
+          if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 5) {
+            dragRefused = true;
+            row.classList.add("drag-refused");
+          }
+        };
+        const onUp = () => {
+          document.removeEventListener("mousemove", onMove);
+          document.removeEventListener("mouseup", onUp);
+          // The click lands right after mouseup; reset once it has passed.
+          setTimeout(() => {
+            dragRefused = false;
+            row.classList.remove("drag-refused");
+          }, 0);
+        };
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+      });
+    }
+    row.addEventListener("click", () => {
+      if (dragRefused) return;
+      send("playQueueItem", { index: item.index });
+    });
 
     // Local drag preview; the drop sends one queueMove and the next push
     // confirms or snaps back. Automix rows aren't movable.
