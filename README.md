@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.0.0/01-player-queue.png" width="640" alt="Player with queue, dark theme">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.1.0/01-player-queue.png" width="640" alt="Player with queue, dark theme">
 </p>
 
 ## Features
@@ -44,12 +44,12 @@
 <summary><b>More screenshots</b> - lyrics, search, history, settings</summary>
 <br>
 <p align="center">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.0.0/02-synced-lyrics.png" width="404" alt="Time-synced lyrics">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.0.0/03-search.png" width="404" alt="Search with songs and videos filters">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.1.0/02-synced-lyrics.png" width="404" alt="Time-synced lyrics">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.1.0/03-search.png" width="404" alt="Search with songs and videos filters">
 </p>
 <p align="center">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.0.0/04-history.png" width="404" alt="Listening history">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.0.0/05-settings.png" width="404" alt="Settings with themes and accent colors">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.1.0/04-history.png" width="404" alt="Listening history">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.1.0/05-settings.png" width="404" alt="Settings with themes and accent colors">
 </p>
 </details>
 
