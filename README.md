@@ -23,16 +23,19 @@
 ## Features
 
 - **Player**: album art, per-artist links, play/pause, previous/next,
-  like/dislike, shuffle, repeat, seek and volume
+  like/dislike, shuffle, repeat, seek and volume - hover the seek bar to
+  preview the exact time before you click
 - **Queue**: see what's coming with artwork, jump to any track, play next,
   remove, drag to reorder; toggleable autoplay suggestions
 - **History**: your real YouTube Music listening history, click to replay
 - **Search**: songs and videos, play or queue straight from results
-- **Playlists**: browse your library, play a playlist, open its tracks,
-  add the current song to any of your playlists
+- **Playlists**: browse your library, play or shuffle a playlist, open its
+  tracks, save the current song to any playlist (with a duplicate guard),
+  remove songs - long playlists load as you scroll
 - **Lyrics** via [LRCLIB](https://lrclib.net): time-synced highlight;
   strictly opt-in (sends title/artist to lrclib.net), official songs only
-- **Sleep timer** with presets and custom minutes
+- **Sleep timer** with presets and custom minutes - a live countdown sits
+  on the album art while it runs
 - **Themes**: dark, light, or follow the system, with eight accent colors -
   optionally tinting the toolbar icon to match
 - **Keyboard shortcuts**: play/pause, next, previous, like - plus unbound
@@ -61,6 +64,8 @@
   (Firefox: `about:debugging` → Load Temporary Add-on; Chrome: `chrome://extensions` → Load unpacked)
 
 Requires an open music.youtube.com tab; the popup becomes its remote control.
+Nothing playing yet? Search, playlists and history still work, so you can
+start the music from the popup itself.
 
 ## How it works
 
