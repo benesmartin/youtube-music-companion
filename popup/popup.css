@@ -1389,6 +1389,25 @@ body.light #artwork-idle {
   padding: 16px 12px;
 }
 
+/* Suggestions still loading: fill the pane and center the note in the
+   space left under the real rows */
+#queue-list.loading-suggestions {
+  display: flex;
+  flex-direction: column;
+  min-height: 264px;
+}
+#queue-list.loading-suggestions .qrow,
+#queue-list.loading-suggestions .queue-subheader {
+  flex: none;
+}
+#queue-list.loading-suggestions > #queue-note {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+}
+
 .qrow {
   display: flex;
   align-items: center;

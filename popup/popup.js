@@ -516,6 +516,7 @@ function renderQueue(queue) {
   // While a play settles, the old queue is dead data - pushes during the
   // transition would paint it (or an empty flash) with the wrong highlight.
   if (pendingTrackHold) {
+    list.classList.remove("loading-suggestions");
     list.textContent = "";
     const note = document.createElement("div");
     note.id = "queue-note";
@@ -526,6 +527,7 @@ function renderQueue(queue) {
   }
   list.textContent = "";
   if (!queue.length) {
+    list.classList.remove("loading-suggestions");
     const note = document.createElement("div");
     note.id = "queue-note";
     // A pending play means the queue is rebuilding, not gone. Idle: the
@@ -669,6 +671,10 @@ function renderQueue(queue) {
     note.id = "queue-note";
     note.textContent = "Loading suggestions…";
     list.append(header, note);
+    // The class flexes the list so the note centers in the free space.
+    list.classList.add("loading-suggestions");
+  } else {
+    list.classList.remove("loading-suggestions");
   }
 
   const selectedIndex = queue.findIndex((item) => item.selected);
