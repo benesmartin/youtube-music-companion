@@ -1672,10 +1672,20 @@ async function connect() {
   tryTab(candidates, 0);
 }
 
+let reconnectAttempts = 0;
+
 function tryTab(candidates, index) {
   const tab = candidates[index];
   if (!tab) {
-    showEmpty();
+    // Tabs exist but none accepted the port: usually a tab mid-reload
+    // (playVideo's watch-URL fallback navigates the page under us) with no
+    // content script yet. Retry briefly instead of giving up on the popup.
+    if (candidates.length && reconnectAttempts < 8) {
+      reconnectAttempts += 1;
+      setTimeout(connect, 500);
+    } else {
+      showEmpty();
+    }
     return;
   }
   currentTabId = tab.id;
@@ -1689,6 +1699,7 @@ function tryTab(candidates, index) {
   let alive = false;
   port.onMessage.addListener((msg) => {
     alive = true;
+    reconnectAttempts = 0;
     if (msg.type === "state") {
       if (queueSwitchVideoId && msg.state.available && msg.state.videoId === queueSwitchVideoId) {
         queueSwitchLoaded = true;
