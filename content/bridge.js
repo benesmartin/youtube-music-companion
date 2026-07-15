@@ -181,17 +181,22 @@
   // coherent.
   async function playVideo({ videoId, playlistId, params } = {}) {
     if (!videoId) return false;
-    const queueOrder = () => {
-      const q = document.querySelector("ytmusic-player-queue")?.queue?.store?.store
+    // Watch the HIGHLIGHTED row, not the queue order - a restored queue
+    // hydrating its automix continuations changes the order without any
+    // navigation, which read as success while the app stayed stale.
+    const highlightIds = () => {
+      const state = document.querySelector("ytmusic-player-queue")?.queue?.store?.store
         ?.getState()?.queue;
-      return (q?.items ?? [])
-        .concat(q?.automixItems ?? [])
-        .map((entry) => queueRendererOf(entry)?.videoId ?? "")
-        .join();
+      const combined = (state?.items ?? []).concat(state?.automixItems ?? []);
+      const entry = combined[currentQueueIndex(state, null)];
+      const counterpart =
+        entry?.playlistPanelVideoWrapperRenderer?.counterpart?.[0]?.counterpartRenderer
+          ?.playlistPanelVideoRenderer;
+      return [queueRendererOf(entry)?.videoId, counterpart?.videoId].filter(Boolean);
     };
     const app = document.querySelector("ytmusic-app");
     if (app) {
-      const before = queueOrder();
+      const before = highlightIds().join();
       const watchEndpoint = { videoId };
       if (playlistId) watchEndpoint.playlistId = playlistId;
       if (params) watchEndpoint.params = params;
@@ -204,9 +209,11 @@
       );
       for (let attempt = 0; attempt < 20; attempt++) {
         await wait(150);
-        if (player()?.getVideoData?.()?.video_id === videoId && queueOrder() !== before) {
-          return true;
-        }
+        if (player()?.getVideoData?.()?.video_id !== videoId) continue;
+        // Success = the highlight moved onto our song (any rendition id of
+        // the row) or onto a different row than before the dispatch.
+        const now = highlightIds();
+        if (now.includes(videoId) || (now.length && now.join() !== before)) return true;
       }
     }
     // Let the response reach the popup before the page goes away.
