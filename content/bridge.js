@@ -193,7 +193,7 @@
     }
   }
 
-  async function playVideo({ videoId, playlistId, params } = {}) {
+  async function playVideo({ videoId, playlistId, params, videoType } = {}) {
     if (!videoId) return false;
     // Watch the HIGHLIGHTED row, not the queue order - a restored queue
     // hydrating its automix continuations changes the order without any
@@ -212,8 +212,19 @@
     if (app) {
       const before = highlightIds().join();
       // startTimeSeconds asks for a fresh start outright; the watcher below
-      // still guards against a late server-side resume seek.
-      const watchEndpoint = { videoId, startTimeSeconds: 0 };
+      // still guards against a late server-side resume seek. The music
+      // config block is what native endpoints carry - WITHOUT it the router
+      // half-applies the event in some states (audio swaps, queue stays),
+      // the root of the whole desync family. ATV fits song rows by default.
+      const watchEndpoint = {
+        videoId,
+        startTimeSeconds: 0,
+        watchEndpointMusicSupportedConfigs: {
+          watchEndpointMusicConfig: {
+            musicVideoType: videoType || "MUSIC_VIDEO_TYPE_ATV",
+          },
+        },
+      };
       if (playlistId) watchEndpoint.playlistId = playlistId;
       if (params) watchEndpoint.params = params;
       // Some queue states HALF-apply the first dispatch (audio switches,
@@ -559,6 +570,9 @@
       removeEndpoint,
       playlistId: endpoint?.playlistId ?? null,
       params: endpoint?.params ?? null,
+      videoType:
+        endpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig
+          ?.musicVideoType ?? null,
       title: columnText(renderer.flexColumns?.[0]),
       artist: artistText(renderer.flexColumns?.[1]),
       duration:
