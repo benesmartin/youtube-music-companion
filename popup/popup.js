@@ -979,6 +979,7 @@ function renderHistory(history) {
 function buildTrackRow(item, { onRemove } = {}) {
   const row = document.createElement("div");
   row.className = "qrow";
+  if (item.videoId) row.dataset.videoId = item.videoId;
   const thumb = document.createElement("div");
   thumb.className = "qthumb";
   if (item.thumb) thumb.style.backgroundImage = `url("${item.thumb}")`;

@@ -22,3 +22,10 @@ promo/
 
 # Private test suite (runs against unmodified production files)
 tests/
+
+# Private e2e harness (Playwright against real YTM; needs a logged-in profile)
+e2e/
+package.json
+package-lock.json
+playwright.config.js
+test-results/
