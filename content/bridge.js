@@ -188,16 +188,18 @@
           detail: { endpoint: { watchEndpoint } },
         })
       );
-      for (let attempt = 0; attempt < 10; attempt++) {
+      for (let attempt = 0; attempt < 20; attempt++) {
         await wait(150);
         if (player()?.getVideoData?.()?.video_id === videoId) return true;
       }
     }
-    // Fallback: raw player API - at least the audio switches.
+    // Raw player API - the audio switches but the app never navigates
+    // (stale UI everywhere, queue lost on reload). Report it so the popup
+    // can warn instead of faking success.
     const p = player();
     if (!p?.loadVideoById) return false;
     p.loadVideoById(videoId);
-    return true;
+    return "desynced";
   }
 
   function queueRendererOf(entry) {
