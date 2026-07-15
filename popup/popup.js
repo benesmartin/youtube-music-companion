@@ -75,7 +75,52 @@ function renderIdle() {
   updateCaptureBar();
 }
 
+// While a play is in flight the header already shows the TARGET's metadata
+// (showPendingTrack); the tab keeps pushing the OUTGOING song's status for
+// a couple of seconds, which used to read as "wrong song playing".
+let pendingTrackHold = null; // { baseline: videoId playing at click time }
+let pendingTrackTimer = null;
+
+function showPendingTrack(item) {
+  pendingTrackHold = { targetTitle: item.title ?? "" };
+  clearTimeout(pendingTrackTimer);
+  // Safety valve: never hold the header hostage if the play goes nowhere.
+  pendingTrackTimer = setTimeout(() => {
+    pendingTrackHold = null;
+  }, 8000);
+  el("title").textContent = item.title;
+  el("title").title = "";
+  el("artist").textContent = item.artist ?? "";
+  el("album").textContent = "";
+  el("album-year").textContent = "";
+  el("position").textContent = "0:00";
+  el("duration").textContent = item.duration || "0:00";
+  el("seek").value = 0;
+  updateFill(el("seek"));
+  if (item.thumb) el("artwork").src = item.thumb;
+}
+
 function render(state) {
+  // Release only when the pushed title matches the TARGET. Nothing weaker
+  // works: the videoId flips before the bar does (half-applied navigation
+  // pairs the new id with the old title), and the old title isn't stable
+  // either (the bar hops between renditions - "Radio Edit"/"Official
+  // Video" - of the outgoing song). Substring both ways covers the
+  // target's own rendition suffixes; the timeout is the safety valve.
+  if (pendingTrackHold) {
+    const target = pendingTrackHold.targetTitle;
+    const matches =
+      state.available &&
+      state.title &&
+      target &&
+      (state.title.includes(target) || target.includes(state.title));
+    if (matches) {
+      pendingTrackHold = null;
+      clearTimeout(pendingTrackTimer);
+    } else {
+      return;
+    }
+  }
   if (!state.available) {
     // SPA navigation blanks the bar briefly - only bail if it stays gone.
     if (lastState?.available) {
@@ -1054,6 +1099,7 @@ function buildTrackRow(item, { onRemove } = {}) {
     row.addEventListener("click", () => {
       if (row.classList.contains("loading")) return;
       setPendingPlay(row, "loading");
+      showPendingTrack(item);
       send("playVideoById", {
         videoId: item.videoId,
         playlistId: item.playlistId,
