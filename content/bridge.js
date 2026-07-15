@@ -181,13 +181,18 @@
   // coherent.
   // YTM resumes history plays mid-track (position persists server-side);
   // an explicit play should start at the top. The resume seek can land a
-  // beat after playback starts, so watch on a tight cadence and snap back
-  // once - a fresh start can't reach 3s within the watch window.
+  // couple of seconds AFTER playback starts, and countering it with a
+  // plain seek-to-0 replayed whatever the user already heard (an audible
+  // "restart"). Watch for the forward JUMP instead and put playback back
+  // where it was - 0 before any audio, otherwise a near-seamless continue.
   async function restartIfResumed() {
-    for (let attempt = 0; attempt < 20; attempt++) {
-      if ((player()?.getCurrentTime?.() ?? 0) > 3) {
-        player()?.seekTo?.(0, true);
-        return;
+    let heard = 0;
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const t = player()?.getCurrentTime?.() ?? 0;
+      if (t > heard + 5) {
+        player()?.seekTo?.(heard, true);
+      } else if (t > heard) {
+        heard = t;
       }
       await wait(100);
     }
