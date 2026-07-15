@@ -424,7 +424,9 @@ async function queueItemMenuAction(index, iconSelector) {
       menuButton.click();
     } else {
       // Automix rows have no ⋯ button; the right-click menu carries the
-      // same service items with the same icons.
+      // same service items with the same icons. Off-screen coordinates
+      // make YTM drop the event, so bring the row into view first.
+      item.scrollIntoView({ block: "center" });
       const rect = item.getBoundingClientRect();
       item.dispatchEvent(
         new MouseEvent("contextmenu", {
@@ -436,7 +438,8 @@ async function queueItemMenuAction(index, iconSelector) {
         })
       );
     }
-    for (let attempt = 0; attempt < 20; attempt++) {
+    // Menu contents are fetched per-row - slow networks need the long tail.
+    for (let attempt = 0; attempt < 35; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       // Scope to the OPEN dropdown - stale menus linger and would match.
       const path = document.querySelector(
@@ -549,7 +552,18 @@ const commands = {
     });
   },
   queuePlayNext: (payload) =>
-    queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.playNext).then((ok) => {
+    queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.playNext).then(async (ok) => {
+      if (!ok) {
+        // The automix right-click menu sometimes never populates. Fall back
+        // to inserting a copy after the playing row via the store - the
+        // song still plays next, the suggestion row just stays put.
+        const data = await askBridgeAsync("getQueueData", {}, 2000);
+        const videoId = Array.isArray(data) ? data[payload.index]?.videoId : null;
+        if (videoId) {
+          ok = (await askBridgeAsync("queueVideoNext", { videoId })) === true;
+          if (ok) setTimeout(pushQueue, 700);
+        }
+      }
       if (!ok) notifyPorts("Couldn’t move that song. Try again.");
       return ok;
     }),
