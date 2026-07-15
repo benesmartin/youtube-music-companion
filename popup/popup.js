@@ -101,6 +101,10 @@ function render(state) {
   if (track !== currentTrack) {
     currentTrack = track;
     seeking = false;
+    // The new play lands in account history - drop the cache so the next
+    // History visit refetches (or right away if it's the open tab).
+    historyLoaded = false;
+    if (activeTab === "history") requestHistory();
   }
 
   el("title").textContent = state.title;
