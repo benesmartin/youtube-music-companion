@@ -208,23 +208,47 @@
     );
   }
 
-  // The playing row can't be found by videoId alone - queueing the same
-  // track twice makes findIndex land on the first copy, inserting "play
-  // next" items after it instead of after the one actually playing. The
-  // store marks the current row with selected; videoId is the fallback.
-  function currentQueueIndex(entries, currentId) {
-    const selected = entries.findIndex((entry) => {
+  function entryMatchesId(entry, videoId) {
+    if (!videoId) return false;
+    const counterpart =
+      entry?.playlistPanelVideoWrapperRenderer?.counterpart?.[0]?.counterpartRenderer
+        ?.playlistPanelVideoRenderer;
+    return queueRendererOf(entry)?.videoId === videoId || counterpart?.videoId === videoId;
+  }
+
+  // Where the playing row sits in items[] + automixItems[] concatenated.
+  // The DOM highlight leads: in the seed+automix queue shape the store's
+  // selectedItemIndex and renderer `selected` flags lag one song behind the
+  // actual playback (play-next landed right BEFORE the playing track), while
+  // the highlighted row - which mirrors the combined store order - stays
+  // live. videoId is unambiguous unless the same track is queued twice; the
+  // store fields close out as fallbacks.
+  function currentQueueIndex(state, currentId) {
+    const combined = (state?.items ?? []).concat(state?.automixItems ?? []);
+    const rows = [...document.querySelectorAll("ytmusic-player-queue-item")].filter(
+      (row) => !row.closest("#counterpart-renderer")
+    );
+    const domIndex = rows.findIndex((row) => row.hasAttribute("selected"));
+    if (domIndex >= 0 && domIndex < combined.length) return domIndex;
+    const byId = combined.reduce(
+      (found, entry, index) => (entryMatchesId(entry, currentId) ? [...found, index] : found),
+      []
+    );
+    if (byId.length === 1) return byId[0];
+    const live = state?.selectedItemIndex;
+    if (Number.isInteger(live) && live >= 0 && live < combined.length) return live;
+    const selected = combined.findIndex((entry) => {
       const counterpart =
         entry?.playlistPanelVideoWrapperRenderer?.counterpart?.[0]?.counterpartRenderer
           ?.playlistPanelVideoRenderer;
       return queueRendererOf(entry)?.selected === true || counterpart?.selected === true;
     });
     if (selected >= 0) return selected;
-    if (!currentId) return -1;
-    return entries.findIndex((entry) => queueRendererOf(entry)?.videoId === currentId);
+    return byId.length ? byId[0] : -1;
   }
 
-  // Play-next for out-of-queue tracks: get_queue renderer → ADD_ITEMS.
+  // Play-next for out-of-queue tracks: get_queue renderer → ADD_ITEMS,
+  // mirroring the captured native payload (no shuffleEnabled key).
   async function queueVideoNext(videoId) {
     if (!videoId) return false;
     const store = document.querySelector("ytmusic-player-queue")?.queue?.store?.store;
@@ -233,25 +257,27 @@
     const items = (data?.queueDatas ?? []).map((d) => d?.content).filter(Boolean);
     if (!items.length) return false;
     const state = store.getState()?.queue;
-    const existing = state?.items ?? [];
     const currentId = player()?.getVideoData?.()?.video_id ?? null;
-    const currentIndex = currentQueueIndex(existing, currentId);
+    const currentIndex = currentQueueIndex(state, currentId);
+    const target = currentIndex >= 0 ? currentIndex + 1 : (state?.items?.length ?? 0);
     try {
       store.dispatch({
         type: "ADD_ITEMS",
         payload: {
           nextQueueItemId: state?.nextQueueItemId,
-          index: currentIndex >= 0 ? currentIndex + 1 : existing.length,
+          index: target,
           items,
-          shuffleEnabled: false,
           shouldAssignIds: true,
         },
       });
     } catch (err) {
       return false;
     }
-    // The dispatch is fire-and-forget; report success only if the queue grew.
-    return (store.getState()?.queue?.items?.length ?? 0) > existing.length;
+    // Fire-and-forget dispatch; success = the song sits at the target spot
+    // (growth alone would mask a misplaced insert).
+    const after = store.getState()?.queue;
+    const combined = (after?.items ?? []).concat(after?.automixItems ?? []);
+    return entryMatchesId(combined[target], queueRendererOf(items[0])?.videoId ?? videoId);
   }
 
   // MOVE_ITEM only reaches queue.items - automix indices are rejected.
