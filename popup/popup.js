@@ -85,9 +85,11 @@ function showPendingTrack(item) {
   pendingTrackHold = { targetTitle: item.title ?? "" };
   clearTimeout(pendingTrackTimer);
   // Safety valve: never hold the header hostage if the play goes nowhere.
+  // Sized to outlast the worst path (retries + full tab reload + reconnect)
+  // - expiring mid-reload used to flash the "nothing playing" idle view.
   pendingTrackTimer = setTimeout(() => {
     pendingTrackHold = null;
-  }, 8000);
+  }, 12000);
   el("title").textContent = item.title;
   el("title").title = "";
   el("artist").textContent = item.artist ?? "";
@@ -117,6 +119,9 @@ function render(state) {
     if (matches) {
       pendingTrackHold = null;
       clearTimeout(pendingTrackTimer);
+      // The queue tab sat on "Loading…" during the hold - repaint now
+      // instead of waiting out the push throttle.
+      port?.postMessage({ type: "getQueue" });
     } else {
       return;
     }
@@ -508,6 +513,17 @@ function renderQueue(queue) {
   const list = el("queue-list");
   // A push mid-drag would destroy the dragged row; the post-drop push repaints.
   if (list.querySelector(".qrow.dragging")) return;
+  // While a play settles, the old queue is dead data - pushes during the
+  // transition would paint it (or an empty flash) with the wrong highlight.
+  if (pendingTrackHold) {
+    list.textContent = "";
+    const note = document.createElement("div");
+    note.id = "queue-note";
+    note.textContent = "Loading…";
+    list.append(note);
+    lastSelectedIndex = null;
+    return;
+  }
   list.textContent = "";
   if (!queue.length) {
     const note = document.createElement("div");
