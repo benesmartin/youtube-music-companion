@@ -179,6 +179,20 @@
   // the player switched AND the queue changed; anything less falls back to
   // a real watch navigation, which reloads the page but always lands
   // coherent.
+  // YTM resumes history plays mid-track (position persists server-side);
+  // an explicit play should start at the top. The resume seek can land a
+  // beat after playback starts, so watch briefly and snap back once - a
+  // fresh start can't reach 3s within the watch window.
+  async function restartIfResumed() {
+    for (let attempt = 0; attempt < 6; attempt++) {
+      if ((player()?.getCurrentTime?.() ?? 0) > 3) {
+        player()?.seekTo?.(0, true);
+        return;
+      }
+      await wait(250);
+    }
+  }
+
   async function playVideo({ videoId, playlistId, params } = {}) {
     if (!videoId) return false;
     // Watch the HIGHLIGHTED row, not the queue order - a restored queue
@@ -213,15 +227,34 @@
         // Success = the highlight moved onto our song (any rendition id of
         // the row) or onto a different row than before the dispatch.
         const now = highlightIds();
-        if (now.includes(videoId) || (now.length && now.join() !== before)) return true;
+        if (now.includes(videoId) || (now.length && now.join() !== before)) {
+          restartIfResumed();
+          return true;
+        }
       }
     }
-    // Let the response reach the popup before the page goes away.
+    // Let the response reach the popup before the page goes away. The
+    // marker tells the next bridge copy to undo a mid-track resume.
     const url = `${location.origin}/watch?v=${encodeURIComponent(videoId)}${
       playlistId ? `&list=${encodeURIComponent(playlistId)}` : ""
-    }`;
+    }&ytmc_restart=1`;
     setTimeout(() => location.assign(url), 50);
     return true;
+  }
+
+  // Fallback navigations carry ytmc_restart: strip it, then make sure the
+  // track starts from the top once playback begins.
+  if (new URLSearchParams(location.search).has("ytmc_restart")) {
+    const cleaned = new URL(location.href);
+    cleaned.searchParams.delete("ytmc_restart");
+    history.replaceState(history.state, "", cleaned.toString());
+    (async () => {
+      for (let attempt = 0; attempt < 40; attempt++) {
+        await wait(250);
+        if ((player()?.getCurrentTime?.() ?? 0) > 0) break;
+      }
+      await restartIfResumed();
+    })();
   }
 
   function queueRendererOf(entry) {
