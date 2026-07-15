@@ -630,7 +630,10 @@ function renderQueue(queue) {
       });
     }
     row.addEventListener("click", () => {
-      if (dragRefused) return;
+      if (dragRefused || row.classList.contains("loading")) return;
+      // Spinner only - queue jumps keep the queue, so no header hold; the
+      // next push repaints the rows (and with them the marker) anyway.
+      setPendingPlay(row, "loading");
       send("playQueueItem", { index: item.index });
     });
 
@@ -1120,6 +1123,7 @@ function buildTrackRow(item, { onRemove } = {}) {
         videoId: item.videoId,
         playlistId: item.playlistId,
         params: item.params,
+        videoType: item.videoType,
       });
       armQueueSwitch(item.videoId);
     });
