@@ -214,27 +214,35 @@
       const watchEndpoint = { videoId };
       if (playlistId) watchEndpoint.playlistId = playlistId;
       if (params) watchEndpoint.params = params;
-      app.dispatchEvent(
-        new CustomEvent("yt-navigate", {
-          bubbles: true,
-          composed: true,
-          detail: { endpoint: { watchEndpoint } },
-        })
-      );
-      for (let attempt = 0; attempt < 20; attempt++) {
-        await wait(150);
-        if (player()?.getVideoData?.()?.video_id !== videoId) continue;
-        // Success = the highlight moved onto our song (any rendition id of
-        // the row) or onto a different row than before the dispatch.
-        const now = highlightIds();
-        if (now.includes(videoId) || (now.length && now.join() !== before)) {
-          restartIfResumed();
-          return true;
+      // Some queue states HALF-apply the first dispatch (audio switches,
+      // queue stays) but complete on a second identical one - retry before
+      // resorting to a full reload.
+      for (let round = 0; round < 3; round++) {
+        app.dispatchEvent(
+          new CustomEvent("yt-navigate", {
+            bubbles: true,
+            composed: true,
+            detail: { endpoint: { watchEndpoint } },
+          })
+        );
+        for (let attempt = 0; attempt < 10; attempt++) {
+          await wait(150);
+          if (player()?.getVideoData?.()?.video_id !== videoId) continue;
+          // Success = the highlight moved onto our song (any rendition id
+          // of the row) or onto a different row than before the dispatch.
+          const now = highlightIds();
+          if (now.includes(videoId) || (now.length && now.join() !== before)) {
+            restartIfResumed();
+            return true;
+          }
         }
       }
     }
-    // Let the response reach the popup before the page goes away. The
-    // marker tells the next bridge copy to undo a mid-track resume.
+    // Pause first: YTM's leave-confirmation guards PLAYING music, and the
+    // audio is being replaced anyway. Let the response reach the popup
+    // before the page goes away. The marker tells the next bridge copy to
+    // undo a mid-track resume.
+    player()?.pauseVideo?.();
     const url = `${location.origin}/watch?v=${encodeURIComponent(videoId)}${
       playlistId ? `&list=${encodeURIComponent(playlistId)}` : ""
     }&ytmc_restart=1`;
