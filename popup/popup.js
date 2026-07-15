@@ -467,10 +467,13 @@ function renderQueue(queue) {
   if (!queue.length) {
     const note = document.createElement("div");
     note.id = "queue-note";
-    // Idle: the radio hint would point at a disabled menu.
-    note.textContent = playerView.classList.contains("idle")
-      ? "Nothing in the queue."
-      : "Nothing in the queue. Try Start radio from the ⋯ menu.";
+    // A pending play means the queue is rebuilding, not gone. Idle: the
+    // radio hint would point at a disabled menu.
+    note.textContent = queueSwitchFallback
+      ? "Loading…"
+      : playerView.classList.contains("idle")
+        ? "Nothing in the queue."
+        : "Nothing in the queue. Try Start radio from the ⋯ menu.";
     list.append(note);
     lastSelectedIndex = null;
     return;
@@ -900,7 +903,9 @@ function updateAutoplayToggle(value) {
 
 el("autoplay-toggle").addEventListener("click", () => {
   send("toggleAutoplay");
-  // Optimistic flip; the next queue push confirms.
+  // Optimistic flip; busy until the next queue push confirms (that's also
+  // when the Autoplay section actually appears/disappears in the list).
+  el("autoplay-toggle").classList.add("busy");
   updateAutoplayToggle(!lastAutoplay);
 });
 
@@ -1047,6 +1052,8 @@ function buildTrackRow(item, { onRemove } = {}) {
     }
     row.append(actions);
     row.addEventListener("click", () => {
+      if (row.classList.contains("loading")) return;
+      setPendingPlay(row, "loading");
       send("playVideoById", {
         videoId: item.videoId,
         playlistId: item.playlistId,
@@ -1204,7 +1211,8 @@ function renderPlaylists(playlists) {
       [
         "Shuffle",
         "#i-shuffle",
-        () => {
+        (button) => {
+          setPendingPlay(button, "busy");
           send("playPlaylist", { playlistId: pl.id, shuffle: true });
           armQueueSwitch(null); // playlistStarted or the fallback switches
         },
@@ -1219,7 +1227,7 @@ function renderPlaylists(playlists) {
       button.append(svg);
       button.addEventListener("click", (e) => {
         e.stopPropagation();
-        handler();
+        handler(button);
       });
       actions.append(button);
     }
@@ -1349,6 +1357,7 @@ for (const [id, shuffle] of [
 ]) {
   el(id).addEventListener("click", () => {
     if (!playlistDetailId) return;
+    setPendingPlay(el(id), "busy");
     send("playPlaylist", { playlistId: playlistDetailId, shuffle });
     armQueueSwitch(null); // playlistStarted or the fallback switches
   });
@@ -1620,6 +1629,17 @@ let queueSwitchVideoId = null;
 let queueSwitchLoaded = false;
 let queueSwitchFallback = null;
 
+// Loading affordance while a play is in flight (navigation can take a few
+// seconds, or even reload the tab). One pending element at a time; cleared
+// by the queue switch (success or its fallback) and by error notices.
+let pendingPlay = null;
+
+function setPendingPlay(element, cls) {
+  pendingPlay?.element.classList.remove(pendingPlay.cls);
+  pendingPlay = element ? { element, cls } : null;
+  element?.classList.add(cls);
+}
+
 function armQueueSwitch(videoId) {
   queueSwitchVideoId = videoId;
   queueSwitchLoaded = false;
@@ -1628,6 +1648,7 @@ function armQueueSwitch(videoId) {
 }
 
 function doQueueSwitch() {
+  setPendingPlay(null);
   clearTimeout(queueSwitchFallback);
   queueSwitchFallback = null;
   queueSwitchVideoId = null;
@@ -1707,6 +1728,7 @@ function tryTab(candidates, index) {
       render(msg.state);
     } else if (msg.type === "queue") {
       // Autoplay state first - renderQueue keys the suggestions section on it.
+      el("autoplay-toggle").classList.remove("busy");
       updateAutoplayToggle(msg.autoplay);
       renderQueue(msg.queue);
       if (queueSwitchLoaded && msg.queue.some((item) => item.selected)) doQueueSwitch();
@@ -1719,6 +1741,7 @@ function tryTab(candidates, index) {
       if (queueSwitchFallback && queueSwitchVideoId === null) {
         if (msg.ok) doQueueSwitch();
         else {
+          setPendingPlay(null);
           clearTimeout(queueSwitchFallback);
           queueSwitchFallback = null;
           showToast("Couldn’t start that playlist.");
@@ -1772,7 +1795,11 @@ function tryTab(candidates, index) {
         showToast("Couldn’t remove that song.");
       }
     }
-    else if (msg.type === "notice") showToast(msg.text);
+    else if (msg.type === "notice") {
+      // Errors end whatever play was pending.
+      setPendingPlay(null);
+      showToast(msg.text);
+    }
   });
   port.postMessage({ type: "getQueue" });
   port.onDisconnect.addListener(() => {

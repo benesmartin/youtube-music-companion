@@ -1458,6 +1458,41 @@ body.light #artwork-idle {
     center/14px no-repeat;
 }
 
+/* pending play - spinner over the thumb until the queue switch lands
+   (doubled class so it outranks the hover overlay above) */
+.qrow.qrow.loading .qthumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+.qrow.loading .qthumb::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-top-color: var(--accent);
+  animation: pending-spin 0.7s linear infinite;
+  z-index: 1;
+}
+
+/* pending playlist play - quiet: dim the button until the switch lands */
+button.busy {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+@keyframes pending-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .qmeta {
   min-width: 0;
   flex: 1;
