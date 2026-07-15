@@ -173,11 +173,25 @@
     return true;
   }
 
-  // yt-navigate keeps the whole app in sync; loadVideoById is fallback only.
+  // yt-navigate keeps the whole app in sync - but with a pre-existing queue
+  // YTM sometimes HALF-applies it: the player swaps the audio while the
+  // queue/watch page never rebuild (the stale-UI desync). So success means
+  // the player switched AND the queue changed; anything less falls back to
+  // a real watch navigation, which reloads the page but always lands
+  // coherent.
   async function playVideo({ videoId, playlistId, params } = {}) {
     if (!videoId) return false;
+    const queueOrder = () => {
+      const q = document.querySelector("ytmusic-player-queue")?.queue?.store?.store
+        ?.getState()?.queue;
+      return (q?.items ?? [])
+        .concat(q?.automixItems ?? [])
+        .map((entry) => queueRendererOf(entry)?.videoId ?? "")
+        .join();
+    };
     const app = document.querySelector("ytmusic-app");
     if (app) {
+      const before = queueOrder();
       const watchEndpoint = { videoId };
       if (playlistId) watchEndpoint.playlistId = playlistId;
       if (params) watchEndpoint.params = params;
@@ -190,16 +204,17 @@
       );
       for (let attempt = 0; attempt < 20; attempt++) {
         await wait(150);
-        if (player()?.getVideoData?.()?.video_id === videoId) return true;
+        if (player()?.getVideoData?.()?.video_id === videoId && queueOrder() !== before) {
+          return true;
+        }
       }
     }
-    // Raw player API - the audio switches but the app never navigates
-    // (stale UI everywhere, queue lost on reload). Report it so the popup
-    // can warn instead of faking success.
-    const p = player();
-    if (!p?.loadVideoById) return false;
-    p.loadVideoById(videoId);
-    return "desynced";
+    // Let the response reach the popup before the page goes away.
+    const url = `${location.origin}/watch?v=${encodeURIComponent(videoId)}${
+      playlistId ? `&list=${encodeURIComponent(playlistId)}` : ""
+    }`;
+    setTimeout(() => location.assign(url), 50);
+    return true;
   }
 
   function queueRendererOf(entry) {

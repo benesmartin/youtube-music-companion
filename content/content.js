@@ -509,13 +509,7 @@ const commands = {
   // payload may carry playlistId/params so YTM builds the proper queue
   playVideoById: (payload) =>
     askBridgeAsync("playVideoById", payload).then((result) => {
-      if (result === "desynced") {
-        notifyPorts(
-          "The audio switched, but YouTube Music didn’t follow. Reload the music tab if it looks stuck."
-        );
-      } else if (!result) {
-        notifyPorts("Couldn’t play that song. Try again.");
-      }
+      if (!result) notifyPorts("Couldn’t play that song. Try again.");
       return result === true;
     }),
   playPlaylist: (payload) =>
