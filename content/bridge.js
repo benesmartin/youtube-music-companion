@@ -181,15 +181,15 @@
   // coherent.
   // YTM resumes history plays mid-track (position persists server-side);
   // an explicit play should start at the top. The resume seek can land a
-  // beat after playback starts, so watch briefly and snap back once - a
-  // fresh start can't reach 3s within the watch window.
+  // beat after playback starts, so watch on a tight cadence and snap back
+  // once - a fresh start can't reach 3s within the watch window.
   async function restartIfResumed() {
-    for (let attempt = 0; attempt < 6; attempt++) {
+    for (let attempt = 0; attempt < 20; attempt++) {
       if ((player()?.getCurrentTime?.() ?? 0) > 3) {
         player()?.seekTo?.(0, true);
         return;
       }
-      await wait(250);
+      await wait(100);
     }
   }
 
@@ -211,12 +211,15 @@
     const app = document.querySelector("ytmusic-app");
     if (app) {
       const before = highlightIds().join();
-      const watchEndpoint = { videoId };
+      // startTimeSeconds asks for a fresh start outright; the watcher below
+      // still guards against a late server-side resume seek.
+      const watchEndpoint = { videoId, startTimeSeconds: 0 };
       if (playlistId) watchEndpoint.playlistId = playlistId;
       if (params) watchEndpoint.params = params;
       // Some queue states HALF-apply the first dispatch (audio switches,
       // queue stays) but complete on a second identical one - retry before
       // resorting to a full reload.
+      let restartWatcher = false;
       for (let round = 0; round < 3; round++) {
         app.dispatchEvent(
           new CustomEvent("yt-navigate", {
@@ -228,13 +231,17 @@
         for (let attempt = 0; attempt < 10; attempt++) {
           await wait(150);
           if (player()?.getVideoData?.()?.video_id !== videoId) continue;
+          // The audio has swapped - start guarding against a resume seek
+          // NOW, not after coherence (retries can add 1.5s+ of played-
+          // from-the-middle audio otherwise).
+          if (!restartWatcher) {
+            restartWatcher = true;
+            restartIfResumed();
+          }
           // Success = the highlight moved onto our song (any rendition id
           // of the row) or onto a different row than before the dispatch.
           const now = highlightIds();
-          if (now.includes(videoId) || (now.length && now.join() !== before)) {
-            restartIfResumed();
-            return true;
-          }
+          if (now.includes(videoId) || (now.length && now.join() !== before)) return true;
         }
       }
     }
