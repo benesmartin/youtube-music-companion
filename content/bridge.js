@@ -217,10 +217,11 @@
       if (playlistId) watchEndpoint.playlistId = playlistId;
       if (params) watchEndpoint.params = params;
       // Some queue states HALF-apply the first dispatch (audio switches,
-      // queue stays) but complete on a second identical one - retry before
-      // resorting to a full reload.
+      // queue stays) but complete on a second identical one - retry ONCE,
+      // then reload. More rounds just delay the inevitable (measured: a
+      // stuck state cost 5s before the fallback even started).
       let restartWatcher = false;
-      for (let round = 0; round < 3; round++) {
+      for (let round = 0; round < 2; round++) {
         app.dispatchEvent(
           new CustomEvent("yt-navigate", {
             bubbles: true,
@@ -228,7 +229,7 @@
             detail: { endpoint: { watchEndpoint } },
           })
         );
-        for (let attempt = 0; attempt < 10; attempt++) {
+        for (let attempt = 0; attempt < (round === 0 ? 10 : 7); attempt++) {
           await wait(150);
           if (player()?.getVideoData?.()?.video_id !== videoId) continue;
           // The audio has swapped - start guarding against a resume seek
