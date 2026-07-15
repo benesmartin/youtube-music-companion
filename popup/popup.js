@@ -659,6 +659,18 @@ function renderQueue(queue) {
     list.append(row);
   }
 
+  // Autoplay is on but no suggestions arrived yet - YTM is fetching them
+  // (turning the toggle on with none cached takes a few seconds).
+  if (lastAutoplay === true && !automixHeaderAdded) {
+    const header = document.createElement("div");
+    header.className = "queue-subheader";
+    header.textContent = "Autoplay";
+    const note = document.createElement("div");
+    note.id = "queue-note";
+    note.textContent = "Loading suggestions…";
+    list.append(header, note);
+  }
+
   const selectedIndex = queue.findIndex((item) => item.selected);
   if (selectedIndex !== lastSelectedIndex) {
     lastSelectedIndex = selectedIndex;
