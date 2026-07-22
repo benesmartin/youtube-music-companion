@@ -693,6 +693,7 @@ const DEFAULT_SETTINGS = {
   statusDot: true,
   showLike: true,
   showDislike: true,
+  compact: false,
   accentIcon: false,
   lyricsSize: "m",
 };
@@ -763,6 +764,8 @@ function applySettings() {
     swatch.classList.toggle("active", swatch.dataset.accent === (auto ? "auto" : accent.name));
   }
   el("set-status-dot").classList.toggle("on", settings.statusDot !== false);
+  document.body.classList.toggle("compact", settings.compact === true);
+  el("compact-toggle").title = settings.compact === true ? "Expand" : "Compact mode";
   el("set-like").classList.toggle("on", settings.showLike !== false);
   el("like").hidden = settings.showLike === false;
   el("set-dislike").classList.toggle("on", settings.showDislike !== false);
@@ -842,6 +845,11 @@ for (const option of document.querySelectorAll(".theme-opt")) {
 
 el("set-status-dot").addEventListener("click", () => {
   settings.statusDot = settings.statusDot === false;
+  saveSettings();
+});
+
+el("compact-toggle").addEventListener("click", () => {
+  settings.compact = settings.compact !== true;
   saveSettings();
 });
 

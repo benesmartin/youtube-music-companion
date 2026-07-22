@@ -322,6 +322,29 @@ input[type="range"]::-moz-range-thumb {
   height: 15px;
 }
 
+/* ---- compact mode: just the player card - tabs and panes collapse.
+   The toggle sits in the bottom row next to ⋯, the same spot in both
+   states; it inherits the row's button styling. ---- */
+
+#compact-toggle .on-compact,
+body.compact #compact-toggle .on-full {
+  display: none;
+}
+
+body.compact #compact-toggle .on-compact {
+  display: block;
+}
+
+body.compact #tabs,
+body.compact #queue-list,
+body.compact #history-list,
+body.compact #lyrics-pane,
+body.compact #search-pane,
+body.compact #playlists-pane,
+body.compact #settings-pane {
+  display: none;
+}
+
 /* signed-out: account actions dim but stay clickable to explain themselves */
 #like.gated,
 #dislike.gated,
