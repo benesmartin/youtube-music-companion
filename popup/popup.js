@@ -1327,10 +1327,23 @@ function requestPlaylists(silent = false) {
 }
 
 function renderPlaylists(playlists) {
-  playlistsLoaded = Boolean(playlists);
+  const failed = !playlists || Boolean(playlists.error);
+  playlistsLoaded = !failed; // a failure must refetch on the next tab visit
   const list = el("playlists-list");
-  if (!playlists) {
-    noteInto(list, "Couldn’t load playlists from YouTube Music.");
+  if (failed) {
+    // null = the tab never answered (askBridge timeout); error = the bridge
+    // named a cause. Warn with the raw reason so remote reporters (Edge app
+    // windows, other profiles) can paste something actionable.
+    console.warn(
+      "[YTM Companion] playlists load failed:",
+      playlists?.error ?? "no reply from the YTM tab (timeout)"
+    );
+    noteInto(
+      list,
+      playlists?.error
+        ? "Couldn’t load playlists from YouTube Music. (request failed)"
+        : "Couldn’t load playlists from YouTube Music. (timed out)"
+    );
     return;
   }
   if (playlists.signedOut) {

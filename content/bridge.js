@@ -693,7 +693,9 @@
     try {
       if (!(await sapisidHash())) return { signedOut: true };
       const data = await innertubeRequest("browse", { browseId: "FEmusic_liked_playlists" });
-      if (!data) return null;
+      // Named failures instead of null - the popup logs them for reports
+      // from setups we can't reproduce (Edge app windows, work profiles).
+      if (!data) return { error: "liked_playlists browse returned nothing" };
       const sections =
         data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content
           ?.sectionListRenderer?.contents ??
@@ -724,7 +726,7 @@
       }
       return playlists;
     } catch (err) {
-      return null;
+      return { error: `playlists parse failed: ${err}` };
     }
   }
 
