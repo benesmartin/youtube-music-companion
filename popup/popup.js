@@ -578,9 +578,10 @@ function renderQueue(queue) {
       row.classList.add("has-actions");
       const actions = document.createElement("div");
       actions.className = "qactions";
-      for (const [title, icon, command] of [
-        ["Play next", "#i-play-next", "queuePlayNext"],
-        ["Remove from queue", "#i-remove", "queueRemove"],
+      for (const [title, icon, command, toast] of [
+        ["Play next", "#i-play-next", "queuePlayNext", "Song will play next"],
+        ["Add to queue", "#i-add-to-queue", "queueAddToQueue", "Added to queue"],
+        ["Remove from queue", "#i-remove", "queueRemove", null],
       ]) {
         const button = document.createElement("button");
         button.title = title;
@@ -592,8 +593,8 @@ function renderQueue(queue) {
         button.addEventListener("click", (e) => {
           e.stopPropagation();
           send(command, { index: item.index });
-          // Removal shows itself; only play-next toasts (YTM parity).
-          if (command === "queuePlayNext") showToast("Song will play next", "success");
+          // Removal shows itself; the others toast YTM's own wording.
+          if (toast) showToast(toast, "success");
         });
         actions.append(button);
       }
@@ -1139,20 +1140,25 @@ function buildTrackRow(item, { onRemove } = {}) {
     row.classList.add("has-actions");
     const actions = document.createElement("div");
     actions.className = "qactions";
-    const button = document.createElement("button");
-    button.title = "Play next";
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-    use.setAttribute("href", "#i-play-next");
-    svg.append(use);
-    button.append(svg);
-    button.addEventListener("click", (e) => {
-      e.stopPropagation();
-      send("queueVideoNext", { videoId: item.videoId });
-      // Optimistic - the content script pushes an error toast if it fails.
-      showToast("Song will play next", "success");
-    });
-    actions.append(button);
+    for (const [title, icon, command, toast] of [
+      ["Play next", "#i-play-next", "queueVideoNext", "Song will play next"],
+      ["Add to queue", "#i-add-to-queue", "queueVideoLast", "Added to queue"],
+    ]) {
+      const button = document.createElement("button");
+      button.title = title;
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      use.setAttribute("href", icon);
+      svg.append(use);
+      button.append(svg);
+      button.addEventListener("click", (e) => {
+        e.stopPropagation();
+        send(command, { videoId: item.videoId });
+        // Optimistic - the content script pushes an error toast if it fails.
+        showToast(toast, "success");
+      });
+      actions.append(button);
+    }
     if (onRemove) {
       // Destructive, so it takes two clicks: the first arms the button
       // (turns red), the second within 2.5s actually removes.

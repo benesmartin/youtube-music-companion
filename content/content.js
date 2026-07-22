@@ -525,6 +525,7 @@ function watchQueue() {
 // Per-row menu actions, items identified by icon path (labels localized).
 const QUEUE_MENU_ICONS = {
   playNext: 'path[d^="M6 2.86"]',
+  addToQueue: 'path[d^="M21 6.998"]',
   removeFromQueue: 'path[d*="Zm3 6H6"]',
 };
 
@@ -668,6 +669,13 @@ const commands = {
       return ok;
     });
   },
+  queueVideoLast(payload) {
+    return askBridgeAsync("queueVideoLast", { videoId: payload.videoId }).then((ok) => {
+      if (!ok) notifyPorts("Couldn’t add that song to the queue.");
+      setTimeout(pushQueue, 700);
+      return ok;
+    });
+  },
   queuePlayNext: (payload) =>
     queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.playNext).then(async (ok) => {
       if (!ok) {
@@ -682,6 +690,20 @@ const commands = {
         }
       }
       if (!ok) notifyPorts("Couldn’t move that song. Try again.");
+      return ok;
+    }),
+  queueAddToQueue: (payload) =>
+    queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.addToQueue).then(async (ok) => {
+      if (!ok) {
+        // Same automix stall as play-next - fall back to a store append.
+        const data = await askBridgeAsync("getQueueData", {}, 2000);
+        const videoId = Array.isArray(data) ? data[payload.index]?.videoId : null;
+        if (videoId) {
+          ok = (await askBridgeAsync("queueVideoLast", { videoId })) === true;
+          if (ok) setTimeout(pushQueue, 700);
+        }
+      }
+      if (!ok) notifyPorts("Couldn’t add that song to the queue.");
       return ok;
     }),
   queueRemove: (payload) =>

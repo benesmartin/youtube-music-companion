@@ -336,9 +336,11 @@
     return byId.length ? byId[0] : -1;
   }
 
-  // Play-next for out-of-queue tracks: get_queue renderer → ADD_ITEMS,
-  // mirroring the captured native payload (no shuffleEnabled key).
-  async function queueVideoNext(videoId) {
+  // Play-next / add-to-queue for out-of-queue tracks: get_queue renderer →
+  // ADD_ITEMS, mirroring the captured native payload (no shuffleEnabled key).
+  // atEnd appends after the last user item - the native "Add to queue" spot;
+  // automix suggestions stay behind it.
+  async function queueVideoNext(videoId, atEnd) {
     if (!videoId) return false;
     const store = document.querySelector("ytmusic-player-queue")?.queue?.store?.store;
     if (!store?.dispatch || !store?.getState) return false;
@@ -348,7 +350,11 @@
     const state = store.getState()?.queue;
     const currentId = player()?.getVideoData?.()?.video_id ?? null;
     const currentIndex = currentQueueIndex(state, currentId);
-    const target = currentIndex >= 0 ? currentIndex + 1 : (state?.items?.length ?? 0);
+    const target = atEnd
+      ? (state?.items?.length ?? 0)
+      : currentIndex >= 0
+        ? currentIndex + 1
+        : (state?.items?.length ?? 0);
     try {
       store.dispatch({
         type: "ADD_ITEMS",
@@ -873,8 +879,8 @@
       );
       return;
     }
-    if (command === "queueVideoNext") {
-      const result = await queueVideoNext(payload.videoId);
+    if (command === "queueVideoNext" || command === "queueVideoLast") {
+      const result = await queueVideoNext(payload.videoId, command === "queueVideoLast");
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result },
         window.location.origin
