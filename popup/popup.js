@@ -190,7 +190,6 @@ function render(state) {
   el("library-label").textContent = state.inLibrary === true ? "In library" : "Add to library";
   el("library").title = state.inLibrary === true ? "Remove from library" : "";
   if (el("artwork").src !== state.artwork) el("artwork").src = state.artwork;
-  if (settings.accent === "auto") extractAutoAccent(state.artwork);
 
   el("play-pause").classList.toggle("playing", state.playing);
   el("like").classList.toggle("active", state.liked);
@@ -709,29 +708,20 @@ const ACCENTS = [
 let settings = { ...DEFAULT_SETTINGS };
 
 // ---- dynamic accent (the "auto" swatch) ----
-// Vibrant-style pick, matching what ThemeSong does via node-vibrant: quantize
-// the art, score buckets against the Vibrant target (saturation near 1, luma
-// near 0.5, population as tiebreaker; weights 3/6.5/0.5). Only hue+sat are
-// kept - lightness is imposed per theme so contrast never depends on the art.
-let autoAccent = null; // [h, s] of the current artwork's vibrant pick
-let autoAccentUrl = null;
+// The content script extracts the color (Vibrant-style, ThemeSong parity)
+// on every track change and memos {url, pick: [h,s]} to storage - the tab
+// sees tracks even while the popup is closed, and the background tints the
+// toolbar icon from the same memo. Only hue+sat travel; lightness is
+// imposed per theme here so contrast never depends on the art.
+let autoAccent = null; // [h, s] from the content script's memo
 
-function rgbToHsl(r, g, b) {
-  r /= 255;
-  g /= 255;
-  b /= 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-  if (max === min) return [0, 0, l];
-  const d = max - min;
-  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-  let h;
-  if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
-  else if (max === g) h = (b - r) / d + 2;
-  else h = (r - g) / d + 4;
-  return [h / 6, s, l];
-}
+// Follow the memo live while the popup is open.
+ext.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local" || !changes.autoAccentMemo) return;
+  const pick = changes.autoAccentMemo.newValue?.pick;
+  autoAccent = Array.isArray(pick) ? pick : null;
+  if (settings.accent === "auto") applySettings();
+});
 
 function hslToHex(h, s, l) {
   const f = (n) => {
@@ -742,63 +732,6 @@ function hslToHex(h, s, l) {
       .padStart(2, "0");
   };
   return `#${f(0)}${f(8)}${f(4)}`;
-}
-
-function extractAutoAccent(url) {
-  if (!url || url === autoAccentUrl) return;
-  autoAccentUrl = url;
-  const img = new Image();
-  img.crossOrigin = "anonymous"; // the art CDNs send ACAO:* - keeps the canvas readable
-  img.addEventListener("load", () => {
-    if (url !== autoAccentUrl) return; // a newer track superseded this load
-    const size = 32;
-    const canvas = document.createElement("canvas");
-    canvas.width = canvas.height = size;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    ctx.drawImage(img, 0, 0, size, size);
-    let data;
-    try {
-      data = ctx.getImageData(0, 0, size, size).data;
-    } catch {
-      return; // tainted canvas - keep the fallback accent
-    }
-    const buckets = new Map(); // 4-bit RGB key → [count, rSum, gSum, bSum]
-    for (let i = 0; i < data.length; i += 4) {
-      if (data[i + 3] < 128) continue;
-      const key = ((data[i] >> 4) << 8) | ((data[i + 1] >> 4) << 4) | (data[i + 2] >> 4);
-      const bucket = buckets.get(key) ?? [0, 0, 0, 0];
-      bucket[0] += 1;
-      bucket[1] += data[i];
-      bucket[2] += data[i + 1];
-      bucket[3] += data[i + 2];
-      buckets.set(key, bucket);
-    }
-    let best = null;
-    let bestScore = -1;
-    let maxCount = 0;
-    for (const bucket of buckets.values()) maxCount = Math.max(maxCount, bucket[0]);
-    for (const [count, rSum, gSum, bSum] of buckets.values()) {
-      const [h, s, l] = rgbToHsl(rSum / count, gSum / count, bSum / count);
-      if (s < 0.2 || l < 0.12 || l > 0.88) continue; // grays, near-black/white
-      const score = 3 * s + 6.5 * (1 - Math.abs(l - 0.5)) + 0.5 * (count / maxCount);
-      if (score > bestScore) {
-        bestScore = score;
-        best = [h, s];
-      }
-    }
-    autoAccent = best; // null for grayscale art → fallback accent
-    try {
-      // Memo for the next popup open - applied before the first state push
-      // so switching accents doesn't flash the fallback red. Own key, NOT
-      // settings: the background diffs settings for toolbar-icon redraws.
-      ext.storage.local.set({ autoAccentMemo: { url, pick: best } });
-    } catch {
-      // session-only accent
-    }
-    if (settings.accent === "auto") applySettings();
-  });
-  // The art arrives at display size; a tiny rendition decodes cheaper.
-  img.src = url.replace(/=w\d+-h\d+/, "=w64-h64");
 }
 
 const systemLightQuery = window.matchMedia("(prefers-color-scheme: light)");
@@ -864,15 +797,12 @@ async function loadSettings() {
   }
   if (settings.accent === "auto") {
     try {
-      // Optimistic: usually the same track is still playing. If not, the
-      // first state push carries a different URL and re-extracts anyway.
+      // The content script keeps the memo fresh on every track change, so
+      // this is current, not just optimistic.
       const memo = (await ext.storage.local.get("autoAccentMemo")).autoAccentMemo;
-      if (memo?.url) {
-        autoAccentUrl = memo.url;
-        autoAccent = Array.isArray(memo.pick) ? memo.pick : null;
-      }
+      autoAccent = Array.isArray(memo?.pick) ? memo.pick : null;
     } catch {
-      // extraction fills it in
+      // the memo listener fills it in
     }
   }
   try {
@@ -892,7 +822,8 @@ for (const def of [...ACCENTS, { name: "auto" }]) {
   swatch.title = def.name === "auto" ? "auto (from album art)" : def.name;
   swatch.addEventListener("click", () => {
     settings.accent = def.name;
-    if (def.name === "auto") extractAutoAccent(lastState?.artwork);
+    // "auto": the settings write wakes the content script, which extracts
+    // the current art and memos it back - the memo listener recolors us.
     saveSettings();
   });
   el("accent-options").append(swatch);

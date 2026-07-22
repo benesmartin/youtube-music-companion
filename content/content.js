@@ -134,6 +134,122 @@ function upscaleArtwork(url) {
   return url.replace(/=w\d+-h\d+.*$/, "=w544-h544-l90-rj").replace(/=s\d+.*$/, "=s544");
 }
 
+// --- Dynamic accent extraction (accent: "auto") ---
+// Lives here, not in the popup: the tab sees every track change, so the
+// popup opens to a fresh memo and the background can tint the toolbar icon
+// even while the popup is closed. Vibrant-style pick (what ThemeSong gets
+// from node-vibrant): 4-bit RGB buckets scored 3·S + 6.5·(1−|L−0.5|) +
+// 0.5·population. Only hue+sat are stored - consumers impose lightness per
+// theme so contrast never depends on the art.
+let accentAuto = false;
+let accentArtUrl = null;
+
+ext.storage.local
+  .get("settings")
+  .then((stored) => {
+    accentAuto = stored.settings?.accent === "auto";
+    if (accentAuto) maybeExtractAccent(playerBar()?.querySelector("img.image")?.src ?? "");
+  })
+  .catch(() => {});
+
+ext.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local" || !changes.settings) return;
+  const was = accentAuto;
+  accentAuto = changes.settings.newValue?.accent === "auto";
+  if (accentAuto && !was) {
+    accentArtUrl = null; // flipping in re-extracts the current art
+    maybeExtractAccent(playerBar()?.querySelector("img.image")?.src ?? "");
+  }
+});
+
+function rgbToHsl(r, g, b) {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h;
+  if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  return [h / 6, s, l];
+}
+
+async function maybeExtractAccent(src) {
+  if (!accentAuto || !src || src === accentArtUrl) return;
+  accentArtUrl = src;
+  let bitmap;
+  try {
+    // fetch → ImageBitmap, NOT an <img> with crossOrigin: Firefox refuses
+    // CORS-mode element loads from the content-script sandbox (silent error
+    // event), while a plain cors fetch of the ACAO:* art succeeds - and the
+    // blob-backed bitmap never taints the canvas.
+    const response = await fetch(corsSafeArtUrl(src));
+    if (!response.ok) return;
+    bitmap = await createImageBitmap(await response.blob());
+  } catch {
+    return; // network/decode failure - consumers keep the previous memo
+  }
+  if (src !== accentArtUrl || !accentAuto) return; // superseded meanwhile
+  const size = 32;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(bitmap, 0, 0, size, size);
+  bitmap.close();
+  let data;
+  try {
+    data = ctx.getImageData(0, 0, size, size).data;
+  } catch {
+    return; // tainted canvas - consumers keep their fallback
+  }
+  const buckets = new Map(); // 4-bit RGB key → [count, rSum, gSum, bSum]
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < 128) continue;
+    const key = ((data[i] >> 4) << 8) | ((data[i + 1] >> 4) << 4) | (data[i + 2] >> 4);
+    const bucket = buckets.get(key) ?? [0, 0, 0, 0];
+    bucket[0] += 1;
+    bucket[1] += data[i];
+    bucket[2] += data[i + 1];
+    bucket[3] += data[i + 2];
+    buckets.set(key, bucket);
+  }
+  if (buckets.size === 0) return; // blank decode - don't poison the memo
+  let best = null;
+  let bestScore = -1;
+  let maxCount = 0;
+  for (const bucket of buckets.values()) maxCount = Math.max(maxCount, bucket[0]);
+  for (const [count, rSum, gSum, bSum] of buckets.values()) {
+    const [h, s, l] = rgbToHsl(rSum / count, gSum / count, bSum / count);
+    if (s < 0.2 || l < 0.12 || l > 0.88) continue; // grays, near-black/white
+    const score = 3 * s + 6.5 * (1 - Math.abs(l - 0.5)) + 0.5 * (count / maxCount);
+    if (score > bestScore) {
+      bestScore = score;
+      best = [h, s];
+    }
+  }
+  try {
+    // null pick = grayscale art; consumers fall back to red.
+    ext.storage.local.set({ autoAccentMemo: { url: src, pick: best } });
+  } catch {
+    // memo is best-effort
+  }
+}
+
+// The bar's own URL is already in the HTTP cache as a no-CORS response, and
+// re-requesting it with crossOrigin set fails the CORS check against that
+// cached copy (no ACAO stored). A size variant the page never asks for gets
+// a fresh, properly-CORS'd fetch instead.
+function corsSafeArtUrl(url) {
+  const swapped = url.replace(/=w\d+-h\d+.*$/, "=w64-h64-l90-rj").replace(/=s\d+.*$/, "=s64");
+  if (swapped !== url) return swapped;
+  return url + (url.includes("?") ? "&" : "?") + "ytmc=1";
+}
+
 function readState() {
   const bar = playerBar();
   const media = video();
@@ -173,6 +289,7 @@ function readState() {
   }
 
   const artworkSrc = bar?.querySelector("img.image")?.src ?? "";
+  maybeExtractAccent(artworkSrc); // no-op unless accent is "auto" and the art changed
   // like-status carries LIKE / DISLIKE / INDIFFERENT in one attribute.
   const likeStatus = bar
     ?.querySelector("ytmusic-like-button-renderer")

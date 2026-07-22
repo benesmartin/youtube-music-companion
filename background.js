@@ -73,17 +73,45 @@ function drawIconBase(ctx, size, card) {
   ctx.stroke();
 }
 
+// Deep-variant clamp for the "auto" accent - matches ICON_CARDS' character
+// (the popup applies the same numbers for its light theme).
+function hslToHex(h, s, l) {
+  const f = (n) => {
+    const k = (n + h * 12) % 12;
+    const c = l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(c * 255)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
 async function setIndicator(indicator) {
   requestedIndicator = indicator;
   let stored = null;
+  let memo = null;
   try {
-    stored = (await ext.storage.local.get("settings")).settings ?? null;
+    const data = await ext.storage.local.get(["settings", "autoAccentMemo"]);
+    stored = data.settings ?? null;
+    memo = data.autoAccentMemo ?? null;
   } catch {
     stored = null;
   }
   // Setting off → no dot, but still the crisp vector-drawn icon.
   const target = stored?.statusDot !== false ? indicator : "plain";
-  const card = stored?.accentIcon ? ICON_CARDS[stored.accent] ?? ICON_CARDS.red : ICON_CARDS.red;
+  let card = ICON_CARDS.red;
+  if (stored?.accentIcon) {
+    if (stored.accent === "auto") {
+      // The content script memos the current track's [h, s]; grayscale art
+      // (pick: null) or no memo yet falls back to red.
+      const pick = memo?.pick;
+      if (Array.isArray(pick)) {
+        card = hslToHex(pick[0], Math.min(Math.max(pick[1], 0.5), 0.75), 0.42);
+      }
+    } else {
+      card = ICON_CARDS[stored.accent] ?? ICON_CARDS.red;
+    }
+  }
   const cacheKey = `${target}|${card}`;
   if (cacheKey === currentIndicator) return;
   currentIndicator = cacheKey;
@@ -117,9 +145,12 @@ ext.runtime.onMessage.addListener((msg) => {
   if (msg?.type === "playbackState") setIndicator(msg.indicator);
 });
 
-// React to the status-dot setting flipping while we're running.
+// React to the status-dot/accent settings flipping while we're running,
+// and to the auto-accent memo changing on track changes.
 ext.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.settings) setIndicator(requestedIndicator);
+  if (area === "local" && (changes.settings || changes.autoAccentMemo)) {
+    setIndicator(requestedIndicator);
+  }
 });
 
 // ---- lyrics (LRCLIB) ----
