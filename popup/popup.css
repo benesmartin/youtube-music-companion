@@ -783,6 +783,14 @@ input[type="range"]::-moz-range-thumb {
   transition: transform 0.12s, border-color 0.12s;
 }
 
+/* The dynamic swatch previews no single hue - a wheel reads as "auto".
+   border-box origin: the default (padding-box) sizes the gradient to the
+   inner square and tiles it under the 2px transparent border - reads as
+   a square inside a rainbow ring. */
+.accent-swatch[data-accent="auto"] {
+  background: conic-gradient(#ff4e45, #f7c948, #34c759, #4a9eff, #a78bfa, #ff4e45) border-box;
+}
+
 .accent-swatch:hover {
   transform: scale(1.15);
 }
