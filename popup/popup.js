@@ -691,6 +691,7 @@ const DEFAULT_SETTINGS = {
   theme: "dark", // "dark" | "light" | "system"
   accent: "red",
   statusDot: true,
+  showLike: true,
   showDislike: true,
   accentIcon: false,
   lyricsSize: "m",
@@ -762,6 +763,8 @@ function applySettings() {
     swatch.classList.toggle("active", swatch.dataset.accent === (auto ? "auto" : accent.name));
   }
   el("set-status-dot").classList.toggle("on", settings.statusDot !== false);
+  el("set-like").classList.toggle("on", settings.showLike !== false);
+  el("like").hidden = settings.showLike === false;
   el("set-dislike").classList.toggle("on", settings.showDislike !== false);
   el("dislike").hidden = settings.showDislike === false;
   el("set-accent-icon").classList.toggle("on", settings.accentIcon === true);
@@ -839,6 +842,11 @@ for (const option of document.querySelectorAll(".theme-opt")) {
 
 el("set-status-dot").addEventListener("click", () => {
   settings.statusDot = settings.statusDot === false;
+  saveSettings();
+});
+
+el("set-like").addEventListener("click", () => {
+  settings.showLike = settings.showLike === false;
   saveSettings();
 });
 
