@@ -1091,7 +1091,11 @@ body.compact #settings-pane {
 }
 
 #search-filters .pill {
-  padding: 3px 12px 4px;
+  /* line-height 1 + a 6/4 split: with lh1, Noto's glyphs sit high in the
+     line box (descender-heavy metrics), so the top needs two extra pixels
+     to optically center - eye-tuned against the real popup */
+  padding: 6px 12px 4px;
+  line-height: 1;
   border-radius: 999px;
   font-size: 11.5px;
   color: var(--text-dim);
