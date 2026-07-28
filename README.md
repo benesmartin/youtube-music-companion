@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.1.0/01-player-queue.png" width="640" alt="Player with queue, dark theme">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.2.0/01-player-queue.png" width="640" alt="Player with queue, dark theme">
 </p>
 
 ## Features
@@ -25,10 +25,11 @@
 - **Player**: album art, per-artist links, play/pause, previous/next,
   like/dislike, shuffle, repeat, seek and volume - hover the seek bar to
   preview the exact time before you click
-- **Queue**: see what's coming with artwork, jump to any track, play next,
-  remove, drag to reorder; toggleable autoplay suggestions
+- **Queue**: see what's coming with artwork, jump to any track, play next
+  or add to queue, remove, drag to reorder; toggleable autoplay suggestions
 - **History**: your real YouTube Music listening history, click to replay
-- **Search**: songs and videos, play or queue straight from results
+- **Search**: songs and videos - play, play next or add to queue straight
+  from results
 - **Playlists**: browse your library, play or shuffle a playlist, open its
   tracks, save the current song to any playlist (with a duplicate guard),
   remove songs - long playlists load as you scroll
@@ -36,8 +37,11 @@
   strictly opt-in (sends title/artist to lrclib.net), official songs only
 - **Sleep timer** with presets and custom minutes - a live countdown sits
   on the album art while it runs
-- **Themes**: dark, light, or follow the system, with eight accent colors -
+- **Themes**: dark, light, or follow the system, with eight accent colors
+  or a **dynamic accent** picked from the album art of whatever's playing -
   optionally tinting the toolbar icon to match
+- **Compact mode**: one click collapses the popup to just the player card -
+  art, controls, seek and volume
 - **Keyboard shortcuts**: play/pause, next, previous, like - plus unbound
   volume up/down and dislike commands. Rebind everything right in the
   popup's settings on Firefox (Chrome: chrome://extensions/shortcuts)
@@ -47,12 +51,12 @@
 <summary><b>More screenshots</b> - lyrics, search, history, settings</summary>
 <br>
 <p align="center">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.1.0/02-synced-lyrics.png" width="404" alt="Time-synced lyrics">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.1.0/03-search.png" width="404" alt="Search with songs and videos filters">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.2.0/02-synced-lyrics.png" width="404" alt="Time-synced lyrics">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.2.0/03-search.png" width="404" alt="Search with songs and videos filters">
 </p>
 <p align="center">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.1.0/04-history.png" width="404" alt="Listening history">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.1.0/05-settings.png" width="404" alt="Settings with themes and accent colors">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.2.0/04-history.png" width="404" alt="Listening history">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.2.0/05-settings.png" width="404" alt="Settings with themes and accent colors">
 </p>
 </details>
 
