@@ -16,15 +16,47 @@ const signedIn = /(?:^|;\s*)(?:SAPISID|__Secure-3PAPISID)=/.test(document.cookie
 function injectBridge() {
   const script = document.createElement("script");
   script.src = ext.runtime.getURL("content/bridge.js");
-  script.onload = () => script.remove();
+  // A bridge from a previous content script may already be listening (an
+  // extension reload re-runs THIS script into a live page) - ask it to
+  // re-announce, otherwise nothing would ever flush the outbox.
+  script.onload = () => {
+    script.remove();
+    window.postMessage({ source: "ytmc-content", command: "ping" }, window.location.origin);
+  };
   (document.head ?? document.documentElement).append(script);
+  window.postMessage({ source: "ytmc-content", command: "ping" }, window.location.origin);
 }
 
 const pendingBridgeRequests = new Map();
 let bridgeRequestCounter = 0;
 
+// injectBridge() appends a <script src>, which loads ASYNCHRONOUSLY - commands
+// posted before it runs hit no listener and are lost for good (the popup then
+// shows "Couldn't load…" until something makes it ask again). Hold them until
+// the bridge announces itself, then flush in order.
+let bridgeReady = false;
+const bridgeOutbox = [];
+
+function postToBridge(message) {
+  if (bridgeReady) {
+    window.postMessage(message, window.location.origin);
+    return;
+  }
+  // If the bridge never loads at all, don't grow without bound - the callers'
+  // own timeouts already report the failure.
+  if (bridgeOutbox.length >= 20) bridgeOutbox.shift();
+  bridgeOutbox.push(message);
+}
+
 window.addEventListener("message", (e) => {
   if (e.source !== window || e.data?.source !== "ytmc-bridge") return;
+  if (e.data.type === "ready") {
+    bridgeReady = true;
+    for (const message of bridgeOutbox.splice(0)) {
+      window.postMessage(message, window.location.origin);
+    }
+    return;
+  }
   if (e.data.type === "status") {
     pageStatus = {
       volume: e.data.volume,
@@ -41,7 +73,7 @@ window.addEventListener("message", (e) => {
 });
 
 function askBridge(command, payload = {}) {
-  window.postMessage({ source: "ytmc-content", command, payload }, window.location.origin);
+  postToBridge({ source: "ytmc-content", command, payload });
 }
 
 // Fire a bridge command and await its response (null on timeout).
@@ -56,7 +88,7 @@ function askBridgeAsync(command, payload = {}, timeoutMs = 6000) {
       clearTimeout(timer);
       resolve(result);
     });
-    window.postMessage({ source: "ytmc-content", command, payload, requestId }, window.location.origin);
+    postToBridge({ source: "ytmc-content", command, payload, requestId });
   });
 }
 

@@ -974,10 +974,18 @@
     }
   }
 
+  const announceReady = () =>
+    window.postMessage({ source: FROM_BRIDGE, type: "ready" }, window.location.origin);
+
   window.addEventListener("message", async (e) => {
     if (!isCurrent()) return;
     if (e.source !== window || e.data?.source !== FROM_CONTENT) return;
     const { command, payload, requestId } = e.data;
+    // A content script that started AFTER this bridge missed the announce.
+    if (command === "ping") {
+      announceReady();
+      return;
+    }
     if (command === "forcePlay") {
       const result = await forcePlay();
       window.postMessage(
@@ -1079,6 +1087,10 @@
       );
     }
   });
+
+  // The listener is live now - release whatever the content script queued
+  // while this script was still loading.
+  announceReady();
 
   // The player element may not exist yet at document_idle.
   const poll = setInterval(() => {
