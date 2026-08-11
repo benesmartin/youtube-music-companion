@@ -1227,10 +1227,7 @@ function buildTrackRow(item, { onRemove } = {}) {
     row.classList.add("has-actions");
     const actions = document.createElement("div");
     actions.className = "qactions";
-    for (const [title, icon, command, toast] of [
-      ["Play next", "#i-play-next", "queueVideoNext", "Song will play next"],
-      ["Add to queue", "#i-add-to-queue", "queueVideoLast", "Added to queue"],
-    ]) {
+    const actionButton = (title, icon, onClick) => {
       const button = document.createElement("button");
       button.title = title;
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -1240,11 +1237,38 @@ function buildTrackRow(item, { onRemove } = {}) {
       button.append(svg);
       button.addEventListener("click", (e) => {
         e.stopPropagation();
+        onClick();
+      });
+      actions.append(button);
+      return button;
+    };
+    // Radio leads: it plays, the other two only queue. The ⋯ menu can only
+    // radio the PLAYING song - this seeds a station from any row.
+    actionButton("Start radio", "#i-radio", () => {
+      if (row.classList.contains("loading")) return;
+      setPendingPlay(row, "loading");
+      showPendingTrack(item);
+      send("playVideoById", {
+        videoId: item.videoId,
+        // Home rows arrive with YTM's own radio playlist; anywhere else the
+        // song's station is RDAMVM<videoId>, the id its menu link carries.
+        playlistId: item.playlistId?.startsWith("RD")
+          ? item.playlistId
+          : `RDAMVM${item.videoId}`,
+        params: "wAEB", // the radio flag on YTM's own endpoints
+        videoType: item.videoType,
+      });
+      armQueueSwitch(item.videoId);
+    });
+    for (const [title, icon, command, toast] of [
+      ["Play next", "#i-play-next", "queueVideoNext", "Song will play next"],
+      ["Add to queue", "#i-add-to-queue", "queueVideoLast", "Added to queue"],
+    ]) {
+      actionButton(title, icon, () => {
         send(command, { videoId: item.videoId });
         // Optimistic - the content script pushes an error toast if it fails.
         showToast(toast, "success");
       });
-      actions.append(button);
     }
     if (onRemove) {
       // Destructive, so it takes two clicks: the first arms the button
