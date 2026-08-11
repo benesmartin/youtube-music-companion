@@ -185,15 +185,26 @@
   // plain seek-to-0 replayed whatever the user already heard (an audible
   // "restart"). Watch for the forward JUMP instead and put playback back
   // where it was - 0 before any audio, otherwise a near-seamless continue.
+  // A deliberate seek must never be undone by the guard below.
+  let lastUserSeekAt = 0;
+
   async function restartIfResumed() {
+    const startedAt = Date.now();
     let heard = 0;
+    // The resume seek can land a couple of seconds in, so the 5s watch
+    // stays - but it used to correct EVERY forward jump in that window,
+    // which threw a user seeking into a freshly started song back to the
+    // beginning, repeatedly (reported 2026-08-11). Correct at most once,
+    // stand down on a deliberate seek, and never touch a track the user has
+    // actually been listening to.
     for (let attempt = 0; attempt < 50; attempt++) {
+      if (lastUserSeekAt > startedAt) return;
       const t = player()?.getCurrentTime?.() ?? 0;
-      if (t > heard + 5) {
+      if (t > heard + 5 && heard < 3) {
         player()?.seekTo?.(heard, true);
-      } else if (t > heard) {
-        heard = t;
+        return;
       }
+      if (t > heard) heard = t;
       await wait(100);
     }
   }
@@ -1078,6 +1089,7 @@
       p.isMuted() ? p.unMute() : p.mute();
       postStatus();
     } else if (command === "seekTo") {
+      lastUserSeekAt = Date.now(); // the resume guard must yield to this
       player()?.seekTo?.(payload.position, true);
     } else if (command === "probeLibrary" || command === "toggleLibrary") {
       const result = command === "probeLibrary" ? await probeLibrary() : await toggleLibrary();
