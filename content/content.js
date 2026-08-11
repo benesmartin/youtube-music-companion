@@ -900,6 +900,12 @@ ext.runtime.onConnect.addListener((port) => {
       askBridgeAsync("search", { query: msg.query }, 8000).then((results) =>
         port.postMessage({ type: "searchResults", query: msg.query, results })
       );
+    } else if (msg.type === "getHome") {
+      // Recommendation shelves off the YTM home page; paged like playlists,
+      // one continuation at a time.
+      askBridgeAsync("getHome", { continuation: msg.continuation }, 10000).then((home) =>
+        port.postMessage({ type: "home", append: Boolean(msg.continuation), home })
+      );
     } else if (msg.type === "getHistory") {
       // The user's real YTM history, fetched by the bridge via the page's
       // own internal API (needs page context for ytcfg + auth cookies).

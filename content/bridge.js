@@ -624,6 +624,127 @@
     }
   }
 
+  // ---- home feed (the shelves of music.youtube.com's own home page) ----
+
+  const runsText = (text) => (text?.runs ?? []).map((run) => run.text).join("");
+
+  // Tile subtitles read "Song • Artist" / "Channel • 69K views", all
+  // localized: prefer the linked runs (artist and channel pages), else drop
+  // the leading type word.
+  function tileSubtitle(text) {
+    const runs = text?.runs ?? [];
+    const linked = runs.filter((run) => run.navigationEndpoint).map((run) => run.text);
+    if (linked.length) return linked.join(", ");
+    const parts = runsText(text)
+      .split("•")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    return (parts.length > 1 ? parts.slice(1) : parts).join(" • ");
+  }
+
+  // Home carousels hold two shapes. Tiles (musicTwoRowItemRenderer) are songs
+  // when they carry a watchEndpoint - album/playlist tiles carry a
+  // browseEndpoint instead and are skipped, this tab lists songs to start
+  // from. Row-shaped shelves (quick picks) parse as history/search rows do.
+  function parseHomeTile(entry) {
+    const renderer = entry?.musicTwoRowItemRenderer;
+    const watch = renderer?.navigationEndpoint?.watchEndpoint;
+    if (!watch?.videoId) return null;
+    const thumbs =
+      renderer.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? [];
+    return {
+      videoId: watch.videoId,
+      setVideoId: null,
+      removeEndpoint: null,
+      // Song tiles ship an RDAMVM radio playlist - playing one IS a radio.
+      playlistId: watch.playlistId ?? null,
+      params: watch.params ?? null,
+      videoType:
+        watch.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType ??
+        null,
+      title: runsText(renderer.title),
+      artist: tileSubtitle(renderer.subtitle),
+      duration: "",
+      thumb: thumbs.length
+        ? thumbs[thumbs.length - 1].url
+        : `https://i.ytimg.com/vi/${watch.videoId}/mqdefault.jpg`,
+    };
+  }
+
+  // Collects song shelves; returns a continuation token if one rides along.
+  function collectHomeShelves(sections, shelves) {
+    let token = null;
+    for (const section of sections ?? []) {
+      const riderToken =
+        section?.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token;
+      if (riderToken) {
+        token = riderToken;
+        continue;
+      }
+      const renderer = section?.musicCarouselShelfRenderer;
+      if (!renderer) continue;
+      const items = (renderer.contents ?? [])
+        .map((entry) =>
+          entry?.musicResponsiveListItemRenderer ? parseListItem(entry) : parseHomeTile(entry)
+        )
+        .filter((item) => item?.title && item.videoId);
+      if (!items.length) continue;
+      shelves.push({
+        // localized shelf title: "Quick picks", "Listen again", …
+        header: runsText(renderer.header?.musicCarouselShelfBasicHeaderRenderer?.title),
+        items,
+      });
+    }
+    return token;
+  }
+
+  // One page = 3 shelves, so a page can easily be all albums and playlists
+  // (nothing this tab shows). Keep paging until something renders, else the
+  // popup would sit on an empty list waiting for a scroll it can't do.
+  async function fetchHomePage(continuation) {
+    if (continuation) {
+      const query = `ctoken=${encodeURIComponent(continuation)}&continuation=${encodeURIComponent(continuation)}&type=next`;
+      const next = await innertubeRequest(`browse?${query}`, { continuation });
+      if (!next) return null;
+      const source = next?.continuationContents?.sectionListContinuation;
+      return {
+        source,
+        sections:
+          source?.contents ??
+          (next?.onResponseReceivedActions ?? []).flatMap(
+            (action) => action?.appendContinuationItemsAction?.continuationItems ?? []
+          ),
+      };
+    }
+    const data = await innertubeRequest("browse", { browseId: "FEmusic_home" });
+    if (!data) return null;
+    const source =
+      data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content
+        ?.sectionListRenderer;
+    return { source, sections: source?.contents ?? [] };
+  }
+
+  async function fetchHome(continuation) {
+    try {
+      // Home is personalized; signed out there is nothing to recommend.
+      if (!(await sapisidHash())) return { signedOut: true, shelves: [], continuation: null };
+      const shelves = [];
+      let token = continuation ?? null;
+      for (let page = 0; page < 4; page++) {
+        const result = await fetchHomePage(page === 0 ? continuation : token);
+        if (!result) return shelves.length ? { signedOut: false, shelves, continuation: null } : null;
+        token =
+          collectHomeShelves(result.sections, shelves) ??
+          result.source?.continuations?.[0]?.nextContinuationData?.continuation ??
+          null;
+        if (shelves.length || !token) break;
+      }
+      return { signedOut: false, shelves, continuation: token };
+    } catch (err) {
+      return null;
+    }
+  }
+
   // ---- search (internal search API, same row shape as history) ----
 
   // Filter params as sent by YTM's own "Songs" / "Videos" chips.
@@ -912,6 +1033,14 @@
         removeFromPlaylist: () => removeFromPlaylist(payload.endpoint),
       };
       const result = await handlers[command]();
+      window.postMessage(
+        { source: FROM_BRIDGE, type: "response", requestId, result },
+        window.location.origin
+      );
+      return;
+    }
+    if (command === "getHome") {
+      const result = await fetchHome(payload.continuation);
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result },
         window.location.origin

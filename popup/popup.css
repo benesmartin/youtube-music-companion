@@ -338,6 +338,7 @@ body.compact #compact-toggle .on-compact {
 body.compact #tabs,
 body.compact #queue-list,
 body.compact #history-list,
+body.compact #home-list,
 body.compact #lyrics-pane,
 body.compact #search-pane,
 body.compact #playlists-pane,
@@ -660,11 +661,12 @@ body.compact #settings-pane {
 
 /* chip tabs - deliberately not the underlined paper-tab look. The row sits
    on its own tinted band so it reads as a divider between player and lists. */
+/* six tabs plus the two icon buttons only fit at 450px with a tight gutter */
 #tabs {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
+  gap: 3px;
+  padding: 7px 8px;
   font-size: 12px;
   color: var(--text-dim);
   background: color-mix(in srgb, var(--surface) 55%, var(--bg));
@@ -676,7 +678,7 @@ body.compact #settings-pane {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  padding: 4px 12px 5px;
+  padding: 4px 8px 5px;
   border-radius: 999px;
   cursor: pointer;
 }
@@ -1021,6 +1023,7 @@ body.compact #settings-pane {
 
 #queue-list,
 #history-list,
+#home-list,
 #lyrics-pane {
   max-height: 264px;
   overflow-y: auto;

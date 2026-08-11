@@ -1129,7 +1129,78 @@ function renderHistory(history) {
   }
 }
 
-// Track row shared by the History, Search and Playlists tabs: click plays
+// ---- home ----
+// YTM's own recommendation shelves (quick picks, listen again, …), songs
+// only - tiles that open an album or a playlist belong to Playlists. Rows
+// carry the radio playlist YTM ships with them, so clicking one starts a
+// station off that song, which is the whole point of the tab.
+
+let homeLoaded = false;
+let homeNextToken = null; // shelves page in, three at a time
+let homeLoadingMore = false;
+
+const homeMore = document.createElement("div");
+homeMore.className = "list-note";
+homeMore.textContent = "Loading more…";
+
+// Sentinel at the tail: scrolling it into view fetches the next shelves.
+new IntersectionObserver(
+  (entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    if (!homeNextToken || homeLoadingMore || !port) return;
+    homeLoadingMore = true;
+    port.postMessage({ type: "getHome", continuation: homeNextToken });
+  },
+  { root: el("home-list"), rootMargin: "200px" }
+).observe(homeMore);
+
+function requestHome() {
+  if (homeLoaded || !port) return;
+  homeNextToken = null;
+  homeLoadingMore = false;
+  noteInto(el("home-list"), "Loading recommendations…");
+  port.postMessage({ type: "getHome" });
+}
+
+function renderHome(home, append) {
+  homeLoadingMore = false;
+  const list = el("home-list");
+  if (!home || home.signedOut) {
+    // A failed page keeps whatever already rendered - just stop paging.
+    if (append) {
+      homeMore.remove();
+      homeNextToken = null;
+      return;
+    }
+    homeLoaded = false; // retry on the next tab visit
+    noteInto(
+      list,
+      home?.signedOut
+        ? "Sign in to YouTube Music to see recommendations."
+        : "Couldn’t load recommendations from YouTube Music."
+    );
+    return;
+  }
+  homeLoaded = true;
+  if (!append) list.textContent = "";
+  homeMore.remove();
+  for (const shelf of home.shelves) {
+    if (shelf.header) {
+      const header = document.createElement("div");
+      header.className = "queue-subheader";
+      header.textContent = shelf.header;
+      list.append(header);
+    }
+    for (const item of shelf.items) list.append(buildTrackRow(item));
+  }
+  homeNextToken = home.continuation ?? null;
+  // Re-appending the sentinel also re-arms the observer when a page brought
+  // nothing renderable and the next one still might.
+  if (homeNextToken) list.append(homeMore);
+  else if (!list.children.length) noteInto(list, "No recommendations right now.");
+}
+
+// Track row shared by the History, Home, Search and Playlists tabs: click plays
 // (with the item's own queue context), hover exposes Play next - plus
 // Remove when the caller supplies onRemove (playlist detail only).
 function buildTrackRow(item, { onRemove } = {}) {
@@ -1832,6 +1903,7 @@ function switchTab(name) {
   }
   el("queue-list").hidden = name !== "queue";
   el("history-list").hidden = name !== "history";
+  el("home-list").hidden = name !== "home";
   el("lyrics-pane").hidden = name !== "lyrics";
   el("search-pane").hidden = name !== "search";
   el("playlists-pane").hidden = name !== "playlists";
@@ -1839,6 +1911,7 @@ function switchTab(name) {
   el("settings-open").classList.toggle("active", name === "settings");
   el("autoplay-toggle").hidden = name !== "queue" || lastAutoplay === null;
   if (name === "history") requestHistory();
+  if (name === "home") requestHome();
   if (name === "lyrics") renderLyrics();
   if (name === "search") el("search-input").focus();
   if (name === "playlists") requestPlaylists();
@@ -1900,6 +1973,7 @@ function tryTab(candidates, index) {
       renderQueue(msg.queue);
       if (queueSwitchLoaded && msg.queue.some((item) => item.selected)) doQueueSwitch();
     } else if (msg.type === "history") renderHistory(msg.history);
+    else if (msg.type === "home") renderHome(msg.home, msg.append);
     else if (msg.type === "searchResults") renderSearchResults(msg);
     else if (msg.type === "playlists") renderPlaylists(msg.playlists);
     else if (msg.type === "playlistTracks") renderPlaylistTracks(msg);
@@ -1969,6 +2043,11 @@ function tryTab(candidates, index) {
     }
   });
   port.postMessage({ type: "getQueue" });
+  // A lazy tab opened before the port existed (fast click on a fresh popup,
+  // or a reconnect) dropped its request - re-issue it now.
+  if (activeTab === "history") requestHistory();
+  if (activeTab === "home") requestHome();
+  if (activeTab === "playlists") requestPlaylists();
   port.onDisconnect.addListener(() => {
     port = null;
     // A dead tab (no content script) drops the port before ever speaking -
