@@ -497,6 +497,9 @@ function applyQueueStoreData(queue, data) {
     // Store artists are comma-joined; the DOM byline uses localized "and".
     const artist = aligned?.artist || artistByTitle.get(item.title) || "";
     if (artist) item.artist = artist;
+    // Only the index-aligned entry may name the row's video: a title match
+    // would hand duplicate titles the same id.
+    if (aligned?.videoId) item.videoId = aligned.videoId;
   }
 }
 

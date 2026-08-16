@@ -556,6 +556,8 @@ function renderQueue(queue) {
     const row = document.createElement("div");
     row.className = item.selected ? "qrow now" : "qrow";
     if (item.automix) row.classList.add("automix");
+    // Present once the store aligns; the e2e specs key on it.
+    if (item.videoId) row.dataset.videoId = item.videoId;
     const thumb = document.createElement("div");
     thumb.className = "qthumb";
     if (item.thumb) thumb.style.backgroundImage = `url("${item.thumb}")`;
@@ -578,11 +580,13 @@ function renderQueue(queue) {
       row.classList.add("has-actions");
       const actions = document.createElement("div");
       actions.className = "qactions";
-      for (const [title, icon, command, toast] of [
-        ["Play next", "#i-play-next", "queuePlayNext", "Song will play next"],
-        ["Add to queue", "#i-add-to-queue", "queueAddToQueue", "Added to queue"],
-        ["Remove from queue", "#i-remove", "queueRemove", null],
+      for (const [title, icon, command, toast, setting] of [
+        ["Play next", "#i-play-next", "queuePlayNext", "Song will play next", "rowPlayNext"],
+        ["Add to queue", "#i-add-to-queue", "queueAddToQueue", "Added to queue", "rowAddToQueue"],
+        // Remove has no toggle: without it a queue row loses its only way out.
+        ["Remove from queue", "#i-remove", "queueRemove", null, null],
       ]) {
+        if (setting && settings[setting] === false) continue;
         const button = document.createElement("button");
         button.title = title;
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -696,6 +700,10 @@ const DEFAULT_SETTINGS = {
   compact: false,
   accentIcon: false,
   lyricsSize: "m",
+  // Row actions, independent of the player card's own like/dislike toggles.
+  rowPlayNext: true,
+  rowAddToQueue: true,
+  rowRadio: true,
 };
 // Named hues with per-theme variants (bright on dark, deep on light).
 const ACCENTS = [
@@ -771,6 +779,9 @@ function applySettings() {
   el("set-dislike").classList.toggle("on", settings.showDislike !== false);
   el("dislike").hidden = settings.showDislike === false;
   el("set-accent-icon").classList.toggle("on", settings.accentIcon === true);
+  el("set-row-play-next").classList.toggle("on", settings.rowPlayNext !== false);
+  el("set-row-add").classList.toggle("on", settings.rowAddToQueue !== false);
+  el("set-row-radio").classList.toggle("on", settings.rowRadio !== false);
   const sizes = { s: "11.5px", m: "12.5px", l: "14px" };
   el("lyrics-pane").style.fontSize = sizes[settings.lyricsSize] ?? sizes.m;
   for (const option of document.querySelectorAll("#lyrics-size button")) {
@@ -862,6 +873,25 @@ el("set-dislike").addEventListener("click", () => {
   settings.showDislike = settings.showDislike === false;
   saveSettings();
 });
+
+// Row actions. Rows are built once per render, so repaint what's on screen
+// and make the lazy tabs rebuild on their next visit - otherwise the toggle
+// looks like it did nothing until you navigate.
+for (const [id, key] of [
+  ["set-row-play-next", "rowPlayNext"],
+  ["set-row-add", "rowAddToQueue"],
+  ["set-row-radio", "rowRadio"],
+]) {
+  el(id).addEventListener("click", () => {
+    settings[key] = settings[key] === false;
+    saveSettings();
+    port?.postMessage({ type: "getQueue" }); // repaints the queue rows
+    if (searchResultsData) showSearchGroup();
+    historyLoaded = false;
+    homeLoaded = false;
+    playlistsLoaded = false;
+  });
+}
 
 // The background script watches settings and redraws the toolbar icon.
 el("set-accent-icon").addEventListener("click", () => {
@@ -1244,7 +1274,7 @@ function buildTrackRow(item, { onRemove } = {}) {
     };
     // Radio leads: it plays, the other two only queue. The ⋯ menu can only
     // radio the PLAYING song - this seeds a station from any row.
-    actionButton("Start radio", "#i-radio", () => {
+    if (settings.rowRadio !== false) actionButton("Start radio", "#i-radio", () => {
       if (row.classList.contains("loading")) return;
       setPendingPlay(row, "loading");
       showPendingTrack(item);
@@ -1260,10 +1290,11 @@ function buildTrackRow(item, { onRemove } = {}) {
       });
       armQueueSwitch(item.videoId);
     });
-    for (const [title, icon, command, toast] of [
-      ["Play next", "#i-play-next", "queueVideoNext", "Song will play next"],
-      ["Add to queue", "#i-add-to-queue", "queueVideoLast", "Added to queue"],
+    for (const [title, icon, command, toast, setting] of [
+      ["Play next", "#i-play-next", "queueVideoNext", "Song will play next", "rowPlayNext"],
+      ["Add to queue", "#i-add-to-queue", "queueVideoLast", "Added to queue", "rowAddToQueue"],
     ]) {
+      if (settings[setting] === false) continue;
       actionButton(title, icon, () => {
         send(command, { videoId: item.videoId });
         // Optimistic - the content script pushes an error toast if it fails.

@@ -1621,6 +1621,15 @@ button.busy {
   stroke-linejoin: round;
 }
 
+/* A shelf header at the very top has nothing to separate from: no rule, and
+   it sits where it will sit once stuck (same trick as #playlist-bar - the
+   negative margin swallows the list's top padding), so scrolling never
+   shifts it. */
+.queue-subheader:first-child {
+  border-top: none;
+  margin-top: -4px;
+}
+
 /* ---- toast ---- */
 
 /* one unified toast: a centered pill in plain surface colors (YTM-style);
