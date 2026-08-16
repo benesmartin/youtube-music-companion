@@ -5,8 +5,9 @@
 <h1 align="center">Companion for YouTube Music</h1>
 
 <p align="center">
-  A full mini player for YouTube Music in your toolbar - queue, history, search,
-  playlists and synced lyrics, without ever leaving the tab you're in.
+  A full mini player for YouTube Music in your toolbar - recommendations, queue,
+  history, search, playlists and synced lyrics, without ever leaving the tab
+  you're in.
 </p>
 
 <p align="center">
@@ -17,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.2.0/01-player-queue.png" width="640" alt="Player with queue, dark theme">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/01-player-queue.png" width="640" alt="Player with queue, dark theme">
 </p>
 
 ## Features
@@ -25,11 +26,16 @@
 - **Player**: album art, per-artist links, play/pause, previous/next,
   like/dislike, shuffle, repeat, seek and volume - hover the seek bar to
   preview the exact time before you click
+- **Home**: YouTube Music's own recommendation shelves - quick picks, listen
+  again and the rest - right in the popup. Click a song and it starts a radio
+  from it, so you can pick something and let the algorithm run
 - **Queue**: see what's coming with artwork, jump to any track, play next
   or add to queue, remove, drag to reorder; toggleable autoplay suggestions
 - **History**: your real YouTube Music listening history, click to replay
 - **Search**: songs and videos - play, play next or add to queue straight
   from results
+- **Start a radio from any song** in search, history, playlists or home -
+  not just the one that's playing
 - **Playlists**: browse your library, play or shuffle a playlist, open its
   tracks, save the current song to any playlist (with a duplicate guard),
   remove songs - long playlists load as you scroll
@@ -45,18 +51,20 @@
 - **Keyboard shortcuts**: play/pause, next, previous, like - plus unbound
   volume up/down and dislike commands. Rebind everything right in the
   popup's settings on Firefox (Chrome: chrome://extensions/shortcuts)
+- **Row actions you choose**: switch play next, add to queue and start radio
+  on or off per row in settings
 - Toolbar status dot (green playing, yellow paused), can be turned off
 
 <details>
 <summary><b>More screenshots</b> - lyrics, search, history, settings</summary>
 <br>
 <p align="center">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.2.0/02-synced-lyrics.png" width="404" alt="Time-synced lyrics">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.2.0/03-search.png" width="404" alt="Search with songs and videos filters">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/02-synced-lyrics.png" width="404" alt="Time-synced lyrics">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/03-search.png" width="404" alt="Search with songs and videos filters">
 </p>
 <p align="center">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.2.0/04-history.png" width="404" alt="Listening history">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.2.0/05-settings.png" width="404" alt="Settings with themes and accent colors">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/04-history.png" width="404" alt="Listening history">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/05-settings.png" width="404" alt="Settings with themes and accent colors">
 </p>
 </details>
 
