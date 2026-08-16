@@ -480,6 +480,12 @@ function readQueue() {
 // never win over an aligned index match: title keys collapse duplicate
 // titles onto the last entry, repainting every same-titled row as it
 // (e.g. two covers of one song queued together).
+// The home feed, held for the tab's life so reopening the popup is instant.
+// Ten minutes: long enough to cover a listening session, short enough that
+// YTM's recommendations refresh on their own eventually.
+const HOME_TTL_MS = 10 * 60 * 1000;
+let homeCache = { at: 0, shelves: [], continuation: null };
+
 function applyQueueStoreData(queue, data) {
   const thumbByTitle = new Map(
     data.filter((entry) => entry.thumb).map((entry) => [entry.title, entry.thumb])
@@ -941,12 +947,31 @@ ext.runtime.onConnect.addListener((port) => {
       askBridgeAsync("search", { query: msg.query }, 8000).then((results) =>
         port.postMessage({ type: "searchResults", query: msg.query, results })
       );
+
     } else if (msg.type === "getHome") {
       // Recommendation shelves off the YTM home page; paged like playlists,
-      // one continuation at a time.
-      askBridgeAsync("getHome", { continuation: msg.continuation }, 10000).then((home) =>
-        port.postMessage({ type: "home", append: Boolean(msg.continuation), home })
-      );
+      // one continuation at a time. Kept in the tab so reopening the popup
+      // paints instantly instead of refetching - the feed barely moves within
+      // a listening session, and everything the user scrolled in comes back.
+      if (!msg.continuation && homeCache.shelves.length && Date.now() - homeCache.at < HOME_TTL_MS) {
+        port.postMessage({
+          type: "home",
+          append: false,
+          home: { signedOut: false, shelves: homeCache.shelves, continuation: homeCache.continuation },
+        });
+        return;
+      }
+      askBridgeAsync("getHome", { continuation: msg.continuation }, 10000).then((home) => {
+        if (home?.shelves?.length) {
+          homeCache = {
+            at: Date.now(),
+            // A continuation extends what's cached; a fresh load replaces it.
+            shelves: msg.continuation ? homeCache.shelves.concat(home.shelves) : home.shelves,
+            continuation: home.continuation ?? null,
+          };
+        }
+        port.postMessage({ type: "home", append: Boolean(msg.continuation), home });
+      });
     } else if (msg.type === "getHistory") {
       // The user's real YTM history, fetched by the bridge via the page's
       // own internal API (needs page context for ytcfg + auth cookies).
