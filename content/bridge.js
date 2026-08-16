@@ -821,27 +821,41 @@
     return token;
   }
 
-  async function getPlaylists() {
+  // Loading the WHOLE library up front is what made this the one call that
+  // failed outright for people with many playlists: ~25 tiles per request,
+  // all of it sequential, against the popup's 10s budget - and a repeating
+  // token spun the full page cap every time (blinkertoon, 2026-07-18:
+  // "no reply from the YTM tab (timeout)", History fine in the same session).
+  // Now it returns what fits in PAGE_BUDGET_MS with a token, and the popup
+  // pages the rest in on scroll.
+  const PLAYLIST_PAGE_BUDGET_MS = 5000;
+
+  async function getPlaylists(continuation) {
     try {
       if (!(await sapisidHash())) return { signedOut: true };
-      const data = await innertubeRequest("browse", { browseId: "FEmusic_liked_playlists" });
-      // Named failures instead of null - the popup logs them for reports
-      // from setups we can't reproduce (Edge app windows, work profiles).
-      if (!data) return { error: "liked_playlists browse returned nothing" };
-      const sections =
-        data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content
-          ?.sectionListRenderer?.contents ??
-        data?.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer
-          ?.contents ??
-        [];
-      const grid = sections.find((s) => s.gridRenderer)?.gridRenderer;
       const playlists = [];
-      // ~25 tiles per page - follow continuations (new or legacy format).
-      let token =
-        collectPlaylistItems(grid?.items, playlists) ??
-        grid?.continuations?.[0]?.nextContinuationData?.continuation ??
-        null;
-      for (let page = 0; token && page < 40; page++) {
+      const deadline = Date.now() + PLAYLIST_PAGE_BUDGET_MS;
+      const seenTokens = new Set(); // a token that repeats would loop forever
+      let token = continuation ?? null;
+      if (!token) {
+        const data = await innertubeRequest("browse", { browseId: "FEmusic_liked_playlists" });
+        // Named failures instead of null - the popup logs them for reports
+        // from setups we can't reproduce (Edge app windows, work profiles).
+        if (!data) return { error: "liked_playlists browse returned nothing" };
+        const sections =
+          data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content
+            ?.sectionListRenderer?.contents ??
+          data?.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer
+            ?.contents ??
+          [];
+        const grid = sections.find((s) => s.gridRenderer)?.gridRenderer;
+        token =
+          collectPlaylistItems(grid?.items, playlists) ??
+          grid?.continuations?.[0]?.nextContinuationData?.continuation ??
+          null;
+      }
+      while (token && !seenTokens.has(token) && Date.now() < deadline) {
+        seenTokens.add(token);
         const query = `ctoken=${encodeURIComponent(token)}&continuation=${encodeURIComponent(token)}&type=next`;
         const next = await innertubeRequest(`browse?${query}`, { continuation: token });
         if (!next) break;
@@ -856,7 +870,8 @@
           gridCont?.continuations?.[0]?.nextContinuationData?.continuation ??
           null;
       }
-      return playlists;
+      // A token that came back around is exhausted, not more pages.
+      return { playlists, continuation: token && !seenTokens.has(token) ? token : null };
     } catch (err) {
       return { error: `playlists parse failed: ${err}` };
     }
@@ -1045,7 +1060,7 @@
       command === "removeFromPlaylist"
     ) {
       const handlers = {
-        getPlaylists: () => getPlaylists(),
+        getPlaylists: () => getPlaylists(payload.continuation),
         getPlaylistTracks: () => getPlaylistTracks(payload.browseId, payload.continuation),
         playPlaylist: () => playPlaylist(payload.playlistId, payload.shuffle),
         addToPlaylist: () => addToPlaylist(payload.playlistId, payload.videoId),

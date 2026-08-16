@@ -891,8 +891,14 @@ ext.runtime.onConnect.addListener((port) => {
         port.postMessage({ type: "queue", queue, autoplay: autoplayState() })
       );
     } else if (msg.type === "getPlaylists") {
-      askBridgeAsync("getPlaylists", {}, 8000).then((playlists) =>
-        port.postMessage({ type: "playlists", playlists })
+      // Above the bridge's own paging budget, so a partial page still wins
+      // over this timeout instead of failing the whole tab.
+      askBridgeAsync("getPlaylists", { continuation: msg.continuation }, 10000).then((playlists) =>
+        port.postMessage({
+          type: "playlists",
+          append: Boolean(msg.continuation),
+          playlists,
+        })
       );
     } else if (msg.type === "getPlaylistTracks") {
       askBridgeAsync(

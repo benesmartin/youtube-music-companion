@@ -1418,11 +1418,49 @@ function requestPlaylists(silent = false) {
     if (playlistsLoaded) return;
     noteInto(el("playlists-list"), "Loading playlists…");
   }
+  playlistsNextToken = null;
+  playlistsLoadingMore = false;
   port.postMessage({ type: "getPlaylists" });
 }
 
-function renderPlaylists(playlists) {
-  const failed = !playlists || Boolean(playlists.error);
+// The library arrives in ~5s worth of pages at a time (a big library used to
+// blow the whole request budget and show nothing) - the rest pages in as the
+// list is scrolled, same as playlist tracks.
+let playlistsNextToken = null;
+let playlistsLoadingMore = false;
+
+const playlistsMore = document.createElement("div");
+playlistsMore.className = "list-note";
+playlistsMore.textContent = "Loading more…";
+
+new IntersectionObserver(
+  (entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    if (!playlistsNextToken || playlistsLoadingMore || playlistDetailId || !port) return;
+    playlistsLoadingMore = true;
+    port.postMessage({ type: "getPlaylists", continuation: playlistsNextToken });
+  },
+  { root: el("playlists-pane"), rootMargin: "200px" }
+).observe(playlistsMore);
+
+function renderPlaylists(result, append = false) {
+  playlistsLoadingMore = false;
+  // The bridge answers {playlists, continuation}; signedOut/error come bare.
+  const playlists = Array.isArray(result?.playlists) ? result.playlists : null;
+  const failed = !result || Boolean(result.error) || (!playlists && !result.signedOut);
+  if (append) {
+    // A failed page keeps what's rendered - just stop paging.
+    if (failed) {
+      playlistsMore.remove();
+      playlistsNextToken = null;
+      return;
+    }
+    playlistsMore.remove();
+    for (const pl of playlists) el("playlists-list").append(buildPlaylistRow(pl));
+    playlistsNextToken = result.continuation ?? null;
+    if (playlistsNextToken) el("playlists-list").append(playlistsMore);
+    return;
+  }
   playlistsLoaded = !failed; // a failure must refetch on the next tab visit
   const list = el("playlists-list");
   if (failed) {
@@ -1431,17 +1469,17 @@ function renderPlaylists(playlists) {
     // windows, other profiles) can paste something actionable.
     console.warn(
       "[YTM Companion] playlists load failed:",
-      playlists?.error ?? "no reply from the YTM tab (timeout)"
+      result?.error ?? "no reply from the YTM tab (timeout)"
     );
     noteInto(
       list,
-      playlists?.error
+      result?.error
         ? "Couldn’t load playlists from YouTube Music. (request failed)"
         : "Couldn’t load playlists from YouTube Music. (timed out)"
     );
     return;
   }
-  if (playlists.signedOut) {
+  if (result.signedOut) {
     noteInto(list, "Sign in to YouTube Music to see your playlists.");
     return;
   }
@@ -1450,87 +1488,81 @@ function renderPlaylists(playlists) {
     return;
   }
   list.textContent = "";
-  for (const pl of playlists) {
-    const row = document.createElement("div");
-    row.className = "qrow has-actions";
-    const thumb = document.createElement("div");
-    thumb.className = "qthumb";
-    if (pl.thumb) thumb.style.backgroundImage = `url("${pl.thumb}")`;
-    const meta = document.createElement("div");
-    meta.className = "qmeta";
-    const title = document.createElement("div");
-    title.className = "qtitle";
-    title.textContent = pl.title;
-    const subtitle = document.createElement("div");
-    subtitle.className = "qartist";
-    subtitle.textContent = pl.subtitle;
-    meta.append(title, subtitle);
-    row.append(thumb, meta);
+  for (const pl of playlists) list.append(buildPlaylistRow(pl));
+  playlistsNextToken = result.continuation ?? null;
+  if (playlistsNextToken) list.append(playlistsMore);
+}
 
-    const actions = document.createElement("div");
-    actions.className = "qactions";
-    for (const [label, icon, handler] of [
-      [
-        "Shuffle",
-        "#i-shuffle",
-        (button) => {
-          setPendingPlay(button, "busy");
-          send("playPlaylist", { playlistId: pl.id, shuffle: true });
-          armQueueSwitch(null); // playlistStarted or the fallback switches
-        },
-      ],
-    ]) {
-      const button = document.createElement("button");
-      button.title = label;
-      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-      use.setAttribute("href", icon);
-      svg.append(use);
-      button.append(svg);
-      button.addEventListener("click", (e) => {
-        e.stopPropagation();
-        handler(button);
-      });
-      actions.append(button);
-    }
-    row.append(actions);
+function buildPlaylistRow(pl) {
+  const row = document.createElement("div");
+  row.className = "qrow has-actions";
+  const thumb = document.createElement("div");
+  thumb.className = "qthumb";
+  if (pl.thumb) thumb.style.backgroundImage = `url("${pl.thumb}")`;
+  const meta = document.createElement("div");
+  meta.className = "qmeta";
+  const title = document.createElement("div");
+  title.className = "qtitle";
+  title.textContent = pl.title;
+  const subtitle = document.createElement("div");
+  subtitle.className = "qartist";
+  subtitle.textContent = pl.subtitle;
+  meta.append(title, subtitle);
+  row.append(thumb, meta);
 
-    // Visible drill-in zone; the row itself plays (play-first model).
-    const open = document.createElement("button");
-    open.className = "pl-open";
-    open.title = "Open playlist";
-    const chevSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    const chevUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
-    chevUse.setAttribute("href", "#i-chevron-right");
-    chevSvg.append(chevUse);
-    open.append(chevSvg);
-    open.addEventListener("click", (e) => {
-      e.stopPropagation();
-      openPlaylist(pl);
-    });
-    row.append(open);
+  const actions = document.createElement("div");
+  actions.className = "qactions";
+  const shuffle = document.createElement("button");
+  shuffle.title = "Shuffle";
+  const shuffleSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const shuffleUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  shuffleUse.setAttribute("href", "#i-shuffle");
+  shuffleSvg.append(shuffleUse);
+  shuffle.append(shuffleSvg);
+  shuffle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    setPendingPlay(shuffle, "busy");
+    send("playPlaylist", { playlistId: pl.id, shuffle: true });
+    armQueueSwitch(null); // playlistStarted or the fallback switches
+  });
+  actions.append(shuffle);
+  row.append(actions);
 
-    row.addEventListener("click", () => {
-      // Armed capture bar repurposes the click: file the song, don't play.
-      if (captureArmed) {
-        if (requireSignIn("save to playlists")) return;
-        if (!lastState?.videoId) {
-          showToast("Nothing is playing to add.");
-          return;
-        }
-        port?.postMessage({
-          type: "addToPlaylist",
-          playlistId: pl.id,
-          videoId: lastState.videoId,
-          name: pl.title,
-        });
-        return; // stays armed - filing into several playlists in a row
+  // Visible drill-in zone; the row itself plays (play-first model).
+  const open = document.createElement("button");
+  open.className = "pl-open";
+  open.title = "Open playlist";
+  const chevSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const chevUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  chevUse.setAttribute("href", "#i-chevron-right");
+  chevSvg.append(chevUse);
+  open.append(chevSvg);
+  open.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openPlaylist(pl);
+  });
+  row.append(open);
+
+  row.addEventListener("click", () => {
+    // Armed capture bar repurposes the click: file the song, don't play.
+    if (captureArmed) {
+      if (requireSignIn("save to playlists")) return;
+      if (!lastState?.videoId) {
+        showToast("Nothing is playing to add.");
+        return;
       }
-      send("playPlaylist", { playlistId: pl.id });
-      armQueueSwitch(null); // playlistStarted or the fallback switches
-    });
-    list.append(row);
-  }
+      port?.postMessage({
+        type: "addToPlaylist",
+        playlistId: pl.id,
+        videoId: lastState.videoId,
+        name: pl.title,
+      });
+      return; // stays armed - filing into several playlists in a row
+    }
+    send("playPlaylist", { playlistId: pl.id });
+    armQueueSwitch(null); // playlistStarted or the fallback switches
+  });
+  return row;
 }
 
 // ---- capture bar: "save the playing song to a playlist" as a mode ----
@@ -1999,7 +2031,7 @@ function tryTab(candidates, index) {
     } else if (msg.type === "history") renderHistory(msg.history);
     else if (msg.type === "home") renderHome(msg.home, msg.append);
     else if (msg.type === "searchResults") renderSearchResults(msg);
-    else if (msg.type === "playlists") renderPlaylists(msg.playlists);
+    else if (msg.type === "playlists") renderPlaylists(msg.playlists, msg.append);
     else if (msg.type === "playlistTracks") renderPlaylistTracks(msg);
     else if (msg.type === "playlistStarted") {
       // Only act while a playlist-play switch is armed (videoId-less).
