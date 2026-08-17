@@ -56,8 +56,12 @@
 - Toolbar status dot (green playing, yellow paused), can be turned off
 
 <details>
-<summary><b>More screenshots</b> - lyrics, search, history, settings</summary>
+<summary><b>More screenshots</b> - home, playlists, lyrics, search, history, settings</summary>
 <br>
+<p align="center">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/07-home.png" width="404" alt="Home tab with recommendation shelves">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/08-playlists.png" width="404" alt="Playlists with the save-current-song bar">
+</p>
 <p align="center">
   <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/02-synced-lyrics.png" width="404" alt="Time-synced lyrics">
   <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/03-search.png" width="404" alt="Search with songs and videos filters">
