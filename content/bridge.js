@@ -16,6 +16,54 @@
   const player = () => document.getElementById("movie_player");
   const volumeSlider = () => document.querySelector("ytmusic-player-bar #volume-slider");
 
+  // YTM's player bar sometimes keeps the PREVIOUS track's byline after a
+  // transition (user report 2026-08-17: right art and title, stale artist and
+  // album). The queue row is keyed by videoId, so it cannot describe another
+  // song - read the byline there and let the content script prefer it.
+  const BYLINE_ARTIST_PAGE = /ARTIST|USER_CHANNEL/;
+  const pageTypeOf = (run) =>
+    run?.navigationEndpoint?.browseEndpoint?.browseEndpointContextSupportedConfigs
+      ?.browseEndpointContextMusicConfig?.pageType ?? "";
+
+  function nowPlayingByline() {
+    const videoId = player()?.getVideoData?.()?.video_id ?? null;
+    if (!videoId) return null;
+    let renderer = null;
+    try {
+      const q = document.querySelector("ytmusic-player-queue")?.queue?.store?.store?.getState()
+        ?.queue;
+      for (const entry of [...(q?.items ?? []), ...(q?.automixItems ?? [])]) {
+        const primary = queueRendererOf(entry);
+        const counterpart =
+          entry?.playlistPanelVideoWrapperRenderer?.counterpart?.[0]?.counterpartRenderer
+            ?.playlistPanelVideoRenderer ?? null;
+        if (primary?.videoId === videoId) { renderer = primary; break; }
+        if (counterpart?.videoId === videoId) { renderer = counterpart; break; }
+      }
+    } catch (err) {
+      return null;
+    }
+    const runs = renderer?.longBylineText?.runs ?? [];
+    if (!runs.length) return null;
+    const artists = runs
+      .filter((run) => BYLINE_ARTIST_PAGE.test(pageTypeOf(run)))
+      .map((run) => ({
+        name: run.text,
+        // Same shape the player bar's own anchors use.
+        url: `channel/${run.navigationEndpoint.browseEndpoint.browseId}`,
+      }));
+    const albumRun = runs.find((run) => /ALBUM/.test(pageTypeOf(run)));
+    const year = runs.map((run) => run.text).join("").match(/(\d{4})\s*$/)?.[1] ?? "";
+    return {
+      videoId,
+      artists,
+      album: albumRun
+        ? { name: albumRun.text, url: `browse/${albumRun.navigationEndpoint.browseEndpoint.browseId}` }
+        : null,
+      year,
+    };
+  }
+
   function postStatus() {
     const p = player();
     if (!isCurrent() || !p?.getVolume) return;
@@ -30,6 +78,7 @@
         videoId: p.getVideoData?.()?.video_id ?? null,
         // ATV = album track, OMV = official video, UGC = plain upload
         videoType: p.getPlayerResponse?.()?.videoDetails?.musicVideoType ?? null,
+        byline: nowPlayingByline(),
       },
       window.location.origin
     );
@@ -1085,6 +1134,25 @@
       const result = await fetchHistory();
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result },
+        window.location.origin
+      );
+      return;
+    }
+    if (command === "navigateBrowse") {
+      const app = document.querySelector("ytmusic-app");
+      const browseId = payload.browseId;
+      const ok = Boolean(app && browseId);
+      if (ok) {
+        app.dispatchEvent(
+          new CustomEvent("yt-navigate", {
+            bubbles: true,
+            composed: true,
+            detail: { endpoint: { browseEndpoint: { browseId } } },
+          })
+        );
+      }
+      window.postMessage(
+        { source: FROM_BRIDGE, type: "response", requestId, result: ok },
         window.location.origin
       );
       return;

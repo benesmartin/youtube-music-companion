@@ -64,6 +64,8 @@ window.addEventListener("message", (e) => {
       playerState: e.data.playerState,
       videoId: e.data.videoId,
       videoType: e.data.videoType,
+      // The playing song's byline taken from its own queue row (id-keyed).
+      byline: e.data.byline ?? null,
     };
     broadcastThrottled();
   } else if (e.data.type === "response" && pendingBridgeRequests.has(e.data.requestId)) {
@@ -299,12 +301,28 @@ function readState() {
     .filter((a) => a.getAttribute("href")?.startsWith("channel/"))
     .map((a) => ({ name: a.textContent?.trim() ?? "", url: a.getAttribute("href") ?? "" }))
     .filter((entry) => entry.name);
-  const artist = artists.length
+  let artist = artists.length
     ? artists.map((entry) => entry.name).join(", ")
     : bylineParts[0] ?? "";
-  const album =
+  let album =
     links.find((a) => a.getAttribute("href")?.startsWith("browse/"))?.textContent?.trim() ?? "";
-  const year = album && bylineParts.length >= 3 ? bylineParts[bylineParts.length - 1] : "";
+  let year = album && bylineParts.length >= 3 ? bylineParts[bylineParts.length - 1] : "";
+  let artistList = artists;
+  let albumHref =
+    links.find((a) => a.getAttribute("href")?.startsWith("browse/"))?.getAttribute("href") ?? "";
+
+  // The bar's byline can be left over from the PREVIOUS track (YTM bug: right
+  // art and title, stale artist and album). The queue row the bridge reads is
+  // keyed by videoId, so it always describes the song that is playing - take
+  // it whenever it names an artist.
+  const rowByline = pageStatus?.byline;
+  if (rowByline?.videoId && rowByline.videoId === pageStatus?.videoId && rowByline.artists?.length) {
+    artistList = rowByline.artists;
+    artist = rowByline.artists.map((entry) => entry.name).join(", ");
+    album = rowByline.album?.name ?? "";
+    albumHref = rowByline.album?.url ?? "";
+    year = rowByline.year ?? "";
+  }
 
   // Library membership is per-track; a new title invalidates the last probe.
   if (title !== libraryTitle) {
@@ -332,15 +350,13 @@ function readState() {
     signedIn,
     title,
     artist,
-    artists,
+    artists: artistList,
     album,
     year,
     videoId: pageStatus?.videoId ?? location.href.match(/[?&]v=([^&]+)/)?.[1] ?? "",
     videoType: pageStatus?.videoType ?? null,
-    artistUrl:
-      links.find((a) => a.getAttribute("href")?.startsWith("channel/"))?.getAttribute("href") ?? "",
-    albumUrl:
-      links.find((a) => a.getAttribute("href")?.startsWith("browse/"))?.getAttribute("href") ?? "",
+    artistUrl: artistList[0]?.url ?? "",
+    albumUrl: albumHref,
     artwork: artworkSrc ? upscaleArtwork(artworkSrc) : "",
     playing:
       pageStatus?.playerState != null
@@ -664,9 +680,13 @@ const commands = {
   // Click a specific byline anchor (per-artist navigation), SPA-safe.
   openByline(payload) {
     const anchors = playerBar()?.querySelectorAll(".byline a") ?? [];
-    return clickIfFound(
-      [...anchors].find((a) => a.getAttribute("href") === payload.href)
-    );
+    const anchor = [...anchors].find((a) => a.getAttribute("href") === payload.href);
+    if (anchor) return clickIfFound(anchor);
+    // The href came from the queue row, so the bar has no such anchor.
+    const browseId = String(payload.href ?? "").split("/")[1];
+    if (!browseId) return false;
+    askBridgeAsync("navigateBrowse", { browseId }, 5000);
+    return true;
   },
   // payload may carry playlistId/params so YTM builds the proper queue
   playVideoById: (payload) =>
