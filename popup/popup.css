@@ -1227,7 +1227,11 @@ body.light #artwork-idle {
 /* capture bar: a native-looking row that arms save-to-playlist mode */
 #playlist-capture {
   position: sticky;
-  top: -4px; /* flush when stuck, like #playlist-bar */
+  /* Sticky offsets count from the pane's CONTENT box, which already starts
+     after its 4px gutter - so top:0 parks the bar exactly where it rests,
+     the same offset the first row has in Queue and History. (top:-4px shaved
+     4px off and read as shrinking; top:4px doubled the gutter.) */
+  top: 0;
   z-index: 1;
   width: 100%;
   justify-content: flex-start;
@@ -1238,6 +1242,18 @@ body.light #artwork-idle {
   /* opaque: rows scroll underneath while stuck */
   background: var(--bg);
   text-align: left;
+}
+
+/* ...and the gutter above it stays opaque too, so no row peeks through the
+   4px strip while scrolling */
+#playlist-capture::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -6px;
+  height: 6px;
+  background: var(--bg);
 }
 #playlist-capture:hover {
   background: var(--surface);
