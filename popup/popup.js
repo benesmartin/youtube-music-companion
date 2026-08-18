@@ -2204,5 +2204,61 @@ function tryTab(candidates, index) {
   });
 }
 
+// ---- the one-time rating ask ----
+// Ratings are what store search ranks on, and the honest way to earn them is
+// to ask people who have actually used the thing. So: no prompt until the
+// extension has been around a fortnight AND opened enough times to mean it,
+// one ask, and never again whichever button gets pressed.
+const RATE_MIN_DAYS = 14;
+const RATE_MIN_OPENS = 40;
+const RATE_URLS = {
+  firefox: "https://addons.mozilla.org/firefox/addon/companion-for-youtube-music/reviews/",
+  chrome:
+    "https://chromewebstore.google.com/detail/companion-for-youtube-mus/iifmpealppkjdljfhbjcdgdgglflnfkl/reviews",
+};
+
+// Pure so it can be tested without a clock or a browser.
+function rateEligible(state, now = Date.now()) {
+  if (!state || state.answered) return false;
+  if (!state.installedAt) return false;
+  const days = (now - state.installedAt) / 86400000;
+  return days >= RATE_MIN_DAYS && (state.opens ?? 0) >= RATE_MIN_OPENS;
+}
+
+const storeUrl = () =>
+  /firefox/i.test(navigator.userAgent) ? RATE_URLS.firefox : RATE_URLS.chrome;
+
+let rateState = null;
+
+async function trackOpenAndMaybeAsk() {
+  try {
+    const stored = (await ext.storage.local.get("rateState")).rateState ?? {};
+    rateState = {
+      installedAt: stored.installedAt ?? Date.now(),
+      opens: (stored.opens ?? 0) + 1,
+      answered: stored.answered === true,
+    };
+    await ext.storage.local.set({ rateState });
+  } catch {
+    return; // storage unavailable: never nag
+  }
+  if (rateEligible(rateState)) el("rate-bar").hidden = false;
+}
+
+async function answerRate(open) {
+  el("rate-bar").hidden = true;
+  rateState = { ...rateState, answered: true };
+  try {
+    await ext.storage.local.set({ rateState });
+  } catch {
+    // the bar is gone for this session either way
+  }
+  if (open) ext.tabs.create({ url: storeUrl() });
+}
+
+el("rate-go").addEventListener("click", () => answerRate(true));
+el("rate-dismiss").addEventListener("click", () => answerRate(false));
+
 loadSettings();
 connect();
+trackOpenAndMaybeAsk();

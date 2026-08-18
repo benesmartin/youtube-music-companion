@@ -234,6 +234,13 @@
           <div id="playlist-tracks"></div>
         </div>
       </div>
+      <!-- one-time, dismissible: shown only after the extension has been
+           used for a while, never again once answered either way -->
+      <div id="rate-bar" hidden>
+        <span id="rate-text">Enjoying Companion? A rating helps others find it.</span>
+        <button id="rate-go">Rate it</button>
+        <button id="rate-dismiss" title="No thanks"><svg><use href="#i-x"/></svg></button>
+      </div>
     </main>
 
     <main id="empty" hidden>
