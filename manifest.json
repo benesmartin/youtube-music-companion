@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Companion for YouTube Music",
   "version": "1.3.1",
-  "description": "Control YouTube Music from a toolbar popup: playback, queue, history, search, playlists and synced lyrics. No tracking.",
+  "description": "Control YouTube Music from a toolbar popup: playback, queue, recommendations, history, search, playlists and synced lyrics.",
   "browser_specific_settings": {
     "gecko": {
       "id": "youtube-music-companion@benesmartin",
