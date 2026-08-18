@@ -358,10 +358,7 @@ function readState() {
     artistUrl: artistList[0]?.url ?? "",
     albumUrl: albumHref,
     artwork: artworkSrc ? upscaleArtwork(artworkSrc) : "",
-    playing:
-      pageStatus?.playerState != null
-        ? pageStatus.playerState === 1 || pageStatus.playerState === 3
-        : Boolean(media && !media.paused && media.readyState > 0),
+    playing: isPlaying(),
     position: progressInfo()?.position ?? media?.currentTime ?? 0,
     duration: progressInfo()?.duration ?? (Number.isFinite(media?.duration) ? media.duration : 0),
     volume: sliderVolume() ?? pageStatus?.volume ?? (media ? Math.round(media.volume * 100) : 100),
@@ -374,6 +371,19 @@ function readState() {
     inLibrary: libraryState,
     libraryAvailable,
   };
+}
+
+// Is audio actually running? A tab that was restored but never interacted
+// with sits in BUFFERING forever when the browser blocks autoplay, and
+// calling that "playing" made the popup show a pause button that could only
+// pause something already stopped (user report, 2026-08-18).
+function isPlaying() {
+  const media = video();
+  const state = pageStatus?.playerState;
+  if (state === 1) return true;
+  if (state === 3) return Boolean(media && !media.paused);
+  if (state != null) return false;
+  return Boolean(media && !media.paused && media.readyState > 0);
 }
 
 // yt-icon-button hosts (e.g. .shuffle, .repeat, .volume) wrap the real
@@ -643,9 +653,9 @@ function currentVolume() {
 
 const commands = {
   async playPause() {
-    const playing =
-      pageStatus?.playerState === 1 || pageStatus?.playerState === 3;
-    if (playing) {
+    // When in doubt, try to PLAY: a stuck-buffering tab used to take the
+    // pause branch, which did nothing and said nothing.
+    if (isPlaying()) {
       const pageButton = barButton("play-pause-button", "^(play|pause)$");
       if (pageButton) return clickIfFound(pageButton);
       video()?.pause();
