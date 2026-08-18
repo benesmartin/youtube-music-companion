@@ -20,6 +20,9 @@ ROADMAP.md
 # Store/listing assets (hosted via GitHub release attachments)
 promo/
 
+# Landing page (published separately, not part of the extension source)
+docs/
+
 # Private test suite (runs against unmodified production files)
 tests/
 
