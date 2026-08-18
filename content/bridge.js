@@ -565,9 +565,18 @@
     return `SAPISIDHASH ${ts}_${hex}`;
   }
 
+  // Why the most recent innertubeRequest gave up. A null return says only
+  // "no data"; setups we can't reproduce (Edge app windows, work profiles)
+  // are diagnosed from the reason, so callers can name it in their error.
+  let lastRequestFailure = null;
+
   async function innertubeRequest(path, body) {
+    const endpoint = path.split("?")[0];
     const context = cfgGet("INNERTUBE_CONTEXT");
-    if (!context) return null;
+    if (!context) {
+      lastRequestFailure = `${endpoint}: no INNERTUBE_CONTEXT on the page`;
+      return null;
+    }
     const headers = { "content-type": "application/json", "x-origin": location.origin };
     const auth = await sapisidHash();
     if (auth) {
@@ -584,7 +593,10 @@
       headers,
       body: JSON.stringify({ context, ...body }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      lastRequestFailure = `${endpoint}: HTTP ${res.status}`;
+      return null;
+    }
     return res.json();
   }
 
@@ -890,7 +902,7 @@
         const data = await innertubeRequest("browse", { browseId: "FEmusic_liked_playlists" });
         // Named failures instead of null - the popup logs them for reports
         // from setups we can't reproduce (Edge app windows, work profiles).
-        if (!data) return { error: "liked_playlists browse returned nothing" };
+        if (!data) return { error: `liked_playlists browse failed - ${lastRequestFailure ?? "no response"}` };
         const sections =
           data?.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content
             ?.sectionListRenderer?.contents ??
@@ -907,7 +919,14 @@
         seenTokens.add(token);
         const query = `ctoken=${encodeURIComponent(token)}&continuation=${encodeURIComponent(token)}&type=next`;
         const next = await innertubeRequest(`browse?${query}`, { continuation: token });
-        if (!next) break;
+        if (!next) {
+          // Nothing collected yet means this IS the failure, not the end of
+          // the library - saying so beats "No playlists in your library yet".
+          if (!playlists.length) {
+            return { error: `playlists continuation failed - ${lastRequestFailure ?? "no response"}` };
+          }
+          break;
+        }
         const gridCont = next?.continuationContents?.gridContinuation;
         const contItems =
           gridCont?.items ??
