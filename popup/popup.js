@@ -2211,6 +2211,12 @@ function tryTab(candidates, index) {
 // one ask, and never again whichever button gets pressed.
 const RATE_MIN_DAYS = 14;
 const RATE_MIN_OPENS = 40;
+// A dismissal means "not now", not "never" - so it snoozes rather than ends.
+// The second ask needs another month AND another stretch of real use, and
+// there is never a third.
+const RATE_SNOOZE_DAYS = 30;
+const RATE_SNOOZE_OPENS = 60;
+const RATE_MAX_ASKS = 2;
 const RATE_URLS = {
   firefox: "https://addons.mozilla.org/firefox/addon/companion-for-youtube-music/reviews/",
   chrome:
@@ -2219,10 +2225,14 @@ const RATE_URLS = {
 
 // Pure so it can be tested without a clock or a browser.
 function rateEligible(state, now = Date.now()) {
-  if (!state || state.answered) return false;
-  if (!state.installedAt) return false;
-  const days = (now - state.installedAt) / 86400000;
-  return days >= RATE_MIN_DAYS && (state.opens ?? 0) >= RATE_MIN_OPENS;
+  if (!state?.installedAt || state.ratedAt) return false;
+  const dismissals = state.dismissals ?? 0;
+  if (dismissals >= RATE_MAX_ASKS) return false;
+  const opens = state.opens ?? 0;
+  if (dismissals === 0) {
+    return (now - state.installedAt) / 86400000 >= RATE_MIN_DAYS && opens >= RATE_MIN_OPENS;
+  }
+  return now >= (state.snoozeUntil ?? Infinity) && opens >= (state.snoozeOpens ?? Infinity);
 }
 
 const storeUrl = () =>
@@ -2234,9 +2244,12 @@ async function trackOpenAndMaybeAsk() {
   try {
     const stored = (await ext.storage.local.get("rateState")).rateState ?? {};
     rateState = {
+      ...stored,
+      // No stored install date means this is the first run since the ask
+      // shipped - existing users start their clock now rather than being
+      // prompted the moment they update.
       installedAt: stored.installedAt ?? Date.now(),
       opens: (stored.opens ?? 0) + 1,
-      answered: stored.answered === true,
     };
     await ext.storage.local.set({ rateState });
   } catch {
@@ -2245,15 +2258,23 @@ async function trackOpenAndMaybeAsk() {
   if (rateEligible(rateState)) el("rate-bar").hidden = false;
 }
 
-async function answerRate(open) {
+async function answerRate(rated) {
   el("rate-bar").hidden = true;
-  rateState = { ...rateState, answered: true };
+  const now = Date.now();
+  rateState = rated
+    ? { ...rateState, ratedAt: now }
+    : {
+        ...rateState,
+        dismissals: (rateState?.dismissals ?? 0) + 1,
+        snoozeUntil: now + RATE_SNOOZE_DAYS * 86400000,
+        snoozeOpens: (rateState?.opens ?? 0) + RATE_SNOOZE_OPENS,
+      };
   try {
     await ext.storage.local.set({ rateState });
   } catch {
     // the bar is gone for this session either way
   }
-  if (open) ext.tabs.create({ url: storeUrl() });
+  if (rated) ext.tabs.create({ url: storeUrl() });
 }
 
 el("rate-go").addEventListener("click", () => answerRate(true));
