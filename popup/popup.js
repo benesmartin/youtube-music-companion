@@ -2021,6 +2021,22 @@ async function connect() {
 }
 
 let reconnectAttempts = 0;
+// Session restore (and Firefox's tab unloading) leaves YTM tabs DISCARDED:
+// they still match a tab query, but they have no content script, so nothing
+// can answer the popup. The tab is open in the user's mind, so wake it once
+// rather than claiming YouTube Music isn't open.
+let wakeState = null; // { tabId, deadline }
+
+function showWaking() {
+  el("empty-title").textContent = "Waking YouTube Music\u2026";
+  el("empty-sub").textContent = "Your tab was unloaded, giving it a nudge.";
+  showEmpty();
+}
+
+function resetEmptyCopy() {
+  el("empty-title").textContent = "YouTube Music isn\u2019t open";
+  el("empty-sub").textContent = "Open it in a tab and this popup becomes your player.";
+}
 
 function tryTab(candidates, index) {
   const tab = candidates[index];
@@ -2031,9 +2047,26 @@ function tryTab(candidates, index) {
     if (candidates.length && reconnectAttempts < 8) {
       reconnectAttempts += 1;
       setTimeout(connect, 500);
-    } else {
-      showEmpty();
+      return;
     }
+    // Still waiting on a tab we woke - a cold YTM load takes a few seconds.
+    if (wakeState && Date.now() < wakeState.deadline) {
+      setTimeout(connect, 750);
+      return;
+    }
+    // An unloaded tab can't answer, so wake it once and keep trying while it
+    // boots. Reloading needs no extra permission: we already hold host
+    // access to music.youtube.com.
+    const asleep = candidates.find((candidate) => candidate.discarded);
+    if (asleep && !wakeState) {
+      wakeState = { tabId: asleep.id, deadline: Date.now() + 20000 };
+      showWaking();
+      Promise.resolve(ext.tabs.reload(asleep.id)).catch(() => {});
+      setTimeout(connect, 900);
+      return;
+    }
+    resetEmptyCopy();
+    showEmpty();
     return;
   }
   currentTabId = tab.id;
@@ -2048,6 +2081,7 @@ function tryTab(candidates, index) {
   port.onMessage.addListener((msg) => {
     alive = true;
     reconnectAttempts = 0;
+    wakeState = null;
     if (msg.type === "state") {
       if (queueSwitchVideoId && msg.state.available && msg.state.videoId === queueSwitchVideoId) {
         queueSwitchLoaded = true;
