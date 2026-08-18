@@ -509,6 +509,12 @@ el("artwork-idle").addEventListener("click", focusYtmTab);
 
 let lastSelectedIndex = null;
 
+// How long "Loading suggestions…" may claim autoplay rows are coming before
+// we accept that this queue has none.
+const AUTOPLAY_WAIT_MS = 8000;
+let autoplayWaitKey = null;
+let autoplayWaitSince = 0;
+
 function renderQueue(queue) {
   const list = el("queue-list");
   // A push mid-drag would destroy the dragged row; the post-drop push repaints.
@@ -666,9 +672,19 @@ function renderQueue(queue) {
     list.append(row);
   }
 
-  // Autoplay is on but no suggestions arrived yet - YTM is fetching them
-  // (turning the toggle on with none cached takes a few seconds).
-  if (lastAutoplay === true && !automixHeaderAdded) {
+  // Autoplay is on but no suggestions arrived yet. That means one of two
+  // things, and they look identical: YTM is fetching them (a few seconds
+  // after a fresh play), or this queue simply has none - a restored queue
+  // carries 50 real tracks and gets automix only once it nears the end
+  // (reported 2026-08-18: "Loading suggestions..." sat there forever). So
+  // wait a little, then stop claiming something is coming.
+  const waitKey = `${lastState?.videoId ?? ""}:${queue.length}`;
+  if (waitKey !== autoplayWaitKey) {
+    autoplayWaitKey = waitKey;
+    autoplayWaitSince = Date.now();
+  }
+  const stillWorthWaiting = Date.now() - autoplayWaitSince < AUTOPLAY_WAIT_MS;
+  if (lastAutoplay === true && !automixHeaderAdded && stillWorthWaiting) {
     const header = document.createElement("div");
     header.className = "queue-subheader";
     header.textContent = "Autoplay";
