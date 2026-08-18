@@ -2027,13 +2027,39 @@ let reconnectAttempts = 0;
 // rather than claiming YouTube Music isn't open.
 let wakeState = null; // { tabId, deadline }
 
+let sleepingTabId = null;
+
+// Firefox only loads a session-restored tab when it is selected, so a
+// background reload can quietly do nothing. Offer the one action that always
+// works rather than leaving the popup claiming nothing is open.
+function offerToOpenTab(tabId) {
+  sleepingTabId = tabId;
+  el("empty-title").textContent = "Your YouTube Music tab is asleep";
+  el("empty-sub").textContent = "The browser only loads it once you open it.";
+  el("empty-open").hidden = false;
+  showEmpty();
+}
+
+el("empty-open").addEventListener("click", async () => {
+  if (sleepingTabId === null) return;
+  try {
+    const tab = await ext.tabs.update(sleepingTabId, { active: true });
+    if (tab?.windowId !== undefined) await ext.windows.update(tab.windowId, { focused: true });
+  } catch {
+    // the tab went away; the next popup open will report honestly
+  }
+  window.close();
+});
+
 function showWaking() {
+  el("empty-open").hidden = true;
   el("empty-title").textContent = "Waking YouTube Music\u2026";
   el("empty-sub").textContent = "Your tab was unloaded, giving it a nudge.";
   showEmpty();
 }
 
 function resetEmptyCopy() {
+  el("empty-open").hidden = true;
   el("empty-title").textContent = "YouTube Music isn\u2019t open";
   el("empty-sub").textContent = "Open it in a tab and this popup becomes your player.";
 }
@@ -2052,6 +2078,12 @@ function tryTab(candidates, index) {
     // Still waiting on a tab we woke - a cold YTM load takes a few seconds.
     if (wakeState && Date.now() < wakeState.deadline) {
       setTimeout(connect, 750);
+      return;
+    }
+    // The wake never took: some browsers only load a restored tab when it is
+    // selected. Hand the user the button instead of a wrong answer.
+    if (wakeState) {
+      offerToOpenTab(wakeState.tabId);
       return;
     }
     // An unloaded tab can't answer, so wake it once and keep trying while it

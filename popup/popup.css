@@ -1646,6 +1646,21 @@ button.busy {
   margin-top: -4px;
 }
 
+/* offered when a sleeping tab refuses to wake in the background (Firefox
+   loads session-restored tabs only once they are selected) */
+#empty-open {
+  margin: 14px auto 0;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+}
+
+#empty-open:hover {
+  background: var(--surface-2);
+}
+
 /* ---- toast ---- */
 
 /* one unified toast: a centered pill in plain surface colors (YTM-style);
