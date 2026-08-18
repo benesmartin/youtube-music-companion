@@ -2217,6 +2217,10 @@ const RATE_MIN_OPENS = 40;
 const RATE_SNOOZE_DAYS = 30;
 const RATE_SNOOZE_OPENS = 60;
 const RATE_MAX_ASKS = 2;
+// Ignoring the strip is an answer too: someone who closes the popup without
+// touching it (or clicks the x reflexively) should not meet it on every open.
+// After this many appearances it snoozes itself, exactly like a dismissal.
+const RATE_MAX_SHOWS = 5;
 const RATE_URLS = {
   firefox: "https://addons.mozilla.org/firefox/addon/companion-for-youtube-music/reviews/",
   chrome:
@@ -2255,26 +2259,53 @@ async function trackOpenAndMaybeAsk() {
   } catch {
     return; // storage unavailable: never nag
   }
-  if (rateEligible(rateState)) el("rate-bar").hidden = false;
+  if (!rateEligible(rateState)) return;
+  const shown = (rateState.shown ?? 0) + 1;
+  if (shown > RATE_MAX_SHOWS) {
+    // Shown its fill and never answered - snooze it as if dismissed.
+    await snoozeRate();
+    return;
+  }
+  rateState = { ...rateState, shown };
+  try {
+    await ext.storage.local.set({ rateState });
+  } catch {
+    // showing it is still fine; the count just will not persist
+  }
+  el("rate-bar").hidden = false;
+}
+
+// A "not now" - by button or by ignoring it - costs one of the two asks and
+// buys silence for a month of real use.
+async function snoozeRate() {
+  const now = Date.now();
+  rateState = {
+    ...rateState,
+    dismissals: (rateState?.dismissals ?? 0) + 1,
+    snoozeUntil: now + RATE_SNOOZE_DAYS * 86400000,
+    snoozeOpens: (rateState?.opens ?? 0) + RATE_SNOOZE_OPENS,
+    shown: 0,
+  };
+  try {
+    await ext.storage.local.set({ rateState });
+  } catch {
+    // the bar stays hidden for this session either way
+  }
 }
 
 async function answerRate(rated) {
   el("rate-bar").hidden = true;
-  const now = Date.now();
-  rateState = rated
-    ? { ...rateState, ratedAt: now }
-    : {
-        ...rateState,
-        dismissals: (rateState?.dismissals ?? 0) + 1,
-        snoozeUntil: now + RATE_SNOOZE_DAYS * 86400000,
-        snoozeOpens: (rateState?.opens ?? 0) + RATE_SNOOZE_OPENS,
-      };
+  if (!rated) {
+    await snoozeRate();
+    return;
+  }
+  rateState = { ...rateState, ratedAt: Date.now() };
   try {
     await ext.storage.local.set({ rateState });
   } catch {
     // the bar is gone for this session either way
   }
-  if (rated) ext.tabs.create({ url: storeUrl() });
+  ext.tabs.create({ url: storeUrl() });
 }
 
 el("rate-go").addEventListener("click", () => answerRate(true));
