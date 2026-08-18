@@ -509,11 +509,13 @@ el("artwork-idle").addEventListener("click", focusYtmTab);
 
 let lastSelectedIndex = null;
 
-// How long "Loading suggestions…" may claim autoplay rows are coming before
-// we accept that this queue has none.
+// "Loading suggestions…" is only ever true right after the user turns
+// autoplay ON with nothing cached. Any other empty-automix queue simply has
+// none coming: a restored queue gets automix only near its end, and a mix
+// ("Playing from X mix") keeps its tracks in the queue itself and never has
+// an Autoplay section at all (reported 2026-08-18).
 const AUTOPLAY_WAIT_MS = 8000;
-let autoplayWaitKey = null;
-let autoplayWaitSince = 0;
+let autoplayEnabledAt = 0;
 
 function renderQueue(queue) {
   const list = el("queue-list");
@@ -672,19 +674,9 @@ function renderQueue(queue) {
     list.append(row);
   }
 
-  // Autoplay is on but no suggestions arrived yet. That means one of two
-  // things, and they look identical: YTM is fetching them (a few seconds
-  // after a fresh play), or this queue simply has none - a restored queue
-  // carries 50 real tracks and gets automix only once it nears the end
-  // (reported 2026-08-18: "Loading suggestions..." sat there forever). So
-  // wait a little, then stop claiming something is coming.
-  const waitKey = `${lastState?.videoId ?? ""}:${queue.length}`;
-  if (waitKey !== autoplayWaitKey) {
-    autoplayWaitKey = waitKey;
-    autoplayWaitSince = Date.now();
-  }
-  const stillWorthWaiting = Date.now() - autoplayWaitSince < AUTOPLAY_WAIT_MS;
-  if (lastAutoplay === true && !automixHeaderAdded && stillWorthWaiting) {
+  // Only claim suggestions are coming when the user just asked for them.
+  const justEnabled = Date.now() - autoplayEnabledAt < AUTOPLAY_WAIT_MS;
+  if (lastAutoplay === true && !automixHeaderAdded && justEnabled) {
     const header = document.createElement("div");
     header.className = "queue-subheader";
     header.textContent = "Autoplay";
@@ -1095,6 +1087,8 @@ function updateAutoplayToggle(value) {
 }
 
 el("autoplay-toggle").addEventListener("click", () => {
+  // Turning it ON is the one case where empty automix means "fetching".
+  autoplayEnabledAt = lastAutoplay ? 0 : Date.now();
   send("toggleAutoplay");
   // Optimistic flip; busy until the next queue push confirms (that's also
   // when the Autoplay section actually appears/disappears in the list).
