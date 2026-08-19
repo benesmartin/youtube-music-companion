@@ -294,6 +294,14 @@ ext.tabs.onRemoved.addListener((tabId) => checkTabsGone(tabId));
 ext.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url && !changeInfo.url.startsWith("https://music.youtube.com/")) {
     checkTabsGone(tabId);
+    return;
+  }
+  // Without the "tabs" permission the browser strips changeInfo.url (and
+  // tab.url) for hosts we have no permission on - so a YTM tab navigating to
+  // another site looks like a load with no url at all. That absence is the
+  // signal: an unknown-URL load can only be a non-YTM page.
+  if (changeInfo.status === "loading" && !changeInfo.url && !tab?.url) {
+    checkTabsGone(tabId);
   }
 });
 

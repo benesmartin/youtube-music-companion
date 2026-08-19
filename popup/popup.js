@@ -501,7 +501,13 @@ function goTo(command) {
   focusYtmTab();
 }
 
-el("album").addEventListener("click", () => lastState?.albumUrl && goTo("goToAlbum"));
+// Same path as the artist links: the href names the album (from the queue
+// row when the bar's byline is stale), and the tab matches it or navigates.
+el("album").addEventListener("click", () => {
+  if (!lastState?.albumUrl) return;
+  send("openByline", { href: lastState.albumUrl });
+  focusYtmTab();
+});
 el("artwork").addEventListener("click", focusYtmTab);
 el("artwork-idle").addEventListener("click", focusYtmTab);
 
@@ -646,6 +652,9 @@ function renderQueue(queue) {
     }
     row.addEventListener("click", () => {
       if (dragRefused || row.classList.contains("loading")) return;
+      // The playing row has nowhere to jump: the tab ignores it, and nothing
+      // would clear a spinner until the next queue push.
+      if (item.selected) return;
       // Spinner only - queue jumps keep the queue, so no header hold; the
       // next push repaints the rows (and with them the marker) anyway.
       setPendingPlay(row, "loading");
@@ -1474,8 +1483,10 @@ function renderPlaylists(result, append = false) {
   const playlists = Array.isArray(result?.playlists) ? result.playlists : null;
   const failed = !result || Boolean(result.error) || (!playlists && !result.signedOut);
   if (append) {
-    // A failed page keeps what's rendered - just stop paging.
-    if (failed) {
+    // A failed page keeps what's rendered - just stop paging. A bare
+    // signedOut reply (session expired mid-scroll) is a stop too: it carries
+    // no rows, so it must not reach the loop below.
+    if (failed || !playlists) {
       playlistsMore.remove();
       playlistsNextToken = null;
       return;
@@ -1747,6 +1758,7 @@ const LYRICS_TYPES = new Set(["MUSIC_VIDEO_TYPE_ATV", "MUSIC_VIDEO_TYPE_OMV"]);
 let lyricsEnabled = null; // null = not read from storage yet
 let lyricsKey = null; // track the pane currently reflects
 let lyricsRenderKey = null; // track renderLyrics last ran for (any outcome)
+const LYRICS_SETTLE_MS = 800; // matches the tab's first prefetch delay
 let lyricsLines = null; // [{t, text, el}] when synced lyrics are shown
 let lyricsFetchId = 0;
 let lyricsScrollHold = 0; // pause autoscroll until this timestamp
@@ -1922,17 +1934,31 @@ async function renderLyrics() {
   lyricsKey = key;
   lyricsNote("Looking up lyrics…");
   const fetchId = ++lyricsFetchId;
+  // The videoId flips before the bar's title and duration do. A lookup sent
+  // in that window asks LRCLIB about the previous track and the background
+  // caches the answer under the NEW id. Let the bar settle first (the tab's
+  // own prefetch waits the same way) and read the state again at send time.
+  await new Promise((resolve) => setTimeout(resolve, LYRICS_SETTLE_MS));
+  if (fetchId !== lyricsFetchId) return;
+  const settled = lastState;
+  if (!settled || (settled.videoId || `${settled.title}|${settled.artist}`) !== key) return;
+  if (!settled.duration) {
+    // Still no duration - the next state push re-enters renderLyrics.
+    lyricsKey = null;
+    lyricsRenderKey = null;
+    return;
+  }
   // Background fetches+caches; the prefetch usually made this a cache hit.
   let entry = null;
   try {
     entry = await ext.runtime.sendMessage({
       type: "fetchLyrics",
       track: {
-        videoId: state.videoId,
-        title: state.title,
-        artist: state.artist,
-        album: state.album,
-        duration: state.duration,
+        videoId: settled.videoId,
+        title: settled.title,
+        artist: settled.artist,
+        album: settled.album,
+        duration: settled.duration,
       },
     });
   } catch {
@@ -2064,7 +2090,8 @@ function tryTab(candidates, index) {
     // Tabs exist but none accepted the port: usually a tab mid-reload
     // (playVideo's watch-URL fallback navigates the page under us) with no
     // content script yet. Retry briefly instead of giving up on the popup.
-    if (candidates.length && reconnectAttempts < 8) {
+    // 16 x 500ms: a watch-URL reload plus a cold YTM load can pass 4s.
+    if (candidates.length && reconnectAttempts < 16) {
       reconnectAttempts += 1;
       setTimeout(connect, 500);
       return;

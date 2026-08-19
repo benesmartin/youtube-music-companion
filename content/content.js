@@ -386,16 +386,6 @@ function isPlaying() {
   return Boolean(media && !media.paused && media.readyState > 0);
 }
 
-// yt-icon-button hosts (e.g. .shuffle, .repeat, .volume) wrap the real
-// <button>; clicking the host doesn't reach its listener.
-function bylineLink(hrefPrefix) {
-  const bylineEl = playerBar()?.querySelector(".byline");
-  if (!bylineEl) return null;
-  return [...bylineEl.querySelectorAll("a")].find((a) =>
-    a.getAttribute("href")?.startsWith(hrefPrefix)
-  );
-}
-
 // Opens the player-bar menu invisibly; workers key on language-independent
 // traits (hrefs, icon paths) - labels are localized.
 async function withHiddenMenu(worker) {
@@ -462,6 +452,8 @@ async function toggleLibrary() {
   return true;
 }
 
+// yt-icon-button hosts (e.g. .shuffle, .repeat, .volume) wrap the real
+// <button>; clicking the host doesn't reach its listener.
 function clickIfFound(el) {
   if (!el) return false;
   (el.querySelector?.("button") ?? el).click();
@@ -686,7 +678,6 @@ const commands = {
     }),
   toggleLibrary,
   probeLibrary,
-  goToAlbum: () => clickIfFound(bylineLink("browse/")),
   // Click a specific byline anchor (per-artist navigation), SPA-safe.
   openByline(payload) {
     const anchors = playerBar()?.querySelectorAll(".byline a") ?? [];
@@ -790,13 +781,14 @@ const commands = {
     return true;
   },
   pause() {
-    // One-way pause (sleep timer): no-op when already paused.
-    const playing =
-      pageStatus?.playerState != null
-        ? pageStatus.playerState === 1 || pageStatus.playerState === 3
-        : Boolean(video() && !video().paused);
-    if (!playing) return true;
-    return commands.playPause();
+    // One-way pause (sleep timer): no-op when nothing is audible. Not the
+    // playPause toggle - on a stuck-buffering tab that toggle deliberately
+    // takes the PLAY branch, which is the last thing a sleep timer wants.
+    if (!isPlaying()) return true;
+    const pageButton = barButton("play-pause-button", "^(play|pause)$");
+    if (pageButton) return clickIfFound(pageButton);
+    video()?.pause();
+    return true;
   },
   toggleLike: () => clickIfFound(likeButton()),
   toggleDislike: () => clickIfFound(dislikeButton()),
