@@ -49,6 +49,7 @@ function renderIdle() {
   playerView.hidden = false;
   emptyView.hidden = true;
   playerView.classList.add("idle");
+  setAccentHasTrack(false);
   el("title").textContent = "Nothing is playing!";
   el("title").title = "";
   el("artist").textContent = "Search or pick a playlist to get going";
@@ -145,6 +146,7 @@ function render(state) {
   playerView.hidden = false;
   emptyView.hidden = true;
   playerView.classList.remove("idle");
+  setAccentHasTrack(true);
 
   // A track change invalidates an in-flight seek drag.
   const track = `${state.title}|${state.artist}`;
@@ -259,6 +261,13 @@ function showToast(text, kind = "notice") {
 function showEmpty() {
   playerView.hidden = true;
   emptyView.hidden = false;
+  setAccentHasTrack(false);
+}
+
+function setAccentHasTrack(has) {
+  if (accentHasTrack === has) return;
+  accentHasTrack = has;
+  if (settings.accent === "auto") applySettings();
 }
 
 function send(command, payload = {}) {
@@ -728,6 +737,10 @@ let settings = { ...DEFAULT_SETTINGS };
 // toolbar icon from the same memo. Only hue+sat travel; lightness is
 // imposed per theme here so contrast never depends on the art.
 let autoAccent = null; // [h, s] from the content script's memo
+// The memo outlives the song: it is still there after the tab closes or goes
+// idle. "Auto" means the colour of what is playing, so with nothing playing
+// the popup wears its own red, not the ghost of the last track.
+let accentHasTrack = true; // optimistic until the first verdict, for an instant paint
 
 // Follow the memo live while the popup is open.
 ext.storage.onChanged.addListener((changes, area) => {
@@ -757,7 +770,7 @@ function applySettings() {
   const accent = ACCENTS.find((a) => a.name === settings.accent) ?? ACCENTS[0];
   document.body.classList.toggle("light", light);
   let accentHex = light ? accent.light : accent.dark;
-  if (auto && autoAccent) {
+  if (auto && autoAccent && accentHasTrack) {
     // Impose the palette's character: bright on dark, deep on light.
     const [h, s] = autoAccent;
     accentHex = light

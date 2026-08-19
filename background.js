@@ -103,8 +103,9 @@ async function setIndicator(indicator) {
   if (stored?.accentIcon) {
     if (stored.accent === "auto") {
       // The content script memos the current track's [h, s]; grayscale art
-      // (pick: null) or no memo yet falls back to red.
-      const pick = memo?.pick;
+      // (pick: null) or no memo yet falls back to red - and so does "none"
+      // (no YTM tab): the memo outlives the song, the tint should not.
+      const pick = indicator === "none" ? null : memo?.pick;
       if (Array.isArray(pick)) {
         card = hslToHex(pick[0], Math.min(Math.max(pick[1], 0.5), 0.75), 0.42);
       }
