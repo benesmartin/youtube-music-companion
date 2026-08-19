@@ -17,6 +17,8 @@
   <a href="https://ko-fi.com/benesmartin"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Ko--fi-support-ff5e5b"></a>
 </p>
 
+<p align="center"><sub>Edge, Brave, Opera and Vivaldi install the Chrome Web Store build.</sub></p>
+
 <p align="center">
   <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/01-player-queue.png" width="640" alt="Player with queue, dark theme">
 </p>
