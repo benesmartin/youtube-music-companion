@@ -23,6 +23,9 @@ promo/
 # Landing page (published separately, not part of the extension source)
 docs/
 
+# Personal userscripts (not part of the extension)
+userscripts/
+
 # Private test suite (runs against unmodified production files)
 tests/
 
