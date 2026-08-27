@@ -2061,14 +2061,18 @@ let reconnectAttempts = 0;
 let wakeState = null; // { tabId, deadline }
 
 let sleepingTabId = null;
+let reloadOnOpen = false;
 
 // Firefox only loads a session-restored tab when it is selected, so a
 // background reload can quietly do nothing. Offer the one action that always
 // works rather than leaving the popup claiming nothing is open.
-function offerToOpenTab(tabId) {
+function offerToOpenTab(tabId, { reload = false } = {}) {
   sleepingTabId = tabId;
-  el("empty-title").textContent = "Your YouTube Music tab is asleep";
-  el("empty-sub").textContent = "The browser only loads it once you open it.";
+  reloadOnOpen = reload;
+  if (!reload) {
+    el("empty-title").textContent = "Your YouTube Music tab is asleep";
+    el("empty-sub").textContent = "The browser only loads it once you open it.";
+  }
   el("empty-open").hidden = false;
   showEmpty();
 }
@@ -2076,6 +2080,7 @@ function offerToOpenTab(tabId) {
 el("empty-open").addEventListener("click", async () => {
   if (sleepingTabId === null) return;
   try {
+    if (reloadOnOpen) await ext.tabs.reload(sleepingTabId);
     const tab = await ext.tabs.update(sleepingTabId, { active: true });
     if (tab?.windowId !== undefined) await ext.windows.update(tab.windowId, { focused: true });
   } catch {
@@ -2129,6 +2134,18 @@ function tryTab(candidates, index) {
       showWaking();
       Promise.resolve(ext.tabs.reload(asleep.id)).catch(() => {});
       setTimeout(connect, 900);
+      return;
+    }
+    // A live (not discarded) tab that refused every connect has no content
+    // script to talk to - the classic case is the extension just updated and
+    // orphaned it. "YouTube Music isn't open" would be a lie; say what fixes
+    // it and hand over the button, which reloads that tab.
+    const orphan = candidates.find((candidate) => !candidate.discarded);
+    if (orphan) {
+      el("empty-title").textContent = "Reload the YouTube Music tab";
+      el("empty-sub").textContent =
+        "The tab is open but can’t hear the extension - this happens after an update. One reload reconnects it.";
+      offerToOpenTab(orphan.id, { reload: true });
       return;
     }
     resetEmptyCopy();

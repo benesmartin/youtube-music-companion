@@ -18,8 +18,13 @@ const SHORTCUT_COMMANDS = {
 async function findMusicTab() {
   const tabs = await ext.tabs.query({ url: "https://music.youtube.com/*" });
   if (tabs.length === 0) return null;
-  // Prefer an audible tab when several are open.
-  return tabs.find((tab) => tab.audible) ?? tabs[0];
+  // Same ranking the popup uses: audible first, discarded last (they have no
+  // content script to hear the command), most recently used within a group -
+  // otherwise a stray restored tab first in query order swallows shortcuts.
+  const rank = (tab) => (tab.audible ? 0 : tab.discarded ? 2 : 1);
+  return tabs
+    .slice()
+    .sort((a, b) => rank(a) - rank(b) || (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0))[0];
 }
 
 // ---- toolbar icon state dot (green playing, yellow paused, gray off) ----
