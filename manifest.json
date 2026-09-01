@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Companion for YouTube Music - Mini Player",
   "short_name": "Companion",
-  "version": "1.3.3",
+  "version": "1.4.0",
   "description": "Control YouTube Music from a toolbar popup: playback, queue, albums, recommendations, history, search, playlists and synced lyrics.",
   "browser_specific_settings": {
     "gecko": {
