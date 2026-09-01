@@ -1450,6 +1450,9 @@ body.light #artwork-idle {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
+  /* Two lines cap the height; this stops one long token from running out
+     sideways instead of wrapping into them. */
+  overflow-wrap: anywhere;
 }
 
 /* Both keep their line's height while empty, so the title does not hop up a
@@ -1472,6 +1475,84 @@ body.light #artwork-idle {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ---- album loading skeleton ---- */
+/* The shape goes up first and every word arrives together. Each placeholder
+   matches the metric of the thing it stands in for, so nothing moves when
+   the response lands. */
+.sk {
+  display: block;
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.sk-num {
+  width: 12px;
+  height: 9px;
+}
+
+.sk-title {
+  height: 10px;
+  margin: 2px 0 5px;
+}
+
+.sk-artist {
+  height: 8px;
+}
+
+.sk-dur {
+  width: 24px;
+  height: 8px;
+  flex: none;
+}
+
+#album-head.skeleton #album-name,
+#album-head.skeleton #album-artist,
+#album-head.skeleton #album-meta {
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+#album-head.skeleton #album-name {
+  width: 76%;
+  height: 12px;
+  margin: 3px 0 6px;
+}
+
+#album-head.skeleton #album-artist {
+  width: 44%;
+  height: 9px;
+  margin-bottom: 5px;
+}
+
+#album-head.skeleton #album-meta {
+  width: 62%;
+  height: 8px;
+}
+
+/* The open-in-YTM button has nothing to open at yet. */
+#album-head.skeleton #album-open {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes sk-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  .sk,
+  #album-head.skeleton #album-name,
+  #album-head.skeleton #album-artist,
+  #album-head.skeleton #album-meta {
+    animation: sk-pulse 1.4s ease-in-out infinite;
+  }
 }
 
 /* The title hands off: the header carries it at rest, and the sticky bar

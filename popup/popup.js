@@ -1787,31 +1787,64 @@ function openAlbum(url, fallbackTitle = "") {
   albumBrowseId = browseId;
   albumPlaylistId = null;
   if (activeTab !== "album") albumReturnTab = activeTab;
-  // The name is already known - it is the byline text that was just clicked -
-  // so the header goes up complete with its title and fills the rest in when
-  // the response lands. Rendering it empty and titling it a frame later put
-  // the title in the bar and the header at once, which read as a flash.
+  // Nothing is named until the response lands - the shape goes up first and
+  // the words arrive together. Titling the header (or the bar) early meant
+  // the name sat next to "Loading album…" claiming to be loaded, and put it
+  // briefly in both places at once, which read as a flash.
   el("album-title").textContent = fallbackTitle || "Album";
-  el("album-name").textContent = fallbackTitle;
+  el("album-name").textContent = "";
   el("album-artist").textContent = "";
   el("album-meta").textContent = "";
   el("album-art").style.backgroundImage = "";
-  el("album-head").hidden = !fallbackTitle;
-  // Without a name to show, the bar is the only place one can be.
-  el("album-bar").classList.toggle("scrolled", !fallbackTitle);
+  el("album-head").classList.add("skeleton");
+  el("album-head").hidden = false;
+  el("album-bar").classList.remove("scrolled");
   el("album-play").disabled = true;
   el("album-shuffle").disabled = true;
   switchTab("album");
   el("album-pane").scrollTop = 0;
-  noteInto(el("album-tracks"), "Loading album…");
+  el("album-tracks").textContent = "";
+  el("album-tracks").append(albumSkeleton());
   port?.postMessage({ type: "getAlbum", browseId });
+}
+
+// Placeholder rows under the placeholder header: same metrics as the real
+// ones, so nothing moves when the words arrive. Widths vary because a column
+// of identical bars reads as a table, not as loading.
+function albumSkeleton() {
+  const frag = document.createDocumentFragment();
+  for (const width of [72, 54, 80, 63, 76, 48]) {
+    const row = document.createElement("div");
+    row.className = "qrow";
+    const thumb = document.createElement("div");
+    thumb.className = "qthumb num";
+    const number = document.createElement("span");
+    number.className = "sk sk-num";
+    thumb.append(number);
+    const meta = document.createElement("div");
+    meta.className = "qmeta";
+    const title = document.createElement("div");
+    title.className = "sk sk-title";
+    title.style.width = `${width}%`;
+    const artist = document.createElement("div");
+    artist.className = "sk sk-artist";
+    artist.style.width = `${Math.round(width * 0.55)}%`;
+    meta.append(title, artist);
+    const duration = document.createElement("div");
+    duration.className = "sk sk-dur";
+    row.append(thumb, meta, duration);
+    frag.append(row);
+  }
+  return frag;
 }
 
 function renderAlbum(msg) {
   if (msg.browseId !== albumBrowseId) return; // navigated away meanwhile
   const list = el("album-tracks");
   const album = msg.album;
+  el("album-head").classList.remove("skeleton");
   if (!album) {
+    el("album-head").hidden = true;
     noteInto(list, "Couldn’t load this album.");
     return;
   }
@@ -1822,7 +1855,6 @@ function renderAlbum(msg) {
   // with the same separator it uses inside them.
   el("album-meta").textContent = [album.subtitle, album.meta].filter(Boolean).join(" • ");
   el("album-art").style.backgroundImage = album.thumb ? `url("${album.thumb}")` : "";
-  el("album-head").hidden = false;
   albumPlaylistId = album.playlistId;
   el("album-play").disabled = !albumPlaylistId;
   el("album-shuffle").disabled = !albumPlaylistId;
