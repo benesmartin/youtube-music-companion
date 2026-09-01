@@ -1440,10 +1440,16 @@ body.light #artwork-idle {
   gap: 2px;
 }
 
+/* Wraps to two lines rather than truncating - this is where the album is
+   actually read; the bar's copy is the one allowed to be cut short. */
 #album-name {
   font-size: 13.5px;
   font-weight: 700;
   line-height: 1.25;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 #album-artist {
@@ -1457,12 +1463,25 @@ body.light #artwork-idle {
   color: color-mix(in srgb, var(--text-dim) 75%, transparent);
 }
 
-#album-name,
 #album-artist,
 #album-meta {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The title hands off: the header carries it at rest, and the sticky bar
+   only picks it up once the header's own copy has scrolled out from under
+   it - so it is never on screen twice, and never absent either. The label
+   keeps its width while invisible (the back button is flex:1 anyway), so
+   nothing shifts at the moment of the swap. */
+#album-bar #album-title {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+#album-bar.scrolled #album-title {
+  opacity: 1;
 }
 
 #album-open {

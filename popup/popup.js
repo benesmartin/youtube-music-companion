@@ -1788,6 +1788,9 @@ function openAlbum(url, fallbackTitle = "") {
   albumPlaylistId = null;
   if (activeTab !== "album") albumReturnTab = activeTab;
   el("album-title").textContent = fallbackTitle || "Album";
+  el("album-name").textContent = "";
+  // Nothing is rendered yet, so the bar is the only place a name can be.
+  el("album-bar").classList.add("scrolled");
   el("album-head").hidden = true;
   el("album-play").disabled = true;
   el("album-shuffle").disabled = true;
@@ -1806,6 +1809,7 @@ function renderAlbum(msg) {
     return;
   }
   el("album-title").textContent = album.title || "Album";
+  el("album-name").textContent = album.title;
   el("album-artist").textContent = album.artist;
   // YTM writes both of these in the user's language; shown verbatim, joined
   // with the same separator it uses inside them.
@@ -1834,6 +1838,19 @@ for (const [id, shuffle] of [
     armQueueSwitch(null); // playlistStarted or the fallback switches
   });
 }
+
+// The title's hand-off from the header to the sticky bar. Watching the
+// header's own title (not the whole header block) makes the swap happen at
+// the exact moment it goes out of sight; the negative margin is the bar's
+// own height, since the bar is what it disappears behind.
+new IntersectionObserver(
+  (entries) => {
+    for (const entry of entries) {
+      el("album-bar").classList.toggle("scrolled", !entry.isIntersecting);
+    }
+  },
+  { root: el("album-pane"), rootMargin: "-36px 0px 0px 0px" }
+).observe(el("album-name"));
 
 el("album-back").addEventListener("click", () => {
   albumBrowseId = null;
