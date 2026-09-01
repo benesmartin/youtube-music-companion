@@ -1779,13 +1779,24 @@ let albumBrowseId = null; // the album being shown (stale-response guard)
 let albumReturnTab = "queue";
 let albumPlaylistId = null; // OLAK5uy_ audio playlist, for play/shuffle
 let albumOpenUrl = ""; // browse/... href, for the open-in-YTM button
+let albumFailed = false; // a failed load may be retried by clicking again
 
 function openAlbum(url, fallbackTitle = "") {
   const browseId = String(url ?? "").split("/").pop();
   if (!browseId) return;
+  // Clicking the byline for the album already on screen asks to get back to
+  // the top of it, not to fetch it again - re-running the open would flash
+  // the skeleton over a view that was already right. The track can change
+  // underneath, though, so this turns on the id and not on the pane being
+  // open; a load that failed is still allowed to retry.
+  if (browseId === albumBrowseId && activeTab === "album" && !albumFailed) {
+    el("album-pane").scrollTop = 0;
+    return;
+  }
   albumOpenUrl = url;
   albumBrowseId = browseId;
   albumPlaylistId = null;
+  albumFailed = false;
   if (activeTab !== "album") albumReturnTab = activeTab;
   // Nothing is named until the response lands - the shape goes up first and
   // the words arrive together. Titling the header (or the bar) early meant
@@ -1844,6 +1855,7 @@ function renderAlbum(msg) {
   const album = msg.album;
   el("album-head").classList.remove("skeleton");
   if (!album) {
+    albumFailed = true;
     el("album-head").hidden = true;
     noteInto(list, "Couldn’t load this album.");
     return;
