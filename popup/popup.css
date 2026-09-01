@@ -1481,10 +1481,12 @@ body.light #artwork-idle {
 /* The shape goes up first and every word arrives together. Each placeholder
    matches the metric of the thing it stands in for, so nothing moves when
    the response lands. */
+/* --surface-2, not --surface: against the pane's background the latter is
+   twelve points of luminance and effectively invisible. */
 .sk {
   display: block;
   border-radius: 4px;
-  background: var(--surface);
+  background: var(--surface-2);
 }
 
 .sk-num {
@@ -1511,7 +1513,13 @@ body.light #artwork-idle {
 #album-head.skeleton #album-artist,
 #album-head.skeleton #album-meta {
   border-radius: 4px;
-  background: var(--surface);
+  background: var(--surface-2);
+}
+
+/* The cover placeholder is part of the same skeleton - it only settles back
+   to the quieter --surface once a real album has (or has not) an image. */
+#album-head.skeleton #album-art {
+  background-color: var(--surface-2);
 }
 
 #album-head.skeleton #album-name {
@@ -1543,7 +1551,7 @@ body.light #artwork-idle {
       opacity: 1;
     }
     50% {
-      opacity: 0.5;
+      opacity: 0.6;
     }
   }
 
