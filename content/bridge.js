@@ -1004,6 +1004,58 @@
     }
   }
 
+  // ---- albums (the release behind the playing song) ----
+  // Albums arrive WHOLE: one musicShelfRenderer in secondaryContents, no
+  // continuation even at 80+ tracks, so none of the playlist paging applies.
+  // Rows carry no thumbnail of their own and some releases leave the artist
+  // column blank - the header supplies both.
+  async function getAlbum(browseId) {
+    try {
+      if (!browseId) return null;
+      const data = await innertubeRequest("browse", { browseId });
+      if (!data) return null;
+      const columns = data?.contents?.twoColumnBrowseResultsRenderer;
+      const header = (
+        columns?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents ?? []
+      ).find((section) => section.musicResponsiveHeaderRenderer)?.musicResponsiveHeaderRenderer;
+      const shelf = (columns?.secondaryContents?.sectionListRenderer?.contents ?? []).find(
+        (section) => section.musicShelfRenderer
+      )?.musicShelfRenderer;
+      if (!header && !shelf) return null;
+      const thumbs = header?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ?? [];
+      const thumb = thumbs.length ? thumbs[thumbs.length - 1].url : "";
+      const artist = runsText(header?.straplineTextOne);
+      // Parsed here rather than through collectShelfTracks: there is no
+      // continuation to collect, and the row's track number is worth keeping
+      // (album rows have no art, so the number takes the thumbnail's place).
+      const tracks = [];
+      for (const entry of shelf?.contents ?? []) {
+        const track = parseListItem(entry);
+        if (!track?.title) continue;
+        track.index = runsText(entry.musicResponsiveListItemRenderer?.index);
+        // Some releases leave the artist column blank - the header knows.
+        if (!track.artist) track.artist = artist;
+        tracks.push(track);
+      }
+      return {
+        browseId,
+        title: runsText(header?.title),
+        // Both localized by YTM ("Album • 2013", "13 songs • 1 hour 14
+        // minutes") - shown verbatim, same as the home shelf headers.
+        subtitle: runsText(header?.subtitle),
+        meta: runsText(header?.secondSubtitle),
+        artist,
+        thumb,
+        // The OLAK5uy_ audio playlist, not the MPRE browseId, is what plays
+        // an album; every row carries it and so does the header's button.
+        playlistId: tracks.find((track) => track.playlistId)?.playlistId ?? null,
+        tracks,
+      };
+    } catch (err) {
+      return null;
+    }
+  }
+
   // Whole-playlist play via the app router.
   async function playPlaylist(playlistId, shuffle) {
     const app = document.querySelector("ytmusic-app");
@@ -1123,6 +1175,7 @@
     if (
       command === "getPlaylists" ||
       command === "getPlaylistTracks" ||
+      command === "getAlbum" ||
       command === "playPlaylist" ||
       command === "addToPlaylist" ||
       command === "removeFromPlaylist"
@@ -1130,6 +1183,7 @@
       const handlers = {
         getPlaylists: () => getPlaylists(payload.continuation),
         getPlaylistTracks: () => getPlaylistTracks(payload.browseId, payload.continuation),
+        getAlbum: () => getAlbum(payload.browseId),
         playPlaylist: () => playPlaylist(payload.playlistId, payload.shuffle),
         addToPlaylist: () => addToPlaylist(payload.playlistId, payload.videoId),
         removeFromPlaylist: () => removeFromPlaylist(payload.endpoint),

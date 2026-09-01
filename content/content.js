@@ -945,6 +945,11 @@ ext.runtime.onConnect.addListener((port) => {
           continuation: result?.continuation ?? null,
         })
       );
+    } else if (msg.type === "getAlbum") {
+      // One request, no paging - albums come whole.
+      askBridgeAsync("getAlbum", { browseId: msg.browseId }, 8000).then((album) =>
+        port.postMessage({ type: "album", browseId: msg.browseId, album: album ?? null })
+      );
     } else if (msg.type === "addToPlaylist") {
       askBridgeAsync("addToPlaylist", { playlistId: msg.playlistId, videoId: msg.videoId }, 8000)
         .then((result) =>

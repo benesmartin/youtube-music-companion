@@ -29,6 +29,7 @@
         <symbol id="i-timer" viewBox="0 0 24 24"><line x1="10" x2="14" y1="2" y2="2"/> <line x1="12" x2="15" y1="14" y2="11"/> <circle cx="12" cy="14" r="8"/></symbol>
         <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
         <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+        <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6"/></symbol>
         <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/> <path d="m6 6 12 12"/></symbol>
         <symbol id="i-play-next" viewBox="0 0 24 24"><path d="M3 5h6"/> <path d="M3 12h13"/> <path d="M3 19h13"/> <path d="m16 8-3-3 3-3"/> <path d="M21 19V7a2 2 0 0 0-2-2h-6"/></symbol>
         <symbol id="i-add-to-queue" viewBox="0 0 24 24"><path d="M16 5H3"/> <path d="M16 12H3"/> <path d="M9 19H3"/> <path d="m16 16-3 3 3 3"/> <path d="M21 5v12a2 2 0 0 1-2 2h-6"/></symbol>
@@ -114,6 +115,29 @@
           <button class="pill" data-group="videos">Videos</button>
         </div>
         <div id="search-results"></div>
+      </div>
+      <!-- Opened from the album name in the byline; not a tab (the strip is
+           full at six) - it takes over the pane area and returns on back. -->
+      <div id="album-pane" hidden>
+        <div id="album-bar">
+          <button id="album-back">
+            <svg><use href="#i-chevron-left"/></svg>
+            <span id="album-title" class="label">Album</span>
+          </button>
+          <button id="album-play"><svg><use href="#i-play"/></svg>Play</button>
+          <button id="album-shuffle"><svg><use href="#i-shuffle"/></svg>Shuffle</button>
+        </div>
+        <div id="album-head" hidden>
+          <div id="album-art"></div>
+          <div id="album-facts">
+            <div id="album-artist"></div>
+            <div id="album-meta"></div>
+          </div>
+          <button id="album-open" title="Open in YouTube Music">
+            <svg><use href="#i-external"/></svg>
+          </button>
+        </div>
+        <div id="album-tracks"></div>
       </div>
       <div id="settings-pane" hidden>
         <div class="settings-section">

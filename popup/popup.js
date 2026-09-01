@@ -510,12 +510,12 @@ function goTo(command) {
   focusYtmTab();
 }
 
-// Same path as the artist links: the href names the album (from the queue
-// row when the bar's byline is stale), and the tab matches it or navigates.
+// The album opens INSIDE the popup - being thrown into the tab to see what
+// else is on the record was the exact trip this extension exists to save.
+// The header's open-in-YTM button still takes the old path.
 el("album").addEventListener("click", () => {
   if (!lastState?.albumUrl) return;
-  send("openByline", { href: lastState.albumUrl });
-  focusYtmTab();
+  openAlbum(lastState.albumUrl, lastState.album ?? "");
 });
 el("artwork").addEventListener("click", focusYtmTab);
 el("artwork-idle").addEventListener("click", focusYtmTab);
@@ -1249,13 +1249,20 @@ function renderHome(home, append) {
 // Track row shared by the History, Home, Search and Playlists tabs: click plays
 // (with the item's own queue context), hover exposes Play next - plus
 // Remove when the caller supplies onRemove (playlist detail only).
-function buildTrackRow(item, { onRemove } = {}) {
+function buildTrackRow(item, { onRemove, number } = {}) {
   const row = document.createElement("div");
   row.className = "qrow";
   if (item.videoId) row.dataset.videoId = item.videoId;
   const thumb = document.createElement("div");
   thumb.className = "qthumb";
-  if (item.thumb) thumb.style.backgroundImage = `url("${item.thumb}")`;
+  // Album rows all share one cover, so repeating it down the list says
+  // nothing - YTM numbers them instead, and so do we.
+  if (number) {
+    thumb.classList.add("num");
+    thumb.textContent = number;
+  } else if (item.thumb) {
+    thumb.style.backgroundImage = `url("${item.thumb}")`;
+  }
   const meta = document.createElement("div");
   meta.className = "qmeta";
   const title = document.createElement("div");
@@ -1763,6 +1770,82 @@ el("playlist-back").addEventListener("click", () => {
   el("playlists-pane").scrollTop = playlistsScrollTop;
 });
 
+// ---- album view ----
+// The release behind the playing song, in the popup instead of a trip to the
+// tab. Not a tab of its own (the strip is full at six) - it takes over the
+// pane area like settings does and returns to wherever it was opened from.
+
+let albumBrowseId = null; // the album being shown (stale-response guard)
+let albumReturnTab = "queue";
+let albumPlaylistId = null; // OLAK5uy_ audio playlist, for play/shuffle
+let albumOpenUrl = ""; // browse/... href, for the open-in-YTM button
+
+function openAlbum(url, fallbackTitle = "") {
+  const browseId = String(url ?? "").split("/").pop();
+  if (!browseId) return;
+  albumOpenUrl = url;
+  albumBrowseId = browseId;
+  albumPlaylistId = null;
+  if (activeTab !== "album") albumReturnTab = activeTab;
+  el("album-title").textContent = fallbackTitle || "Album";
+  el("album-head").hidden = true;
+  el("album-play").disabled = true;
+  el("album-shuffle").disabled = true;
+  switchTab("album");
+  el("album-pane").scrollTop = 0;
+  noteInto(el("album-tracks"), "Loading album…");
+  port?.postMessage({ type: "getAlbum", browseId });
+}
+
+function renderAlbum(msg) {
+  if (msg.browseId !== albumBrowseId) return; // navigated away meanwhile
+  const list = el("album-tracks");
+  const album = msg.album;
+  if (!album) {
+    noteInto(list, "Couldn’t load this album.");
+    return;
+  }
+  el("album-title").textContent = album.title || "Album";
+  el("album-artist").textContent = album.artist;
+  // YTM writes both of these in the user's language; shown verbatim, joined
+  // with the same separator it uses inside them.
+  el("album-meta").textContent = [album.subtitle, album.meta].filter(Boolean).join(" • ");
+  el("album-art").style.backgroundImage = album.thumb ? `url("${album.thumb}")` : "";
+  el("album-head").hidden = false;
+  albumPlaylistId = album.playlistId;
+  el("album-play").disabled = !albumPlaylistId;
+  el("album-shuffle").disabled = !albumPlaylistId;
+  if (!album.tracks.length) {
+    noteInto(list, "No tracks in this album.");
+    return;
+  }
+  list.textContent = "";
+  for (const item of album.tracks) list.append(buildTrackRow(item, { number: item.index }));
+}
+
+for (const [id, shuffle] of [
+  ["album-play", false],
+  ["album-shuffle", true],
+]) {
+  el(id).addEventListener("click", () => {
+    if (!albumPlaylistId) return;
+    setPendingPlay(el(id), "busy");
+    send("playPlaylist", { playlistId: albumPlaylistId, shuffle });
+    armQueueSwitch(null); // playlistStarted or the fallback switches
+  });
+}
+
+el("album-back").addEventListener("click", () => {
+  albumBrowseId = null;
+  switchTab(albumReturnTab);
+});
+
+el("album-open").addEventListener("click", () => {
+  if (!albumOpenUrl) return;
+  send("openByline", { href: albumOpenUrl });
+  focusYtmTab();
+});
+
 // ---- lyrics (LRCLIB) ----
 // Opt-in (sends title/artist to lrclib.net), official songs only.
 
@@ -2027,6 +2110,7 @@ function switchTab(name) {
   el("lyrics-pane").hidden = name !== "lyrics";
   el("search-pane").hidden = name !== "search";
   el("playlists-pane").hidden = name !== "playlists";
+  el("album-pane").hidden = name !== "album";
   el("settings-pane").hidden = name !== "settings";
   el("settings-open").classList.toggle("active", name === "settings");
   el("autoplay-toggle").hidden = name !== "queue" || lastAutoplay === null;
@@ -2181,6 +2265,7 @@ function tryTab(candidates, index) {
     else if (msg.type === "searchResults") renderSearchResults(msg);
     else if (msg.type === "playlists") renderPlaylists(msg.playlists, msg.append);
     else if (msg.type === "playlistTracks") renderPlaylistTracks(msg);
+    else if (msg.type === "album") renderAlbum(msg);
     else if (msg.type === "playlistStarted") {
       // Only act while a playlist-play switch is armed (videoId-less).
       if (queueSwitchFallback && queueSwitchVideoId === null) {

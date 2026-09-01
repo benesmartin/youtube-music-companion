@@ -342,6 +342,7 @@ body.compact #home-list,
 body.compact #lyrics-pane,
 body.compact #search-pane,
 body.compact #playlists-pane,
+body.compact #album-pane,
 body.compact #settings-pane {
   display: none;
 }
@@ -1122,7 +1123,8 @@ body.compact #settings-pane {
 
 /* ---- playlists ---- */
 
-#playlists-pane {
+#playlists-pane,
+#album-pane {
   max-height: 264px;
   overflow-y: auto;
   padding: 4px 6px;
@@ -1134,7 +1136,8 @@ body.compact #settings-pane {
    The negative margin swallows the pane's top padding, so the bar sits in
    the exact same spot at rest and while stuck - no layout shift, and no
    row can peek above it mid-scroll. */
-#playlist-bar {
+#playlist-bar,
+#album-bar {
   position: sticky;
   top: -4px; /* flush with the pane's visible top when stuck */
   margin-top: -4px; /* ...and flush at rest too, so nothing shifts */
@@ -1146,7 +1149,8 @@ body.compact #settings-pane {
   padding: 4px 0;
 }
 
-#playlist-back {
+#playlist-back,
+#album-back {
   flex: 1;
   min-width: 0;
   justify-content: flex-start;
@@ -1157,17 +1161,20 @@ body.compact #settings-pane {
   font-weight: 600;
 }
 
-#playlist-back:hover {
+#playlist-back:hover,
+#album-back:hover {
   background: var(--surface);
 }
 
-#playlist-back svg {
+#playlist-back svg,
+#album-back svg {
   width: 14px;
   height: 14px;
   flex: none;
 }
 
-#playlist-back .label {
+#playlist-back .label,
+#album-back .label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1362,7 +1369,9 @@ body.light #artwork-idle {
 }
 
 #playlist-play,
-#playlist-shuffle {
+#playlist-shuffle,
+#album-play,
+#album-shuffle {
   flex: none;
   gap: 6px;
   font-size: 12px;
@@ -1371,20 +1380,107 @@ body.light #artwork-idle {
   border-radius: 999px;
   background: var(--surface);
 }
-#playlist-play {
+#playlist-play,
+#album-play {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   color: var(--accent);
 }
-#playlist-play:hover {
+#playlist-play:hover,
+#album-play:hover {
   background: color-mix(in srgb, var(--accent) 28%, transparent);
 }
-#playlist-shuffle:hover {
+#playlist-shuffle:hover,
+#album-shuffle:hover {
   background: var(--surface-2);
 }
 #playlist-play svg,
-#playlist-shuffle svg {
+#playlist-shuffle svg,
+#album-play svg,
+#album-shuffle svg {
   width: 14px;
   height: 14px;
+}
+
+/* ---- album ---- */
+
+/* Album rows carry no art of their own and one repeated cover says nothing,
+   so the thumbnail slot holds the track number instead. */
+.qthumb.num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cover + facts, above the track rows. The rows carry no art of their own
+   (YTM sends none for album tracks), so this is the only cover in the view. */
+#album-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px 10px;
+}
+
+#album-art {
+  width: 64px;
+  height: 64px;
+  flex: none;
+  border-radius: 6px;
+  background: var(--surface) center / cover no-repeat;
+}
+
+#album-facts {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+#album-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+#album-artist {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* YTM's own localized "Album • 2013 · 13 songs • 1 hour 14 minutes" */
+#album-meta {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--text-dim) 75%, transparent);
+}
+
+#album-name,
+#album-artist,
+#album-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#album-open {
+  flex: none;
+  align-self: flex-start;
+  padding: 5px;
+  border-radius: 7px;
+  color: var(--text-dim);
+}
+
+#album-open:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+#album-open svg {
+  width: 15px;
+  height: 15px;
 }
 
 /* ---- lyrics ---- */
