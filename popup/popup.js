@@ -1787,11 +1787,18 @@ function openAlbum(url, fallbackTitle = "") {
   albumBrowseId = browseId;
   albumPlaylistId = null;
   if (activeTab !== "album") albumReturnTab = activeTab;
+  // The name is already known - it is the byline text that was just clicked -
+  // so the header goes up complete with its title and fills the rest in when
+  // the response lands. Rendering it empty and titling it a frame later put
+  // the title in the bar and the header at once, which read as a flash.
   el("album-title").textContent = fallbackTitle || "Album";
-  el("album-name").textContent = "";
-  // Nothing is rendered yet, so the bar is the only place a name can be.
-  el("album-bar").classList.add("scrolled");
-  el("album-head").hidden = true;
+  el("album-name").textContent = fallbackTitle;
+  el("album-artist").textContent = "";
+  el("album-meta").textContent = "";
+  el("album-art").style.backgroundImage = "";
+  el("album-head").hidden = !fallbackTitle;
+  // Without a name to show, the bar is the only place one can be.
+  el("album-bar").classList.toggle("scrolled", !fallbackTitle);
   el("album-play").disabled = true;
   el("album-shuffle").disabled = true;
   switchTab("album");

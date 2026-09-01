@@ -1452,14 +1452,18 @@ body.light #artwork-idle {
   overflow: hidden;
 }
 
+/* Both keep their line's height while empty, so the title does not hop up a
+   line when the response fills them in (or on a release with no artist). */
 #album-artist {
   font-size: 12px;
+  min-height: 1.25em;
   color: var(--text-dim);
 }
 
 /* YTM's own localized "Album • 2013 · 13 songs • 1 hour 14 minutes" */
 #album-meta {
   font-size: 11px;
+  min-height: 1.25em;
   color: color-mix(in srgb, var(--text-dim) 75%, transparent);
 }
 
