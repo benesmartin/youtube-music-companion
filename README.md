@@ -31,6 +31,9 @@
 - **Home**: YouTube Music's own recommendation shelves - quick picks, listen
   again and the rest - right in the popup. Click a song and it starts a radio
   from it, so you can pick something and let the algorithm run
+- **Albums**: click the album in the byline to see the whole record inside the
+  popup - every track numbered, with play, play next, add to queue and radio
+  on each, plus play or shuffle the album
 - **Queue**: see what's coming with artwork, jump to any track, play next
   or add to queue, remove, drag to reorder; toggleable autoplay suggestions
 - **History**: your real YouTube Music listening history, click to replay
