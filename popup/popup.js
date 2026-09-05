@@ -474,13 +474,27 @@ function videoIdsFromText(text) {
 }
 
 let importIds = [];
+// Importing REPLACES the queue, so the button arms before it fires. An inline
+// two-step, not window.confirm - a dialog over an extension popup can dismiss
+// the popup out from under itself.
+let importArmed = false;
 
 function refreshImportCount() {
   importIds = videoIdsFromText(el("import-text").value);
-  el("import-count").textContent = importIds.length
-    ? `${importIds.length} track${importIds.length === 1 ? "" : "s"} found`
-    : "Nothing to import yet";
-  el("import-add").disabled = !importIds.length;
+  const n = importIds.length;
+  el("import-count").textContent = importArmed
+    ? `This clears the current queue.`
+    : n
+      ? `${n} track${n === 1 ? "" : "s"} found`
+      : "Nothing to import yet";
+  el("import-add").textContent = importArmed ? `Replace ${n}` : "Replace queue";
+  el("import-add").classList.toggle("armed", importArmed);
+  el("import-add").disabled = !n;
+}
+
+function disarmImport() {
+  importArmed = false;
+  refreshImportCount();
 }
 
 function toggleImport(open) {
@@ -489,7 +503,7 @@ function toggleImport(open) {
   panel.hidden = !show;
   if (show) {
     el("import-text").value = "";
-    refreshImportCount();
+    disarmImport();
     el("import-text").focus();
   }
   placeToast(); // the sheet just changed height
@@ -497,12 +511,18 @@ function toggleImport(open) {
 
 el("import-queue").addEventListener("click", () => toggleImport());
 el("import-cancel").addEventListener("click", () => toggleImport(false));
-el("import-text").addEventListener("input", refreshImportCount);
+// Editing the paste after arming re-opens the question.
+el("import-text").addEventListener("input", disarmImport);
 
 el("import-add").addEventListener("click", () => {
   if (!importIds.length) return;
-  send("queueImport", { videoIds: importIds });
-  showToast(`Importing ${importIds.length}…`, "success");
+  if (!importArmed) {
+    importArmed = true;
+    refreshImportCount();
+    return;
+  }
+  send("queueImport", { videoIds: importIds, replace: true });
+  showToast(`Replacing the queue with ${importIds.length}…`, "success");
   toggleImport(false);
 });
 
@@ -2516,8 +2536,8 @@ function tryTab(candidates, index) {
       // - saying so beats a silently short queue.
       showToast(
         msg.count === msg.asked
-          ? `Added ${msg.count} to the queue.`
-          : `Added ${msg.count} of ${msg.asked} - the rest are unavailable.`,
+          ? `Queue replaced - ${msg.count} tracks.`
+          : `Queue replaced - ${msg.count} of ${msg.asked}, the rest are unavailable.`,
         msg.count === msg.asked ? "success" : "notice"
       );
     } else if (msg.type === "notice") {

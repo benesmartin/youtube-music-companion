@@ -470,6 +470,22 @@
     return insertQueueItems(items, atEnd, videoIds[0]) ? items.length : 0;
   }
 
+  // Replace the queue with an imported one. There is no verified "clear the
+  // store" dispatch, and inventing one would put the app in a state its own
+  // navigation never produces - so the first track is a REAL play through the
+  // hardened watch path (which rebuilds the queue coherently, location.assign
+  // fallback and all) and the rest is appended behind it.
+  async function queueReplace(videoIds) {
+    if (!videoIds?.length) return 0;
+    if (!(await playVideo({ videoId: videoIds[0] }))) return 0;
+    if (videoIds.length === 1) return 1;
+    // The play resolves as soon as the app is coherent; the store settles a
+    // beat later, and appending into a half-built queue lands in the wrong
+    // spot.
+    await wait(600);
+    return 1 + (await queueVideoIds(videoIds.slice(1), true));
+  }
+
   // Whole album/playlist queueing - what YTM's own header ⋯ menu does with
   // its queueAddEndpoint. get_queue takes the OLAK5uy_/PL id directly and
   // returns every renderer in one response, in order. videoIds is the
@@ -1218,7 +1234,9 @@
       return;
     }
     if (command === "queueImport") {
-      const result = await queueVideoIds(payload.videoIds, true);
+      const result = payload.replace
+        ? await queueReplace(payload.videoIds)
+        : await queueVideoIds(payload.videoIds, true);
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result },
         window.location.origin

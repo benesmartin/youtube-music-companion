@@ -793,7 +793,11 @@ const commands = {
   // chunked get_queue makes this slower than any other command, hence the
   // longer leash.
   queueImport: (payload) =>
-    askBridgeAsync("queueImport", { videoIds: payload.videoIds }, 30000).then((count) => {
+    askBridgeAsync(
+      "queueImport",
+      { videoIds: payload.videoIds, replace: payload.replace },
+      30000
+    ).then((count) => {
       if (!count) {
         notifyPorts("Couldn’t import that queue.");
         return 0;
