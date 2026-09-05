@@ -396,16 +396,14 @@
     return byId.length ? byId[0] : -1;
   }
 
-  // Play-next / add-to-queue for out-of-queue tracks: get_queue renderer →
-  // ADD_ITEMS, mirroring the captured native payload (no shuffleEnabled key).
-  // atEnd appends after the last user item - the native "Add to queue" spot;
-  // automix suggestions stay behind it.
-  async function queueVideoNext(videoId, atEnd) {
-    if (!videoId) return false;
+  // Play-next / add-to-queue: get_queue renderers → ADD_ITEMS, mirroring the
+  // captured native payload (no shuffleEnabled key). atEnd appends after the
+  // last user item - the native "Add to queue" spot; automix suggestions stay
+  // behind it. One dispatch however many renderers, so a whole album inserts
+  // as one block in queue order.
+  function insertQueueItems(items, atEnd, expectedId) {
     const store = document.querySelector("ytmusic-player-queue")?.queue?.store?.store;
     if (!store?.dispatch || !store?.getState) return false;
-    const data = await innertubeRequest("music/get_queue", { videoIds: [videoId] });
-    const items = (data?.queueDatas ?? []).map((d) => d?.content).filter(Boolean);
     if (!items.length) return false;
     const state = store.getState()?.queue;
     const currentId = player()?.getVideoData?.()?.video_id ?? null;
@@ -428,11 +426,42 @@
     } catch (err) {
       return false;
     }
-    // Fire-and-forget dispatch; success = the song sits at the target spot
-    // (growth alone would mask a misplaced insert).
+    // Fire-and-forget dispatch; success = the first renderer sits at the
+    // target spot (growth alone would mask a misplaced insert).
     const after = store.getState()?.queue;
     const combined = (after?.items ?? []).concat(after?.automixItems ?? []);
-    return entryMatchesId(combined[target], queueRendererOf(items[0])?.videoId ?? videoId);
+    return entryMatchesId(combined[target], queueRendererOf(items[0])?.videoId ?? expectedId);
+  }
+
+  function queueContents(data) {
+    return (data?.queueDatas ?? []).map((d) => d?.content).filter(Boolean);
+  }
+
+  async function queueVideoNext(videoId, atEnd) {
+    if (!videoId) return false;
+    const data = await innertubeRequest("music/get_queue", { videoIds: [videoId] });
+    return insertQueueItems(queueContents(data), atEnd, videoId);
+  }
+
+  // Whole album/playlist queueing - what YTM's own header ⋯ menu does with
+  // its queueAddEndpoint. get_queue takes the OLAK5uy_/PL id directly and
+  // returns every renderer in one response, in order. videoIds is the
+  // fallback for ids get_queue declines to expand (and the only path for a
+  // shelf with no playlist of its own).
+  async function queuePlaylistNext(playlistId, atEnd, videoIds) {
+    if (!playlistId && !videoIds?.length) return false;
+    let items = [];
+    if (playlistId) {
+      const data = await innertubeRequest("music/get_queue", {
+        playlistId: playlistId.replace(/^VL/, ""),
+      });
+      items = queueContents(data);
+    }
+    if (!items.length && videoIds?.length) {
+      const data = await innertubeRequest("music/get_queue", { videoIds });
+      items = queueContents(data);
+    }
+    return insertQueueItems(items, atEnd, videoIds?.[0]);
   }
 
   // MOVE_ITEM only reaches queue.items - automix indices are rejected.
@@ -1158,6 +1187,18 @@
     }
     if (command === "queueVideoNext" || command === "queueVideoLast") {
       const result = await queueVideoNext(payload.videoId, command === "queueVideoLast");
+      window.postMessage(
+        { source: FROM_BRIDGE, type: "response", requestId, result },
+        window.location.origin
+      );
+      return;
+    }
+    if (command === "queuePlaylistNext" || command === "queuePlaylistLast") {
+      const result = await queuePlaylistNext(
+        payload.playlistId,
+        command === "queuePlaylistLast",
+        payload.videoIds
+      );
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result },
         window.location.origin

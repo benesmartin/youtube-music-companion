@@ -1713,6 +1713,29 @@ for (const [id, shuffle] of [
   });
 }
 
+// Queue the whole thing without disturbing what is playing - the counterpart
+// to Play/Shuffle, which replace the queue. Optimistic toast like the row
+// actions; a failed insert answers with its own notice.
+function wireBarQueueing(prefix, noun, source) {
+  for (const [id, command, toast] of [
+    [`${prefix}-next`, "queuePlaylistNext", `${noun} will play next`],
+    [`${prefix}-queue`, "queuePlaylistLast", `${noun} added to queue`],
+  ]) {
+    el(id).addEventListener("click", () => {
+      const target = source();
+      if (!target?.playlistId && !target?.videoIds?.length) return;
+      send(command, target);
+      showToast(toast, "success");
+    });
+  }
+}
+
+wireBarQueueing("playlist", "Playlist", () =>
+  // Playlists page, so the loaded rows are not the whole list - the id has to
+  // carry it, and there is no half-queued fallback worth offering.
+  playlistDetailId ? { playlistId: playlistDetailId } : null
+);
+
 function renderPlaylistTracks(msg) {
   if (msg.browseId !== playlistDetailId) return; // navigated away meanwhile
   const list = el("playlist-tracks");
@@ -1780,6 +1803,7 @@ let albumReturnTab = "queue";
 let albumPlaylistId = null; // OLAK5uy_ audio playlist, for play/shuffle
 let albumOpenUrl = ""; // browse/... href, for the open-in-YTM button
 let albumFailed = false; // a failed load may be retried by clicking again
+let albumVideoIds = []; // fallback for queueing, if get_queue refuses the id
 
 function openAlbum(url, fallbackTitle = "") {
   const browseId = String(url ?? "").split("/").pop();
@@ -1810,8 +1834,8 @@ function openAlbum(url, fallbackTitle = "") {
   el("album-head").classList.add("skeleton");
   el("album-head").hidden = false;
   el("album-bar").classList.remove("scrolled");
-  el("album-play").disabled = true;
-  el("album-shuffle").disabled = true;
+  albumVideoIds = [];
+  setAlbumActionsEnabled(false);
   switchTab("album");
   el("album-pane").scrollTop = 0;
   el("album-tracks").textContent = "";
@@ -1868,8 +1892,8 @@ function renderAlbum(msg) {
   el("album-meta").textContent = [album.subtitle, album.meta].filter(Boolean).join(" • ");
   el("album-art").style.backgroundImage = album.thumb ? `url("${album.thumb}")` : "";
   albumPlaylistId = album.playlistId;
-  el("album-play").disabled = !albumPlaylistId;
-  el("album-shuffle").disabled = !albumPlaylistId;
+  albumVideoIds = album.tracks.map((track) => track.videoId).filter(Boolean);
+  setAlbumActionsEnabled(Boolean(albumPlaylistId));
   if (!album.tracks.length) {
     noteInto(list, "No tracks in this album.");
     return;
@@ -1877,6 +1901,16 @@ function renderAlbum(msg) {
   list.textContent = "";
   for (const item of album.tracks) list.append(buildTrackRow(item, { number: item.index }));
 }
+
+function setAlbumActionsEnabled(on) {
+  for (const id of ["album-play", "album-shuffle", "album-next", "album-queue"]) {
+    el(id).disabled = !on;
+  }
+}
+
+wireBarQueueing("album", "Album", () =>
+  albumPlaylistId ? { playlistId: albumPlaylistId, videoIds: albumVideoIds } : null
+);
 
 for (const [id, shuffle] of [
   ["album-play", false],

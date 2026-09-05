@@ -768,6 +768,27 @@ const commands = {
       if (!ok) notifyPorts("Couldn’t add that song to the queue.");
       return ok;
     }),
+  // Whole album/playlist, from the album and playlist pane bars. The queue
+  // push is delayed like the row actions - the store settles a frame or two
+  // after the dispatch.
+  queuePlaylistNext: (payload) =>
+    askBridgeAsync("queuePlaylistNext", {
+      playlistId: payload.playlistId,
+      videoIds: payload.videoIds,
+    }).then((ok) => {
+      if (!ok) notifyPorts("Couldn’t queue that up. Try again.");
+      setTimeout(pushQueue, 700);
+      return ok;
+    }),
+  queuePlaylistLast: (payload) =>
+    askBridgeAsync("queuePlaylistLast", {
+      playlistId: payload.playlistId,
+      videoIds: payload.videoIds,
+    }).then((ok) => {
+      if (!ok) notifyPorts("Couldn’t queue that up. Try again.");
+      setTimeout(pushQueue, 700);
+      return ok;
+    }),
   queueRemove: (payload) =>
     queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.removeFromQueue).then((ok) => {
       if (!ok) notifyPorts("Couldn’t remove that song. Try again.");

@@ -1368,37 +1368,50 @@ body.light #artwork-idle {
   height: 16px;
 }
 
+/* Play is the one labelled action; shuffle, play-next and add-to-queue sit
+   beside it as quiet icons. Four labelled pills would not fit next to the
+   title, and only one of the four is the obvious thing to press. */
 #playlist-play,
-#playlist-shuffle,
-#album-play,
-#album-shuffle {
+#album-play {
   flex: none;
   gap: 6px;
   font-size: 12px;
   font-weight: 600;
   padding: 5px 12px;
   border-radius: 999px;
-  background: var(--surface);
-}
-#playlist-play,
-#album-play {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   color: var(--accent);
 }
-#playlist-play:hover,
-#album-play:hover {
+#playlist-play:hover:not(:disabled),
+#album-play:hover:not(:disabled) {
   background: color-mix(in srgb, var(--accent) 28%, transparent);
 }
-#playlist-shuffle:hover,
-#album-shuffle:hover {
+#playlist-bar .bar-icon,
+#album-bar .bar-icon {
+  flex: none;
+  padding: 6px;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-dim);
+}
+#playlist-bar .bar-icon:hover:not(:disabled),
+#album-bar .bar-icon:hover:not(:disabled) {
   background: var(--surface-2);
+  color: var(--text);
 }
 #playlist-play svg,
-#playlist-shuffle svg,
 #album-play svg,
-#album-shuffle svg {
+#playlist-bar .bar-icon svg,
+#album-bar .bar-icon svg {
   width: 14px;
   height: 14px;
+}
+/* The bar is sticky - a dead button has to read dead, not just ignore the
+   click, or the album looks broken while its tracks are still in flight. */
+#playlist-bar button:disabled,
+#album-bar button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* ---- album ---- */
