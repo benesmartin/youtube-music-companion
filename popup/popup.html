@@ -297,6 +297,28 @@
           <svg class="on-copied"><use href="#i-check"/></svg>
           <span class="label">Copy info</span>
         </button>
+        <button id="copy-queue" class="copy-btn">
+          <svg class="on-idle"><use href="#i-clipboard"/></svg>
+          <svg class="on-copied"><use href="#i-check"/></svg>
+          <span class="label">Copy queue</span>
+        </button>
+        <button id="import-queue">
+          <svg><use href="#i-add-to-queue"/></svg>
+          <span class="label">Import queue</span>
+        </button>
+      </div>
+      <div id="sheet-import" hidden>
+        <textarea
+          id="import-text"
+          rows="4"
+          spellcheck="false"
+          placeholder="Paste a copied queue here"
+        ></textarea>
+        <div id="import-actions">
+          <span id="import-count">Nothing to import yet</span>
+          <button id="import-cancel">Cancel</button>
+          <button id="import-add" disabled>Add to queue</button>
+        </div>
       </div>
       <div id="sheet-sleep">
         <span id="sleep-thumb"><svg><use href="#i-timer"/></svg></span>

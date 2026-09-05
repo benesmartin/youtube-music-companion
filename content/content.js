@@ -789,6 +789,21 @@ const commands = {
       setTimeout(pushQueue, 700);
       return ok;
     }),
+  // Import: a pasted queue, already reduced to videoIds by the popup. The
+  // chunked get_queue makes this slower than any other command, hence the
+  // longer leash.
+  queueImport: (payload) =>
+    askBridgeAsync("queueImport", { videoIds: payload.videoIds }, 30000).then((count) => {
+      if (!count) {
+        notifyPorts("Couldn’t import that queue.");
+        return 0;
+      }
+      for (const port of ports) {
+        port.postMessage({ type: "queueImported", count, asked: payload.videoIds.length });
+      }
+      setTimeout(pushQueue, 700);
+      return count;
+    }),
   queueRemove: (payload) =>
     queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.removeFromQueue).then((ok) => {
       if (!ok) notifyPorts("Couldn’t remove that song. Try again.");

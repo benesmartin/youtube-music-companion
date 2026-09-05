@@ -443,6 +443,33 @@
     return insertQueueItems(queueContents(data), atEnd, videoId);
   }
 
+  // get_queue has no documented ceiling on videoIds and an imported queue can
+  // be hundreds long, so ask in chunks - but concatenate and insert ONCE.
+  // Chunked inserts would reverse the block order in the play-next case
+  // (every chunk targets the same index) and are pointless in the append one.
+  const QUEUE_FETCH_CHUNK = 30;
+  async function fetchQueueItems(videoIds) {
+    const items = [];
+    for (let at = 0; at < videoIds.length; at += QUEUE_FETCH_CHUNK) {
+      const chunk = videoIds.slice(at, at + QUEUE_FETCH_CHUNK);
+      const data = await innertubeRequest("music/get_queue", { videoIds: chunk });
+      const contents = queueContents(data);
+      // A chunk that comes back empty is a dead id run, not a reason to drop
+      // everything after it.
+      items.push(...contents);
+    }
+    return items;
+  }
+
+  // Import: ids parsed out of pasted text. Returns how many rows actually
+  // went in - the caller reports it, since ids can silently drop (private or
+  // region-blocked videos come back with no renderer).
+  async function queueVideoIds(videoIds, atEnd) {
+    if (!videoIds?.length) return 0;
+    const items = await fetchQueueItems(videoIds);
+    return insertQueueItems(items, atEnd, videoIds[0]) ? items.length : 0;
+  }
+
   // Whole album/playlist queueing - what YTM's own header ⋯ menu does with
   // its queueAddEndpoint. get_queue takes the OLAK5uy_/PL id directly and
   // returns every renderer in one response, in order. videoIds is the
@@ -457,10 +484,7 @@
       });
       items = queueContents(data);
     }
-    if (!items.length && videoIds?.length) {
-      const data = await innertubeRequest("music/get_queue", { videoIds });
-      items = queueContents(data);
-    }
+    if (!items.length && videoIds?.length) items = await fetchQueueItems(videoIds);
     return insertQueueItems(items, atEnd, videoIds?.[0]);
   }
 
@@ -1187,6 +1211,14 @@
     }
     if (command === "queueVideoNext" || command === "queueVideoLast") {
       const result = await queueVideoNext(payload.videoId, command === "queueVideoLast");
+      window.postMessage(
+        { source: FROM_BRIDGE, type: "response", requestId, result },
+        window.location.origin
+      );
+      return;
+    }
+    if (command === "queueImport") {
+      const result = await queueVideoIds(payload.videoIds, true);
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result },
         window.location.origin

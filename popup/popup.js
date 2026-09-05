@@ -382,11 +382,16 @@ function toggleMenu(open) {
   const sheet = el("action-sheet");
   const show = open ?? sheet.hidden;
   sheet.hidden = !show;
+  // The import panel never survives a close - reopening to a stale paste
+  // would look like it had queued nothing.
+  el("sheet-import").hidden = true;
   el("sheet-backdrop").hidden = !show;
   el("more").classList.toggle("open", show);
   if (show) {
     // No point churning YTM's menu for library state while signed out.
     if (lastState?.signedIn !== false) send("probeLibrary");
+    // Copy queue needs a queue in hand even if the Queue tab was never opened.
+    port?.postMessage({ type: "getQueue" });
     refreshSleep();
   }
   placeToast();
@@ -428,6 +433,77 @@ el("copy-link").addEventListener("click", () => {
 
 el("copy-info").addEventListener("click", () => {
   if (lastState?.title) copyToClipboard(el("copy-info"), `${lastState.artist} - ${lastState.title}`);
+});
+
+// ---- queue backup ----
+// Copy writes a format that reads as a tracklist and imports as one: a "#"
+// header line, then one line per track, tab-separated so it also pastes into
+// a spreadsheet. Only the watch URL is load-bearing - the name is there for
+// the human, and the import ignores it.
+let lastQueue = [];
+
+el("copy-queue").addEventListener("click", () => {
+  if (!lastQueue.length) {
+    showToast("Nothing in the queue to copy.");
+    return;
+  }
+  const lines = lastQueue.map((item) => {
+    const name = [item.title, item.artist].filter(Boolean).join(" - ");
+    return item.videoId ? `${name}\t${YTM_BASE}watch?v=${item.videoId}` : name;
+  });
+  const stamp = new Date().toISOString().slice(0, 10);
+  const header = `# Companion queue - ${lines.length} tracks - ${stamp}`;
+  copyToClipboard(el("copy-queue"), [header, ...lines].join("\n"));
+});
+
+// Deliberately tolerant: pull every watch id out of whatever was pasted, in
+// order, and ignore the rest. That way a queue survives a chat app eating the
+// tabs, a partial copy, hand-edited lines, or a plain list of YouTube links -
+// and the pretty half of the format costs the parser nothing.
+function videoIdsFromText(text) {
+  const ids = [];
+  for (const line of text.split("\n")) {
+    if (line.startsWith("#")) continue;
+    const fromUrl = line.match(/[?&]v=([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/);
+    // A bare id on its own line is the other thing people paste.
+    const bare = line.trim().match(/^([A-Za-z0-9_-]{11})$/);
+    const id = fromUrl?.[1] ?? bare?.[1];
+    if (id) ids.push(id);
+  }
+  return ids;
+}
+
+let importIds = [];
+
+function refreshImportCount() {
+  importIds = videoIdsFromText(el("import-text").value);
+  el("import-count").textContent = importIds.length
+    ? `${importIds.length} track${importIds.length === 1 ? "" : "s"} found`
+    : "Nothing to import yet";
+  el("import-add").disabled = !importIds.length;
+}
+
+function toggleImport(open) {
+  const panel = el("sheet-import");
+  const show = open ?? panel.hidden;
+  panel.hidden = !show;
+  if (show) {
+    el("import-text").value = "";
+    refreshImportCount();
+    el("import-text").focus();
+  }
+  placeToast(); // the sheet just changed height
+}
+
+el("import-queue").addEventListener("click", () => toggleImport());
+el("import-cancel").addEventListener("click", () => toggleImport(false));
+el("import-text").addEventListener("input", refreshImportCount);
+
+el("import-add").addEventListener("click", () => {
+  if (!importIds.length) return;
+  send("queueImport", { videoIds: importIds });
+  showToast(`Importing ${importIds.length}…`, "success");
+  toggleImport(false);
 });
 
 // ---- sleep timer ----
@@ -2367,6 +2443,7 @@ function tryTab(candidates, index) {
       // Autoplay state first - renderQueue keys the suggestions section on it.
       el("autoplay-toggle").classList.remove("busy");
       updateAutoplayToggle(msg.autoplay);
+      lastQueue = msg.queue; // for Copy queue
       renderQueue(msg.queue);
       if (queueSwitchLoaded && msg.queue.some((item) => item.selected)) doQueueSwitch();
     } else if (msg.type === "history") renderHistory(msg.history);
@@ -2434,7 +2511,16 @@ function tryTab(candidates, index) {
         showToast("Couldn’t remove that song.");
       }
     }
-    else if (msg.type === "notice") {
+    else if (msg.type === "queueImported") {
+      // Dead ids come back with no renderer, so "asked" and "count" can differ
+      // - saying so beats a silently short queue.
+      showToast(
+        msg.count === msg.asked
+          ? `Added ${msg.count} to the queue.`
+          : `Added ${msg.count} of ${msg.asked} - the rest are unavailable.`,
+        msg.count === msg.asked ? "success" : "notice"
+      );
+    } else if (msg.type === "notice") {
       // Errors end whatever play was pending.
       setPendingPlay(null);
       showToast(msg.text);

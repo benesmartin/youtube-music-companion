@@ -457,6 +457,82 @@ body.compact #settings-pane {
   pointer-events: none;
 }
 
+/* Queue backup is a pair, not a stray fifth tile: half the row each, under
+   the four single-track actions they are the whole-queue version of. */
+#copy-queue,
+#import-queue {
+  grid-column: span 2;
+  flex-direction: row !important;
+  padding: 8px !important;
+}
+
+#sheet-import {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#import-text {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.45;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--surface-2);
+  background: var(--bg);
+  color: var(--text);
+}
+
+#import-text:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+#import-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#import-count {
+  margin-right: auto;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+#import-cancel,
+#import-add {
+  width: auto;
+  height: 24px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+#import-add {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+#import-add:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+#import-cancel:hover {
+  background: color-mix(in srgb, var(--text) 9%, var(--surface-2));
+}
+
+#import-add:hover {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
 #sheet-tiles svg {
   width: 16px;
   height: 16px;
