@@ -487,7 +487,9 @@ function refreshImportCount() {
     : n
       ? `${n} track${n === 1 ? "" : "s"} found`
       : "Nothing to import yet";
-  el("import-add").textContent = importArmed ? `Replace ${n}` : "Replace queue";
+  // The "?" is what makes the armed state read as a different button rather
+  // than the same one with a number in it.
+  el("import-add").textContent = importArmed ? `Replace ${n}?` : "Replace queue";
   el("import-add").classList.toggle("armed", importArmed);
   el("import-add").disabled = !n;
 }
