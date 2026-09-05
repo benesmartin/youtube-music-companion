@@ -797,6 +797,13 @@ function applySettings() {
   el("set-accent-icon").classList.toggle("on", settings.accentIcon === true);
   el("set-row-play-next").classList.toggle("on", settings.rowPlayNext !== false);
   el("set-row-add").classList.toggle("on", settings.rowAddToQueue !== false);
+  // The bar buttons are the whole-release version of the row actions, so the
+  // same two switches govern both. Static DOM, unlike the rows - hiding them
+  // here is what makes the toggle take effect without a repaint.
+  for (const prefix of ["album", "playlist"]) {
+    el(`${prefix}-next`).hidden = settings.rowPlayNext === false;
+    el(`${prefix}-queue`).hidden = settings.rowAddToQueue === false;
+  }
   el("set-row-radio").classList.toggle("on", settings.rowRadio !== false);
   const sizes = { s: "11.5px", m: "12.5px", l: "14px" };
   el("lyrics-pane").style.fontSize = sizes[settings.lyricsSize] ?? sizes.m;
