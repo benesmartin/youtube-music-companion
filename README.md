@@ -33,7 +33,7 @@
   from it, so you can pick something and let the algorithm run
 - **Albums**: click the album in the byline to see the whole record inside the
   popup - every track numbered, with play, play next, add to queue and radio
-  on each, plus play or shuffle the album
+  on each, plus play, shuffle, play next or add to queue for the whole album
 - **Queue**: see what's coming with artwork, jump to any track, play next
   or add to queue, remove, drag to reorder; toggleable autoplay suggestions
 - **History**: your real YouTube Music listening history, click to replay
@@ -41,9 +41,13 @@
   from results
 - **Start a radio from any song** in search, history, playlists or home -
   not just the one that's playing
-- **Playlists**: browse your library, play or shuffle a playlist, open its
-  tracks, save the current song to any playlist (with a duplicate guard),
-  remove songs - long playlists load as you scroll
+- **Playlists**: browse your library, play, shuffle, play next or add a whole
+  playlist to the queue, open its tracks, save the current song to any
+  playlist (with a duplicate guard), remove songs - long playlists load as
+  you scroll
+- **Copy and import your queue**: copy it as a readable tracklist to keep or
+  share, and paste one back to replace the queue - the import reads the
+  links, so a hand-edited or reformatted list still works
 - **Lyrics** via [LRCLIB](https://lrclib.net): time-synced highlight;
   strictly opt-in (sends title/artist to lrclib.net), official songs only
 - **Sleep timer** with presets and custom minutes - a live countdown sits
@@ -57,7 +61,8 @@
   volume up/down and dislike commands. Rebind everything right in the
   popup's settings on Firefox (Chrome: chrome://extensions/shortcuts)
 - **Row actions you choose**: switch play next, add to queue and start radio
-  on or off per row in settings
+  on or off in settings - the first two also govern the whole-album and
+  whole-playlist buttons
 - Toolbar status dot (green playing, yellow paused), can be turned off
 
 <details>
