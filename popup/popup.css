@@ -994,6 +994,68 @@ body.compact #settings-pane {
   left: 16px;
 }
 
+/* ---- tab order rows ---- */
+
+#tab-order {
+  margin-top: 4px;
+}
+
+.tab-order-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 12.5px;
+  cursor: grab;
+}
+
+.tab-order-row.dragging {
+  opacity: 0.4;
+}
+
+.tab-order-row .grip {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  fill: var(--text-dim);
+  stroke: none;
+}
+
+.tab-order-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-order-row .move {
+  width: 24px;
+  height: 22px;
+  border-radius: 6px;
+  flex: none;
+  color: var(--text-dim);
+  background: var(--surface);
+}
+
+.tab-order-row .move:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.tab-order-row .move:disabled {
+  opacity: 0.3;
+}
+
+.tab-order-row .move svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* ---- keyboard shortcut rows ---- */
 
 .shortcut-row {

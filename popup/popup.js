@@ -846,6 +846,7 @@ const DEFAULT_SETTINGS = {
   rowPlayNext: true,
   rowAddToQueue: true,
   rowRadio: true,
+  tabOrder: ["queue", "history", "lyrics", "search", "playlists", "home"],
 };
 // Named hues with per-theme variants (bright on dark, deep on light).
 const ACCENTS = [
@@ -935,6 +936,7 @@ function applySettings() {
     el(`${prefix}-queue`).hidden = settings.rowAddToQueue === false;
   }
   el("set-row-radio").classList.toggle("on", settings.rowRadio !== false);
+  applyTabOrder();
   const sizes = { s: "11.5px", m: "12.5px", l: "14px" };
   el("lyrics-pane").style.fontSize = sizes[settings.lyricsSize] ?? sizes.m;
   for (const option of document.querySelectorAll("#lyrics-size button")) {
@@ -984,7 +986,107 @@ async function loadSettings() {
   el("set-lyrics").classList.toggle("on", lyricsEnabled);
   updateLyricsTab();
   applySettings();
+  renderTabOrder();
 }
+
+// ---- tab order ----
+// Persisted as an array of tab ids; the strip is re-sorted in place, so the
+// tabs keep their listeners and the lyrics tab keeps its hidden flag.
+const TAB_IDS = DEFAULT_SETTINGS.tabOrder;
+
+// Pure: unknown ids and repeats drop out, tabs missing from a stored order
+// (a future tab, a hand-edited value) go to the end in default order.
+function normalizeTabOrder(order) {
+  const known = Array.isArray(order)
+    ? order.filter((id, i) => TAB_IDS.includes(id) && order.indexOf(id) === i)
+    : [];
+  return [...known, ...TAB_IDS.filter((id) => !known.includes(id))];
+}
+
+function applyTabOrder() {
+  settings.tabOrder = normalizeTabOrder(settings.tabOrder);
+  const strip = el("tabs");
+  for (const id of settings.tabOrder) {
+    strip.insertBefore(strip.querySelector(`.tab[data-tab="${id}"]`), el("autoplay-toggle"));
+  }
+}
+
+function setTabOrder(order) {
+  settings.tabOrder = normalizeTabOrder(order);
+  saveSettings();
+  renderTabOrder();
+}
+
+function renderTabOrder() {
+  const wrap = el("tab-order");
+  wrap.textContent = "";
+  const order = settings.tabOrder;
+  order.forEach((id, index) => {
+    const row = document.createElement("div");
+    row.className = "tab-order-row";
+    row.draggable = true;
+    row.dataset.tab = id;
+    const grip = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    grip.setAttribute("class", "grip");
+    const gripUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    gripUse.setAttribute("href", "#i-grip");
+    grip.append(gripUse);
+    const name = document.createElement("span");
+    name.className = "tab-order-name";
+    name.textContent = document.querySelector(`.tab[data-tab="${id}"]`).textContent;
+    row.append(grip, name);
+    for (const [icon, delta, title] of [
+      ["#i-chevron-up", -1, t("moveUp")],
+      ["#i-chevron-down", 1, t("moveDown")],
+    ]) {
+      const button = document.createElement("button");
+      button.className = "move";
+      button.title = title;
+      button.disabled = index + delta < 0 || index + delta >= order.length;
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      use.setAttribute("href", icon);
+      svg.append(use);
+      button.append(svg);
+      button.addEventListener("click", () => {
+        const next = [...order];
+        next.splice(index, 1);
+        next.splice(index + delta, 0, id);
+        setTabOrder(next);
+      });
+      row.append(button);
+    }
+    row.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", ""); // Firefox needs data to drag
+      e.dataTransfer.effectAllowed = "move";
+      row.classList.add("dragging");
+    });
+    row.addEventListener("dragend", () => {
+      row.classList.remove("dragging");
+      const next = [...wrap.querySelectorAll(".tab-order-row")].map((r) => r.dataset.tab);
+      if (next.join() !== order.join()) setTabOrder(next);
+      else renderTabOrder();
+    });
+    wrap.append(row);
+  });
+  if (order.join() !== TAB_IDS.join()) {
+    const reset = document.createElement("button");
+    reset.className = "shortcut-manage";
+    reset.textContent = t("tabsReset");
+    reset.addEventListener("click", () => setTabOrder(TAB_IDS));
+    wrap.append(reset);
+  }
+}
+
+el("tab-order").addEventListener("dragover", (e) => {
+  const wrap = el("tab-order");
+  const dragging = wrap.querySelector(".tab-order-row.dragging");
+  if (!dragging) return;
+  e.preventDefault();
+  const after = dragRowAfter(wrap, e.clientY, ".tab-order-row:not(.dragging)");
+  if (after === null) wrap.insertBefore(dragging, wrap.querySelector(".shortcut-manage"));
+  else if (after !== dragging) wrap.insertBefore(dragging, after);
+});
 
 for (const def of [...ACCENTS, { name: "auto" }]) {
   const swatch = document.createElement("button");
@@ -1241,8 +1343,8 @@ el("autoplay-toggle").addEventListener("click", () => {
 
 // Live drag preview: the dragged row follows the pointer through the list.
 // Autoplay rows are excluded - the real queue ends at the Autoplay header.
-function dragRowAfter(container, y) {
-  const rows = [...container.querySelectorAll(".qrow:not(.dragging):not(.automix)")];
+function dragRowAfter(container, y, selector = ".qrow:not(.dragging):not(.automix)") {
+  const rows = [...container.querySelectorAll(selector)];
   let closest = { offset: -Infinity, element: null };
   for (const child of rows) {
     const box = child.getBoundingClientRect();
