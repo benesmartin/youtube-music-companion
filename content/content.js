@@ -662,9 +662,7 @@ const commands = {
       if (pageButton) return clickIfFound(pageButton);
       return false;
     }
-    notifyPorts(
-      "Playback was blocked by the browser. Allow autoplay for music.youtube.com, or press play in the tab once."
-    );
+    notifyPorts("noticeAutoplayBlocked");
     return false;
   },
   next: () => clickIfFound(barButton("next-button", "^next")),
@@ -673,7 +671,7 @@ const commands = {
   toggleRepeat: () => clickIfFound(barButton("repeat", "repeat")),
   startRadio: () =>
     Promise.resolve(startRadio()).then((ok) => {
-      if (!ok) notifyPorts("Couldn’t start a radio for this song. Try again.");
+      if (!ok) notifyPorts("noticeRadioFailed");
       return ok;
     }),
   toggleLibrary,
@@ -692,7 +690,7 @@ const commands = {
   // payload may carry playlistId/params so YTM builds the proper queue
   playVideoById: (payload) =>
     askBridgeAsync("playVideoById", payload).then((result) => {
-      if (!result) notifyPorts("Couldn’t play that song. Try again.");
+      if (!result) notifyPorts("noticePlayFailed");
       return result === true;
     }),
   playPlaylist: (payload) =>
@@ -718,7 +716,7 @@ const commands = {
       fromIndex: payload.fromIndex,
       toIndex: payload.toIndex,
     }).then((ok) => {
-      if (!ok) notifyPorts("That row can’t be reordered. Autoplay suggestions stay put.");
+      if (!ok) notifyPorts("noticeReorderAutoplay");
       // Re-push either way: confirms the new order or snaps the preview back.
       setTimeout(pushQueue, 400);
       return ok;
@@ -726,14 +724,14 @@ const commands = {
   },
   queueVideoNext(payload) {
     return askBridgeAsync("queueVideoNext", { videoId: payload.videoId }).then((ok) => {
-      if (!ok) notifyPorts("Couldn’t add that song to the queue.");
+      if (!ok) notifyPorts("noticeQueueAddFailed");
       setTimeout(pushQueue, 700);
       return ok;
     });
   },
   queueVideoLast(payload) {
     return askBridgeAsync("queueVideoLast", { videoId: payload.videoId }).then((ok) => {
-      if (!ok) notifyPorts("Couldn’t add that song to the queue.");
+      if (!ok) notifyPorts("noticeQueueAddFailed");
       setTimeout(pushQueue, 700);
       return ok;
     });
@@ -751,7 +749,7 @@ const commands = {
           if (ok) setTimeout(pushQueue, 700);
         }
       }
-      if (!ok) notifyPorts("Couldn’t move that song. Try again.");
+      if (!ok) notifyPorts("noticeMoveFailed");
       return ok;
     }),
   queueAddToQueue: (payload) =>
@@ -765,7 +763,7 @@ const commands = {
           if (ok) setTimeout(pushQueue, 700);
         }
       }
-      if (!ok) notifyPorts("Couldn’t add that song to the queue.");
+      if (!ok) notifyPorts("noticeQueueAddFailed");
       return ok;
     }),
   // Whole album/playlist, from the album and playlist pane bars. The queue
@@ -776,7 +774,7 @@ const commands = {
       playlistId: payload.playlistId,
       videoIds: payload.videoIds,
     }).then((ok) => {
-      if (!ok) notifyPorts("Couldn’t queue that up. Try again.");
+      if (!ok) notifyPorts("noticeQueueUpFailed");
       setTimeout(pushQueue, 700);
       return ok;
     }),
@@ -785,7 +783,7 @@ const commands = {
       playlistId: payload.playlistId,
       videoIds: payload.videoIds,
     }).then((ok) => {
-      if (!ok) notifyPorts("Couldn’t queue that up. Try again.");
+      if (!ok) notifyPorts("noticeQueueUpFailed");
       setTimeout(pushQueue, 700);
       return ok;
     }),
@@ -799,7 +797,7 @@ const commands = {
       30000
     ).then((count) => {
       if (!count) {
-        notifyPorts("Couldn’t import that queue.");
+        notifyPorts("noticeImportFailed");
         return 0;
       }
       for (const port of ports) {
@@ -810,7 +808,7 @@ const commands = {
     }),
   queueRemove: (payload) =>
     queueItemMenuAction(payload.index, QUEUE_MENU_ICONS.removeFromQueue).then((ok) => {
-      if (!ok) notifyPorts("Couldn’t remove that song. Try again.");
+      if (!ok) notifyPorts("noticeRemoveFailed");
       return ok;
     }),
   playQueueItem(payload) {
@@ -883,9 +881,10 @@ function runCommand(name, payload = {}) {
 const ports = new Set();
 
 // Error toasts in any open popup - corrects the popup's optimistic toasts.
-function notifyPorts(text) {
+// Notices travel as catalog keys; the popup renders them in its own locale.
+function notifyPorts(key) {
   for (const port of ports) {
-    port.postMessage({ type: "notice", text });
+    port.postMessage({ type: "notice", key });
   }
 }
 

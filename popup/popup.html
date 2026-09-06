@@ -50,7 +50,7 @@
       <div id="header">
         <img id="artwork" alt="" />
         <svg id="artwork-idle"><use href="#i-audio-lines"/></svg>
-        <button id="sleep-chip" title="Sleep timer" hidden>
+        <button id="sleep-chip" title="Sleep timer" data-i18n-title="sleepTimer" hidden>
           <svg><use href="#i-timer"/></svg>
           <span id="sleep-chip-min"></span>
         </button>
@@ -59,14 +59,14 @@
           <div id="artist-row"><span id="artist">-</span></div>
           <div id="album-row"><span id="album"></span><span id="album-year"></span></div>
           <div id="controls">
-            <button id="shuffle" title="Shuffle"><svg><use href="#i-shuffle"/></svg></button>
-            <button id="previous" title="Previous"><svg><use href="#i-prev"/></svg></button>
-            <button id="play-pause" title="Play/Pause">
+            <button id="shuffle" title="Shuffle" data-i18n-title="shuffle"><svg><use href="#i-shuffle"/></svg></button>
+            <button id="previous" title="Previous" data-i18n-title="previous"><svg><use href="#i-prev"/></svg></button>
+            <button id="play-pause" title="Play/Pause" data-i18n-title="playPause">
               <svg class="on-paused"><use href="#i-play"/></svg>
               <svg class="on-playing"><use href="#i-pause"/></svg>
             </button>
-            <button id="next" title="Next"><svg><use href="#i-next"/></svg></button>
-            <button id="repeat" title="Repeat">
+            <button id="next" title="Next" data-i18n-title="next"><svg><use href="#i-next"/></svg></button>
+            <button id="repeat" title="Repeat" data-i18n-title="repeat">
               <svg class="on-all"><use href="#i-repeat"/></svg>
               <svg class="on-one"><use href="#i-repeat-1"/></svg>
             </button>
@@ -75,14 +75,14 @@
           <div id="seek-preview" hidden>0:00</div>
           <div id="time"><span id="position">0:00</span><span class="sep">/</span><span id="duration">0:00</span></div>
           <div id="bottom-row">
-            <button id="like" title="Like"><svg><use href="#i-thumb-up"/></svg></button>
-            <button id="dislike" title="Dislike"><svg><use href="#i-thumb-down"/></svg></button>
-            <button id="more" title="More actions"><svg><use href="#i-more"/></svg></button>
-            <button id="compact-toggle" title="Compact mode">
+            <button id="like" title="Like" data-i18n-title="like"><svg><use href="#i-thumb-up"/></svg></button>
+            <button id="dislike" title="Dislike" data-i18n-title="dislike"><svg><use href="#i-thumb-down"/></svg></button>
+            <button id="more" title="More actions" data-i18n-title="moreActions"><svg><use href="#i-more"/></svg></button>
+            <button id="compact-toggle" title="Compact mode" data-i18n-title="compactMode">
               <svg class="on-full"><use href="#i-chevrons-down-up"/></svg>
               <svg class="on-compact"><use href="#i-chevrons-up-down"/></svg>
             </button>
-            <button id="mute" title="Mute">
+            <button id="mute" title="Mute" data-i18n-title="mute">
               <svg class="on-low"><use href="#i-volume"/></svg>
               <svg class="on-high"><use href="#i-volume-high"/></svg>
               <svg class="on-muted"><use href="#i-volume-muted"/></svg>
@@ -92,27 +92,27 @@
         </div>
       </div>
       <div id="tabs">
-        <div class="tab active" data-tab="queue">Queue</div>
-        <div class="tab" data-tab="history">History</div>
-        <div class="tab" data-tab="lyrics">Lyrics</div>
-        <div class="tab" data-tab="search">Search</div>
-        <div class="tab" data-tab="playlists">Playlists</div>
-        <div class="tab" data-tab="home">Home</div>
-        <button id="autoplay-toggle" title="Autoplay" hidden><svg><use href="#i-infinity"/></svg></button>
-        <button id="settings-open" title="Settings"><svg><use href="#i-gear"/></svg></button>
+        <div class="tab active" data-tab="queue" data-i18n="tabQueue">Queue</div>
+        <div class="tab" data-tab="history" data-i18n="tabHistory">History</div>
+        <div class="tab" data-tab="lyrics" data-i18n="tabLyrics">Lyrics</div>
+        <div class="tab" data-tab="search" data-i18n="tabSearch">Search</div>
+        <div class="tab" data-tab="playlists" data-i18n="tabPlaylists">Playlists</div>
+        <div class="tab" data-tab="home" data-i18n="tabHome">Home</div>
+        <button id="autoplay-toggle" title="Autoplay" data-i18n-title="autoplay" hidden><svg><use href="#i-infinity"/></svg></button>
+        <button id="settings-open" title="Settings" data-i18n-title="settings"><svg><use href="#i-gear"/></svg></button>
       </div>
-      <div id="queue-list"><div id="queue-note">Loading queue…</div></div>
+      <div id="queue-list"><div id="queue-note" data-i18n="queueLoading">Loading queue…</div></div>
       <div id="history-list" hidden></div>
       <div id="home-list" hidden></div>
       <div id="lyrics-pane" hidden></div>
       <div id="search-pane" hidden>
         <div id="search-box">
           <svg><use href="#i-search"/></svg>
-          <input id="search-input" type="text" placeholder="Search songs and videos…" />
+          <input id="search-input" type="text" placeholder="Search songs and videos…" data-i18n-placeholder="searchPlaceholder" />
         </div>
         <div id="search-filters" hidden>
-          <button class="pill active" data-group="songs">Songs</button>
-          <button class="pill" data-group="videos">Videos</button>
+          <button class="pill active" data-group="songs" data-i18n="searchSongs">Songs</button>
+          <button class="pill" data-group="videos" data-i18n="searchVideos">Videos</button>
         </div>
         <div id="search-results"></div>
       </div>
@@ -122,12 +122,12 @@
         <div id="album-bar">
           <button id="album-back">
             <svg><use href="#i-chevron-left"/></svg>
-            <span id="album-title" class="label">Album</span>
+            <span id="album-title" class="label" data-i18n="album">Album</span>
           </button>
-          <button id="album-play"><svg><use href="#i-play"/></svg>Play</button>
-          <button id="album-shuffle" class="bar-icon" title="Shuffle"><svg><use href="#i-shuffle"/></svg></button>
-          <button id="album-next" class="bar-icon" title="Play next"><svg><use href="#i-play-next"/></svg></button>
-          <button id="album-queue" class="bar-icon" title="Add to queue"><svg><use href="#i-add-to-queue"/></svg></button>
+          <button id="album-play"><svg><use href="#i-play"/></svg><span data-i18n="play">Play</span></button>
+          <button id="album-shuffle" class="bar-icon" title="Shuffle" data-i18n-title="shuffle"><svg><use href="#i-shuffle"/></svg></button>
+          <button id="album-next" class="bar-icon" title="Play next" data-i18n-title="playNext"><svg><use href="#i-play-next"/></svg></button>
+          <button id="album-queue" class="bar-icon" title="Add to queue" data-i18n-title="addToQueue"><svg><use href="#i-add-to-queue"/></svg></button>
         </div>
         <div id="album-head" hidden>
           <div id="album-art"></div>
@@ -136,7 +136,7 @@
             <div id="album-artist"></div>
             <div id="album-meta"></div>
           </div>
-          <button id="album-open" title="Open in YouTube Music">
+          <button id="album-open" title="Open in YouTube Music" data-i18n-title="openInYtm">
             <svg><use href="#i-external"/></svg>
           </button>
         </div>
@@ -144,29 +144,29 @@
       </div>
       <div id="settings-pane" hidden>
         <div class="settings-section">
-          <div class="settings-label">Appearance</div>
+          <div class="settings-label" data-i18n="settingsAppearance">Appearance</div>
           <div id="theme-options">
-            <button class="theme-opt" data-theme="dark">Dark</button>
-            <button class="theme-opt" data-theme="light">Light</button>
-            <button class="theme-opt" data-theme="system">System</button>
+            <button class="theme-opt" data-theme="dark" data-i18n="themeDark">Dark</button>
+            <button class="theme-opt" data-theme="light" data-i18n="themeLight">Light</button>
+            <button class="theme-opt" data-theme="system" data-i18n="themeSystem">System</button>
           </div>
         </div>
         <div class="settings-section">
-          <div class="settings-label">Accent color</div>
+          <div class="settings-label" data-i18n="settingsAccent">Accent color</div>
           <div id="accent-options"></div>
         </div>
         <div class="settings-section">
-          <div class="settings-label">Behavior</div>
+          <div class="settings-label" data-i18n="settingsBehavior">Behavior</div>
           <div class="setting-row">
             <div class="setting-text">
-              <div class="setting-name">Lyrics</div>
-              <div class="setting-sub">Looks up title &amp; artist on lrclib.net</div>
+              <div class="setting-name" data-i18n="setLyrics">Lyrics</div>
+              <div class="setting-sub" data-i18n="setLyricsSub">Looks up title &amp; artist on lrclib.net</div>
             </div>
             <button class="switch" id="set-lyrics" role="switch"></button>
           </div>
           <div class="setting-row" id="lyrics-size-row" hidden>
             <div class="setting-text">
-              <div class="setting-name">Lyrics text size</div>
+              <div class="setting-name" data-i18n="setLyricsSize">Lyrics text size</div>
             </div>
             <div id="lyrics-size" class="mini-pills">
               <button data-size="s">S</button>
@@ -176,69 +176,69 @@
           </div>
           <div class="setting-row">
             <div class="setting-text">
-              <div class="setting-name">Toolbar status dot</div>
-              <div class="setting-sub">Green playing, yellow paused on the icon</div>
+              <div class="setting-name" data-i18n="setStatusDot">Toolbar status dot</div>
+              <div class="setting-sub" data-i18n="setStatusDotSub">Green playing, yellow paused on the icon</div>
             </div>
             <button class="switch" id="set-status-dot" role="switch"></button>
           </div>
           <div class="setting-row">
             <div class="setting-text">
-              <div class="setting-name">Accent-colored toolbar icon</div>
-              <div class="setting-sub">Tint the icon to match your accent</div>
+              <div class="setting-name" data-i18n="setAccentIcon">Accent-colored toolbar icon</div>
+              <div class="setting-sub" data-i18n="setAccentIconSub">Tint the icon to match your accent</div>
             </div>
             <button class="switch" id="set-accent-icon" role="switch"></button>
           </div>
           <div class="setting-row">
             <div class="setting-text">
-              <div class="setting-name">Like button</div>
-              <div class="setting-sub">Show it in the player</div>
+              <div class="setting-name" data-i18n="setLike">Like button</div>
+              <div class="setting-sub" data-i18n="setLikeSub">Show it in the player</div>
             </div>
             <button class="switch" id="set-like" role="switch"></button>
           </div>
           <div class="setting-row">
             <div class="setting-text">
-              <div class="setting-name">Dislike button</div>
-              <div class="setting-sub">Show it next to like in the player</div>
+              <div class="setting-name" data-i18n="setDislike">Dislike button</div>
+              <div class="setting-sub" data-i18n="setDislikeSub">Show it next to like in the player</div>
             </div>
             <button class="switch" id="set-dislike" role="switch"></button>
           </div>
         </div>
         <div class="settings-section">
-          <div class="settings-label">Row actions</div>
+          <div class="settings-label" data-i18n="settingsRowActions">Row actions</div>
           <div class="setting-row">
             <div class="setting-text">
-              <div class="setting-name">Play next</div>
-              <div class="setting-sub">On rows, and whole albums and playlists</div>
+              <div class="setting-name" data-i18n="playNext">Play next</div>
+              <div class="setting-sub" data-i18n="setRowQueueSub">On rows, and whole albums and playlists</div>
             </div>
             <button class="switch" id="set-row-play-next" role="switch"></button>
           </div>
           <div class="setting-row">
             <div class="setting-text">
-              <div class="setting-name">Add to queue</div>
-              <div class="setting-sub">On rows, and whole albums and playlists</div>
+              <div class="setting-name" data-i18n="addToQueue">Add to queue</div>
+              <div class="setting-sub" data-i18n="setRowQueueSub">On rows, and whole albums and playlists</div>
             </div>
             <button class="switch" id="set-row-add" role="switch"></button>
           </div>
           <div class="setting-row">
             <div class="setting-text">
-              <div class="setting-name">Start radio</div>
-              <div class="setting-sub">On search, history and playlist rows</div>
+              <div class="setting-name" data-i18n="startRadio">Start radio</div>
+              <div class="setting-sub" data-i18n="setRowRadioSub">On search, history and playlist rows</div>
             </div>
             <button class="switch" id="set-row-radio" role="switch"></button>
           </div>
         </div>
         <div class="settings-section">
-          <div class="settings-label">Keyboard shortcuts</div>
+          <div class="settings-label" data-i18n="settingsShortcuts">Keyboard shortcuts</div>
           <div id="shortcut-rows"></div>
         </div>
         <div id="about">
           <img id="about-icon" src="../icons/icon.svg" alt="" width="34" height="34" />
           <div id="about-text">
             <div><strong>Companion for YouTube Music</strong> <span id="about-version"></span> · GPL-3.0 ·
-              <a href="https://github.com/benesmartin/youtube-music-companion" target="_blank" rel="noreferrer">Source</a></div>
-            <div>Lyrics by <a href="https://lrclib.net" target="_blank" rel="noreferrer">LRCLIB</a> ·
-              Icons by <a href="https://lucide.dev" target="_blank" rel="noreferrer">Lucide</a> ·
-              <a class="support" href="https://ko-fi.com/benesmartin" target="_blank" rel="noreferrer"><svg><use href="#i-heart"/></svg>Support</a></div>
+              <a href="https://github.com/benesmartin/youtube-music-companion" target="_blank" rel="noreferrer" data-i18n="aboutSource">Source</a></div>
+            <div><span data-i18n="aboutLyricsBy">Lyrics by</span> <a href="https://lrclib.net" target="_blank" rel="noreferrer">LRCLIB</a> ·
+              <span data-i18n="aboutIconsBy">Icons by</span> <a href="https://lucide.dev" target="_blank" rel="noreferrer">Lucide</a> ·
+              <a class="support" href="https://ko-fi.com/benesmartin" target="_blank" rel="noreferrer"><svg><use href="#i-heart"/></svg><span data-i18n="aboutSupport">Support</span></a></div>
           </div>
         </div>
       </div>
@@ -255,12 +255,12 @@
           <div id="playlist-bar">
             <button id="playlist-back">
               <svg><use href="#i-chevron-left"/></svg>
-              <span id="playlist-title" class="label">Playlist</span>
+              <span id="playlist-title" class="label" data-i18n="playlist">Playlist</span>
             </button>
-            <button id="playlist-play"><svg><use href="#i-play"/></svg>Play</button>
-            <button id="playlist-shuffle" class="bar-icon" title="Shuffle"><svg><use href="#i-shuffle"/></svg></button>
-            <button id="playlist-next" class="bar-icon" title="Play next"><svg><use href="#i-play-next"/></svg></button>
-            <button id="playlist-queue" class="bar-icon" title="Add to queue"><svg><use href="#i-add-to-queue"/></svg></button>
+            <button id="playlist-play"><svg><use href="#i-play"/></svg><span data-i18n="play">Play</span></button>
+            <button id="playlist-shuffle" class="bar-icon" title="Shuffle" data-i18n-title="shuffle"><svg><use href="#i-shuffle"/></svg></button>
+            <button id="playlist-next" class="bar-icon" title="Play next" data-i18n-title="playNext"><svg><use href="#i-play-next"/></svg></button>
+            <button id="playlist-queue" class="bar-icon" title="Add to queue" data-i18n-title="addToQueue"><svg><use href="#i-add-to-queue"/></svg></button>
           </div>
           <div id="playlist-tracks"></div>
         </div>
@@ -268,43 +268,43 @@
       <!-- one-time, dismissible: shown only after the extension has been
            used for a while, never again once answered either way -->
       <div id="rate-bar" hidden>
-        <span id="rate-text">Enjoying Companion? A rating helps others find it.</span>
-        <button id="rate-go">Rate it</button>
-        <button id="rate-dismiss" title="Not now"><svg><use href="#i-x"/></svg></button>
+        <span id="rate-text" data-i18n="rateText">Enjoying Companion? A rating helps others find it.</span>
+        <button id="rate-go" data-i18n="rateGo">Rate it</button>
+        <button id="rate-dismiss" title="Not now" data-i18n-title="rateNotNow"><svg><use href="#i-x"/></svg></button>
       </div>
     </main>
 
     <main id="empty" hidden>
       <div id="empty-icon"><svg><use href="#i-music"/></svg></div>
-      <p id="empty-title">YouTube Music isn’t open</p>
-      <p id="empty-sub">Open it in a tab and this popup becomes your player.</p>
-      <button id="empty-open" hidden>Open the tab</button>
-      <button id="open-ytm">Open YouTube Music</button>
+      <p id="empty-title" data-i18n="emptyTitle">YouTube Music isn’t open</p>
+      <p id="empty-sub" data-i18n="emptySub">Open it in a tab and this popup becomes your player.</p>
+      <button id="empty-open" hidden data-i18n="emptyOpenTab">Open the tab</button>
+      <button id="open-ytm" data-i18n="emptyOpenYtm">Open YouTube Music</button>
     </main>
 
     <div id="sheet-backdrop" hidden></div>
     <div id="action-sheet" hidden>
       <div id="sheet-tiles">
-        <button id="radio"><svg><use href="#i-radio"/></svg><span class="label">Start radio</span></button>
-        <button id="library"><svg><use href="#i-bookmark"/></svg><span class="label" id="library-label">Add to library</span></button>
+        <button id="radio"><svg><use href="#i-radio"/></svg><span class="label" data-i18n="startRadio">Start radio</span></button>
+        <button id="library"><svg><use href="#i-bookmark"/></svg><span class="label" id="library-label" data-i18n="addToLibrary">Add to library</span></button>
         <button id="copy-link" class="copy-btn">
           <svg class="on-idle"><use href="#i-link"/></svg>
           <svg class="on-copied"><use href="#i-check"/></svg>
-          <span class="label">Copy link</span>
+          <span class="label" data-i18n="copyLink">Copy link</span>
         </button>
         <button id="copy-info" class="copy-btn">
           <svg class="on-idle"><use href="#i-clipboard"/></svg>
           <svg class="on-copied"><use href="#i-check"/></svg>
-          <span class="label">Copy info</span>
+          <span class="label" data-i18n="copyInfo">Copy info</span>
         </button>
         <button id="copy-queue" class="copy-btn">
           <svg class="on-idle"><use href="#i-clipboard"/></svg>
           <svg class="on-copied"><use href="#i-check"/></svg>
-          <span class="label">Copy queue</span>
+          <span class="label" data-i18n="copyQueue">Copy queue</span>
         </button>
         <button id="import-queue">
           <svg><use href="#i-add-to-queue"/></svg>
-          <span class="label">Import queue</span>
+          <span class="label" data-i18n="importQueue">Import queue</span>
         </button>
       </div>
       <div id="sheet-import" hidden>
@@ -312,28 +312,28 @@
           id="import-text"
           rows="4"
           spellcheck="false"
-          placeholder="Paste a copied queue here"
+          placeholder="Paste a copied queue here" data-i18n-placeholder="importPlaceholder"
         ></textarea>
         <div id="import-actions">
-          <span id="import-count">Nothing to import yet</span>
-          <button id="import-cancel">Cancel</button>
-          <button id="import-add" disabled>Replace queue</button>
+          <span id="import-count" data-i18n="importNothing">Nothing to import yet</span>
+          <button id="import-cancel" data-i18n="cancel">Cancel</button>
+          <button id="import-add" disabled data-i18n="importReplace">Replace queue</button>
         </div>
       </div>
       <div id="sheet-sleep">
         <span id="sleep-thumb"><svg><use href="#i-timer"/></svg></span>
         <span id="sleep-meta">
-          <span id="sleep-title">Sleep timer</span>
-          <span id="sleep-remaining">No timer running</span>
+          <span id="sleep-title" data-i18n="sleepTimer">Sleep timer</span>
+          <span id="sleep-remaining" data-i18n="sleepNone">No timer running</span>
         </span>
         <div id="sleep-presets">
-          <button class="sleep-opt" data-min="15">15m</button>
-          <button class="sleep-opt" data-min="30">30m</button>
-          <button class="sleep-opt" data-min="60">60m</button>
-          <input id="sleep-custom-min" type="number" min="1" max="720" placeholder="min" />
-          <button id="sleep-set">Set</button>
+          <button class="sleep-opt" data-min="15" data-i18n="sleepPreset" data-i18n-args="15">15m</button>
+          <button class="sleep-opt" data-min="30" data-i18n="sleepPreset" data-i18n-args="30">30m</button>
+          <button class="sleep-opt" data-min="60" data-i18n="sleepPreset" data-i18n-args="60">60m</button>
+          <input id="sleep-custom-min" type="number" min="1" max="720" placeholder="min" data-i18n-placeholder="sleepCustomPlaceholder" />
+          <button id="sleep-set" data-i18n="sleepSet">Set</button>
         </div>
-        <button id="sleep-off" hidden>Stop timer</button>
+        <button id="sleep-off" hidden data-i18n="sleepStop">Stop timer</button>
       </div>
     </div>
 

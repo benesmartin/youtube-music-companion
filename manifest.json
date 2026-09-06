@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "Companion for YouTube Music - Mini Player",
-  "short_name": "Companion",
+  "name": "__MSG_extName__",
+  "short_name": "__MSG_extShortName__",
   "version": "1.4.0",
-  "description": "Control YouTube Music from a toolbar popup: playback, queue, albums, recommendations, history, search, playlists and synced lyrics.",
+  "default_locale": "en",
+  "description": "__MSG_extDescription__",
   "browser_specific_settings": {
     "gecko": {
       "id": "youtube-music-companion@benesmartin",
@@ -56,7 +57,7 @@
   ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "Companion for YouTube Music",
+    "default_title": "__MSG_actionTitle__",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -76,34 +77,34 @@
       "suggested_key": {
         "default": "Alt+Shift+Space"
       },
-      "description": "Play or pause the current track"
+      "description": "__MSG_cmdPlayPause__"
     },
     "next-track": {
       "suggested_key": {
         "default": "Alt+Shift+Period"
       },
-      "description": "Next track"
+      "description": "__MSG_cmdNext__"
     },
     "previous-track": {
       "suggested_key": {
         "default": "Alt+Shift+Comma"
       },
-      "description": "Previous track"
+      "description": "__MSG_cmdPrevious__"
     },
     "toggle-like": {
       "suggested_key": {
         "default": "Alt+Shift+L"
       },
-      "description": "Like or unlike the current track"
+      "description": "__MSG_cmdLike__"
     },
     "toggle-dislike": {
-      "description": "Dislike or un-dislike the current track"
+      "description": "__MSG_cmdDislike__"
     },
     "volume-up": {
-      "description": "Volume up"
+      "description": "__MSG_cmdVolumeUp__"
     },
     "volume-down": {
-      "description": "Volume down"
+      "description": "__MSG_cmdVolumeDown__"
     }
   }
 }

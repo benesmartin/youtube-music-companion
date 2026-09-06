@@ -33,6 +33,7 @@ body.light {
 
 body {
   width: 450px;
+  overflow-x: hidden;
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, sans-serif;
@@ -579,6 +580,8 @@ body.compact #settings-pane {
   stroke-linejoin: round;
 }
 
+/* The presets keep their width; a long translated title clips with an
+   ellipsis instead of running under them. */
 #sleep-meta {
   min-width: 0;
   display: flex;
@@ -586,16 +589,22 @@ body.compact #settings-pane {
   align-items: flex-start;
 }
 
+#sleep-title,
+#sleep-remaining {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 #sleep-title {
   font-size: 12.5px;
-  white-space: nowrap;
 }
 
 #sleep-remaining {
   font-size: 11px;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 #sleep-presets {
@@ -751,19 +760,25 @@ body.compact #settings-pane {
   border-bottom: 1px solid var(--surface-2);
 }
 
+/* Tabs shrink with an ellipsis once translated labels outgrow the strip
+   (six labels fill 450px in English already), so the strip can never push
+   the settings gear off the edge or make the body scroll sideways. */
 .tab {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
+  display: block;
+  min-width: 0;
   padding: 4px 8px 5px;
   border-radius: 999px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
 }
 
 /* invisible bold ghost reserves the active tab's width - no jiggle */
 .tab::after {
-  content: attr(data-tab);
-  text-transform: capitalize;
+  content: attr(data-label);
+  display: block;
   font-weight: 600;
   height: 0;
   overflow: hidden;

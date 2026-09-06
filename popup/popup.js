@@ -4,6 +4,38 @@
 const ext = globalThis.browser ?? globalThis.chrome;
 
 const el = (id) => document.getElementById(id);
+
+// Strings live in _locales/<lang>/messages.json. A missing key returns the
+// key itself so an untranslated spot reads as a leak, never as blank UI.
+function t(key, ...subs) {
+  return ext.i18n.getMessage(key, subs.map(String)) || key;
+}
+
+// Plural pick: `${base}_one` / `_few` / `_many` / `_other` by the UI locale's
+// CLDR category, falling back to `_other`. Chrome's catalog format has no
+// plural support of its own, so the forms are separate keys.
+const pluralRules = new Intl.PluralRules(ext.i18n.getUILanguage());
+function tn(base, count, ...subs) {
+  const form = pluralRules.select(count);
+  const key = `${base}_${form}`;
+  return ext.i18n.getMessage(key, [count, ...subs].map(String)) || t(`${base}_other`, count, ...subs);
+}
+
+// Static markup: data-i18n fills textContent, data-i18n-title the title,
+// data-i18n-placeholder the placeholder; data-i18n-args passes one
+// substitution. Runs once, before anything reads the DOM.
+for (const node of document.querySelectorAll("[data-i18n]")) {
+  node.textContent = node.dataset.i18nArgs
+    ? t(node.dataset.i18n, node.dataset.i18nArgs)
+    : t(node.dataset.i18n);
+}
+for (const node of document.querySelectorAll("[data-i18n-title]")) node.title = t(node.dataset.i18nTitle);
+for (const node of document.querySelectorAll("[data-i18n-placeholder]")) {
+  node.placeholder = t(node.dataset.i18nPlaceholder);
+}
+// The tab strip's bold ghost (see .tab::after) needs the translated label.
+for (const tab of document.querySelectorAll(".tab")) tab.dataset.label = tab.textContent;
+
 const playerView = el("player");
 const emptyView = el("empty");
 
@@ -50,9 +82,9 @@ function renderIdle() {
   emptyView.hidden = true;
   playerView.classList.add("idle");
   setAccentHasTrack(false);
-  el("title").textContent = "Nothing is playing!";
+  el("title").textContent = t("nothingPlaying");
   el("title").title = "";
-  el("artist").textContent = "Search or pick a playlist to get going";
+  el("artist").textContent = t("nothingPlayingSub");
   el("album").textContent = "";
   el("album-year").textContent = "";
   el("album").classList.remove("link");
@@ -69,7 +101,7 @@ function renderIdle() {
   el("library").classList.remove("in", "gated");
   el("library").disabled = true;
   el("library").title = "";
-  el("library-label").textContent = "Add to library";
+  el("library-label").textContent = t("addToLibrary");
   el("radio").disabled = true;
   el("copy-link").disabled = true;
   el("copy-info").disabled = true;
@@ -189,8 +221,8 @@ function render(state) {
   el("library").disabled = gated ? false : !state.videoId || state.libraryAvailable === false;
   el("library").classList.toggle("in", state.inLibrary === true);
   // Tile-sized labels; the filled icon carries the "in library" state too.
-  el("library-label").textContent = state.inLibrary === true ? "In library" : "Add to library";
-  el("library").title = state.inLibrary === true ? "Remove from library" : "";
+  el("library-label").textContent = t(state.inLibrary === true ? "inLibrary" : "addToLibrary");
+  el("library").title = state.inLibrary === true ? t("removeFromLibrary") : "";
   if (el("artwork").src !== state.artwork) el("artwork").src = state.artwork;
 
   el("play-pause").classList.toggle("playing", state.playing);
@@ -276,9 +308,9 @@ function send(command, payload = {}) {
 
 // Signed-out sessions: account actions stay clickable but explain themselves
 // instead of silently opening a sign-in dialog in the hidden tab.
-function requireSignIn(what) {
+function requireSignIn(key) {
   if (lastState?.signedIn === false) {
-    showToast(`Sign in to YouTube Music to ${what}.`);
+    showToast(t(key));
     return true;
   }
   return false;
@@ -288,11 +320,11 @@ el("play-pause").addEventListener("click", () => send("playPause"));
 el("next").addEventListener("click", () => send("next"));
 el("previous").addEventListener("click", () => send("previous"));
 el("like").addEventListener("click", () => {
-  if (requireSignIn("like songs")) return;
+  if (requireSignIn("signInLike")) return;
   send("toggleLike");
 });
 el("dislike").addEventListener("click", () => {
-  if (requireSignIn("rate songs")) return;
+  if (requireSignIn("signInRate")) return;
   send("toggleDislike");
 });
 el("shuffle").addEventListener("click", () => send("shuffle"));
@@ -412,7 +444,7 @@ el("sheet-backdrop").addEventListener("click", () => toggleMenu(false));
 el("radio").addEventListener("click", () => send("startRadio"));
 
 el("library").addEventListener("click", () => {
-  if (requireSignIn("use your library")) return;
+  if (requireSignIn("signInLibrary")) return;
   send("toggleLibrary");
 });
 
@@ -420,7 +452,7 @@ async function copyToClipboard(button, text) {
   try {
     await navigator.clipboard.writeText(text);
   } catch {
-    showToast("Couldn’t copy to the clipboard.");
+    showToast(t("copyFailed"));
     return;
   }
   button.classList.add("copied");
@@ -444,7 +476,7 @@ let lastQueue = [];
 
 el("copy-queue").addEventListener("click", () => {
   if (!lastQueue.length) {
-    showToast("Nothing in the queue to copy.");
+    showToast(t("copyQueueEmpty"));
     return;
   }
   const lines = lastQueue.map((item) => {
@@ -452,7 +484,7 @@ el("copy-queue").addEventListener("click", () => {
     return item.videoId ? `${name}\t${YTM_BASE}watch?v=${item.videoId}` : name;
   });
   const stamp = new Date().toISOString().slice(0, 10);
-  const header = `# Companion queue - ${lines.length} tracks - ${stamp}`;
+  const header = tn("copyQueueHeader", lines.length, stamp);
   copyToClipboard(el("copy-queue"), [header, ...lines].join("\n"));
 });
 
@@ -483,13 +515,13 @@ function refreshImportCount() {
   importIds = videoIdsFromText(el("import-text").value);
   const n = importIds.length;
   el("import-count").textContent = importArmed
-    ? `This clears the current queue.`
+    ? t("importClears")
     : n
-      ? `${n} track${n === 1 ? "" : "s"} found`
-      : "Nothing to import yet";
+      ? tn("importFound", n)
+      : t("importNothing");
   // The "?" is what makes the armed state read as a different button rather
   // than the same one with a number in it.
-  el("import-add").textContent = importArmed ? `Replace ${n}?` : "Replace queue";
+  el("import-add").textContent = importArmed ? t("importReplaceCount", n) : t("importReplace");
   el("import-add").classList.toggle("armed", importArmed);
   el("import-add").disabled = !n;
 }
@@ -524,7 +556,7 @@ el("import-add").addEventListener("click", () => {
     return;
   }
   send("queueImport", { videoIds: importIds, replace: true });
-  showToast(`Replacing the queue with ${importIds.length}…`, "success");
+  showToast(t("importReplacing", importIds.length), "success");
   toggleImport(false);
 });
 
@@ -542,8 +574,8 @@ async function refreshSleep() {
   el("sleep-off").hidden = !alarm;
   el("sleep-presets").hidden = Boolean(alarm);
   el("sleep-remaining").textContent = alarm
-    ? `Pausing in ${formatTime(seconds)}`
-    : "No timer running";
+    ? t("sleepPausingIn", formatTime(seconds))
+    : t("sleepNone");
   // The chip keeps a running timer visible without opening the sheet.
   el("sleep-chip").hidden = !alarm;
   el("sleep-chip-min").textContent = alarm ? formatTime(seconds) : "";
@@ -557,12 +589,12 @@ const SLEEP_MAX_MINUTES = 720;
 
 function armSleep(minutes) {
   if (!Number.isFinite(minutes) || minutes < 1) {
-    showToast(`Set a timer between 1 and ${SLEEP_MAX_MINUTES} minutes.`);
+    showToast(t("sleepRange", SLEEP_MAX_MINUTES));
     return;
   }
   const clamped = Math.min(SLEEP_MAX_MINUTES, Math.round(minutes));
   ext.alarms.create("sleep-timer", { delayInMinutes: clamped });
-  el("sleep-remaining").textContent = `Pausing in ${formatTime(clamped * 60)}`;
+  el("sleep-remaining").textContent = t("sleepPausingIn", formatTime(clamped * 60));
   el("sleep-off").hidden = false;
   el("sleep-presets").hidden = true;
   toggleMenu(false);
@@ -588,7 +620,7 @@ el("sleep-custom-min").addEventListener("keydown", (e) => {
 el("sleep-off").addEventListener("click", async () => {
   el("sleep-off").hidden = true;
   el("sleep-presets").hidden = false;
-  el("sleep-remaining").textContent = "No timer running";
+  el("sleep-remaining").textContent = t("sleepNone");
   await ext.alarms.clear("sleep-timer");
   refreshSleep();
 });
@@ -641,7 +673,7 @@ function renderQueue(queue) {
     list.textContent = "";
     const note = document.createElement("div");
     note.id = "queue-note";
-    note.textContent = "Loading…";
+    note.textContent = t("loading");
     list.append(note);
     lastSelectedIndex = null;
     return;
@@ -654,10 +686,10 @@ function renderQueue(queue) {
     // A pending play means the queue is rebuilding, not gone. Idle: the
     // radio hint would point at a disabled menu.
     note.textContent = queueSwitchFallback
-      ? "Loading…"
+      ? t("loading")
       : playerView.classList.contains("idle")
-        ? "Nothing in the queue."
-        : "Nothing in the queue. Try Start radio from the ⋯ menu.";
+        ? t("queueEmpty")
+        : t("queueEmptyHint");
     list.append(note);
     lastSelectedIndex = null;
     return;
@@ -671,7 +703,7 @@ function renderQueue(queue) {
       automixHeaderAdded = true;
       const header = document.createElement("div");
       header.className = "queue-subheader";
-      header.textContent = "Autoplay";
+      header.textContent = t("autoplay");
       list.append(header);
     }
     const row = document.createElement("div");
@@ -702,10 +734,10 @@ function renderQueue(queue) {
       const actions = document.createElement("div");
       actions.className = "qactions";
       for (const [title, icon, command, toast, setting] of [
-        ["Play next", "#i-play-next", "queuePlayNext", "Song will play next", "rowPlayNext"],
-        ["Add to queue", "#i-add-to-queue", "queueAddToQueue", "Added to queue", "rowAddToQueue"],
+        [t("playNext"), "#i-play-next", "queuePlayNext", t("rowWillPlayNext"), "rowPlayNext"],
+        [t("addToQueue"), "#i-add-to-queue", "queueAddToQueue", t("rowAddedToQueue"), "rowAddToQueue"],
         // Remove has no toggle: without it a queue row loses its only way out.
-        ["Remove from queue", "#i-remove", "queueRemove", null, null],
+        [t("removeFromQueue"), "#i-remove", "queueRemove", null, null],
       ]) {
         if (setting && settings[setting] === false) continue;
         const button = document.createElement("button");
@@ -887,7 +919,7 @@ function applySettings() {
   }
   el("set-status-dot").classList.toggle("on", settings.statusDot !== false);
   document.body.classList.toggle("compact", settings.compact === true);
-  el("compact-toggle").title = settings.compact === true ? "Expand" : "Compact mode";
+  el("compact-toggle").title = t(settings.compact === true ? "expand" : "compactMode");
   el("set-like").classList.toggle("on", settings.showLike !== false);
   el("like").hidden = settings.showLike === false;
   el("set-dislike").classList.toggle("on", settings.showDislike !== false);
@@ -958,7 +990,7 @@ for (const def of [...ACCENTS, { name: "auto" }]) {
   const swatch = document.createElement("button");
   swatch.className = "accent-swatch";
   swatch.dataset.accent = def.name;
-  swatch.title = def.name === "auto" ? "auto (from album art)" : def.name;
+  swatch.title = t(`accent${def.name[0].toUpperCase()}${def.name.slice(1)}`);
   swatch.addEventListener("click", () => {
     settings.accent = def.name;
     // "auto": the settings write wakes the content script, which extracts
@@ -1083,7 +1115,7 @@ function comboFromEvent(e) {
 function beginShortcutCapture(name, chip) {
   shortcutCapture?.();
   chip.classList.add("capturing");
-  chip.textContent = "Press keys…";
+  chip.textContent = t("shortcutPressKeys");
   const onKey = async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1109,10 +1141,10 @@ function beginShortcutCapture(name, chip) {
       try {
         await ext.commands.update({ name, shortcut: combo });
       } catch {
-        showToast(`${combo} isn’t allowed as a shortcut. Try Ctrl/Alt (+Shift) + a key.`);
+        showToast(t("shortcutNotAllowed", combo));
       }
     } else {
-      showToast("Shortcuts need Ctrl, Alt or Command plus a regular key.");
+      showToast(t("shortcutNeedsModifier"));
     }
     cleanup();
     renderShortcuts();
@@ -1145,12 +1177,12 @@ async function renderShortcuts() {
     // Browsers add reserved commands (no description) on their own,
     // e.g. Chrome's _execute_action.
     label.textContent =
-      command.name === "_execute_action" ? "Open the popup" : command.description || command.name;
+      command.name === "_execute_action" ? t("shortcutOpenPopup") : command.description || command.name;
     const chip = document.createElement("button");
     chip.className = "shortcut-chip";
-    chip.textContent = command.shortcut || "Not set";
+    chip.textContent = command.shortcut || t("shortcutNotSet");
     if (canEditShortcuts) {
-      chip.title = "Click, then press a combination. Backspace clears, Esc cancels.";
+      chip.title = t("shortcutChipHint");
       chip.addEventListener("click", () => beginShortcutCapture(command.name, chip));
     } else {
       chip.disabled = true;
@@ -1161,7 +1193,7 @@ async function renderShortcuts() {
   if (canEditShortcuts) {
     const reset = document.createElement("button");
     reset.className = "shortcut-manage";
-    reset.textContent = "Reset shortcuts";
+    reset.textContent = t("shortcutReset");
     reset.addEventListener("click", async () => {
       for (const command of commandList) {
         try {
@@ -1177,7 +1209,7 @@ async function renderShortcuts() {
     // Chrome: rebinding only works on its own settings page.
     const note = document.createElement("button");
     note.className = "shortcut-manage";
-    note.textContent = "Edit in browser shortcut settings";
+    note.textContent = t("shortcutEditInBrowser");
     note.addEventListener("click", () => {
       ext.tabs.create({ url: "chrome://extensions/shortcuts" });
       window.close();
@@ -1196,7 +1228,7 @@ function updateAutoplayToggle(value) {
   const button = el("autoplay-toggle");
   button.hidden = lastAutoplay === null || activeTab !== "queue";
   button.classList.toggle("on", lastAutoplay === true);
-  button.title = lastAutoplay ? "Autoplay is on" : "Autoplay is off";
+  button.title = t(lastAutoplay ? "autoplayOn" : "autoplayOff");
 }
 
 el("autoplay-toggle").addEventListener("click", () => {
@@ -1254,22 +1286,22 @@ function historyNote(text) {
 
 function requestHistory() {
   if (historyLoaded || !port) return;
-  historyNote("Loading history…");
+  historyNote(t("historyLoading"));
   port.postMessage({ type: "getHistory" });
 }
 
 function renderHistory(history) {
   historyLoaded = Boolean(history);
   if (!history) {
-    historyNote("Couldn’t load history from YouTube Music.");
+    historyNote(t("historyFailed"));
     return;
   }
   if (history.signedOut) {
-    historyNote("Sign in to YouTube Music to see your history.");
+    historyNote(t("historySignIn"));
     return;
   }
   if (!history.sections.length) {
-    historyNote("No history yet. Songs you play will show up here.");
+    historyNote(t("historyEmpty"));
     return;
   }
   const list = el("history-list");
@@ -1292,7 +1324,7 @@ let homeLoadingMore = false;
 
 const homeMore = document.createElement("div");
 homeMore.className = "list-note";
-homeMore.textContent = "Loading more…";
+homeMore.textContent = t("loadingMore");
 
 // Sentinel at the tail: scrolling it into view fetches the next shelves.
 new IntersectionObserver(
@@ -1309,7 +1341,7 @@ function requestHome() {
   if (homeLoaded || !port) return;
   homeNextToken = null;
   homeLoadingMore = false;
-  noteInto(el("home-list"), "Loading recommendations…");
+  noteInto(el("home-list"), t("homeLoading"));
   port.postMessage({ type: "getHome" });
 }
 
@@ -1327,8 +1359,8 @@ function renderHome(home, append) {
     noteInto(
       list,
       home?.signedOut
-        ? "Sign in to YouTube Music to see recommendations."
-        : "Couldn’t load recommendations from YouTube Music."
+        ? t("homeSignIn")
+        : t("homeFailed")
     );
     return;
   }
@@ -1348,7 +1380,7 @@ function renderHome(home, append) {
   // Re-appending the sentinel also re-arms the observer when a page brought
   // nothing renderable and the next one still might.
   if (homeNextToken) list.append(homeMore);
-  else if (!list.children.length) noteInto(list, "No recommendations right now.");
+  else if (!list.children.length) noteInto(list, t("homeEmpty"));
 }
 
 // Track row shared by the History, Home, Search and Playlists tabs: click plays
@@ -1402,7 +1434,7 @@ function buildTrackRow(item, { onRemove, number } = {}) {
     };
     // Radio leads: it plays, the other two only queue. The ⋯ menu can only
     // radio the PLAYING song - this seeds a station from any row.
-    if (settings.rowRadio !== false) actionButton("Start radio", "#i-radio", () => {
+    if (settings.rowRadio !== false) actionButton(t("startRadio"), "#i-radio", () => {
       if (row.classList.contains("loading")) return;
       setPendingPlay(row, "loading");
       showPendingTrack(item);
@@ -1419,8 +1451,8 @@ function buildTrackRow(item, { onRemove, number } = {}) {
       armQueueSwitch(item.videoId);
     });
     for (const [title, icon, command, toast, setting] of [
-      ["Play next", "#i-play-next", "queueVideoNext", "Song will play next", "rowPlayNext"],
-      ["Add to queue", "#i-add-to-queue", "queueVideoLast", "Added to queue", "rowAddToQueue"],
+      [t("playNext"), "#i-play-next", "queueVideoNext", t("rowWillPlayNext"), "rowPlayNext"],
+      [t("addToQueue"), "#i-add-to-queue", "queueVideoLast", t("rowAddedToQueue"), "rowAddToQueue"],
     ]) {
       if (settings[setting] === false) continue;
       actionButton(title, icon, () => {
@@ -1433,7 +1465,7 @@ function buildTrackRow(item, { onRemove, number } = {}) {
       // Destructive, so it takes two clicks: the first arms the button
       // (turns red), the second within 2.5s actually removes.
       const remove = document.createElement("button");
-      remove.title = "Remove from playlist";
+      remove.title = t("removeFromPlaylist");
       const removeSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       const removeUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
       removeUse.setAttribute("href", "#i-remove");
@@ -1444,10 +1476,10 @@ function buildTrackRow(item, { onRemove, number } = {}) {
         e.stopPropagation();
         if (!remove.classList.contains("confirm")) {
           remove.classList.add("confirm");
-          remove.title = "Click again to remove";
+          remove.title = t("removeConfirm");
           confirmTimer = setTimeout(() => {
             remove.classList.remove("confirm");
-            remove.title = "Remove from playlist";
+            remove.title = t("removeFromPlaylist");
           }, 2500);
           return;
         }
@@ -1495,7 +1527,7 @@ function runSearch() {
     return;
   }
   if (!port) return;
-  searchNote("Searching…");
+  searchNote(t("searching"));
   // The old query's pills would repaint stale results over the note.
   searchResultsData = null;
   el("search-filters").hidden = true;
@@ -1522,12 +1554,12 @@ function renderSearchResults(msg) {
   searchResultsData = msg.results ?? null;
   if (!msg.results) {
     el("search-filters").hidden = true;
-    searchNote("Search failed. Try again.");
+    searchNote(t("searchFailed"));
     return;
   }
   if (!msg.results.songs.length && !msg.results.videos.length) {
     el("search-filters").hidden = true;
-    searchNote("Nothing found.");
+    searchNote(t("searchEmpty"));
     return;
   }
   // If the selected group came back empty, hop to the one with results.
@@ -1575,7 +1607,7 @@ function requestPlaylists(silent = false) {
   if (!port) return;
   if (!silent) {
     if (playlistsLoaded) return;
-    noteInto(el("playlists-list"), "Loading playlists…");
+    noteInto(el("playlists-list"), t("playlistsLoading"));
   }
   playlistsNextToken = null;
   playlistsLoadingMore = false;
@@ -1590,7 +1622,7 @@ let playlistsLoadingMore = false;
 
 const playlistsMore = document.createElement("div");
 playlistsMore.className = "list-note";
-playlistsMore.textContent = "Loading more…";
+playlistsMore.textContent = t("loadingMore");
 
 new IntersectionObserver(
   (entries) => {
@@ -1635,17 +1667,17 @@ function renderPlaylists(result, append = false) {
     noteInto(
       list,
       result?.error
-        ? "Couldn’t load playlists from YouTube Music. (request failed)"
-        : "Couldn’t load playlists from YouTube Music. (timed out)"
+        ? t("playlistsFailedRequest")
+        : t("playlistsFailedTimeout")
     );
     return;
   }
   if (result.signedOut) {
-    noteInto(list, "Sign in to YouTube Music to see your playlists.");
+    noteInto(list, t("playlistsSignIn"));
     return;
   }
   if (!playlists.length) {
-    noteInto(list, "No playlists in your library yet.");
+    noteInto(list, t("playlistsEmpty"));
     return;
   }
   list.textContent = "";
@@ -1674,7 +1706,7 @@ function buildPlaylistRow(pl) {
   const actions = document.createElement("div");
   actions.className = "qactions";
   const shuffle = document.createElement("button");
-  shuffle.title = "Shuffle";
+  shuffle.title = t("shuffle");
   const shuffleSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   const shuffleUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
   shuffleUse.setAttribute("href", "#i-shuffle");
@@ -1692,7 +1724,7 @@ function buildPlaylistRow(pl) {
   // Visible drill-in zone; the row itself plays (play-first model).
   const open = document.createElement("button");
   open.className = "pl-open";
-  open.title = "Open playlist";
+  open.title = t("openPlaylist");
   const chevSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   const chevUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
   chevUse.setAttribute("href", "#i-chevron-right");
@@ -1707,9 +1739,9 @@ function buildPlaylistRow(pl) {
   row.addEventListener("click", () => {
     // Armed capture bar repurposes the click: file the song, don't play.
     if (captureArmed) {
-      if (requireSignIn("save to playlists")) return;
+      if (requireSignIn("signInPlaylists")) return;
       if (!lastState?.videoId) {
-        showToast("Nothing is playing to add.");
+        showToast(t("nothingToAdd"));
         return;
       }
       port?.postMessage({
@@ -1742,13 +1774,13 @@ function updateCaptureBar() {
   if (bar.hidden) return;
   bar.querySelector("use").setAttribute("href", captureArmed ? "#i-x" : "#i-plus");
   bar.querySelector(".ctitle").textContent = captureArmed
-    ? "Choose a playlist below"
-    : "Save current song";
+    ? t("captureChoose")
+    : t("captureSave");
   // The song name truncates; the tail (artist / cancel hint) always shows.
   const song = bar.querySelector(".csub-main");
   const side = bar.querySelector(".csub-side");
   if (captureArmed) {
-    song.textContent = "or click here to cancel";
+    song.textContent = t("captureCancel");
     side.textContent = "";
   } else {
     song.textContent = lastState.title;
@@ -1775,7 +1807,7 @@ let playlistLoadingMore = false;
 
 const playlistMore = document.createElement("div");
 playlistMore.className = "list-note";
-playlistMore.textContent = "Loading more…";
+playlistMore.textContent = t("loadingMore");
 
 new IntersectionObserver(
   (entries) => {
@@ -1802,7 +1834,7 @@ function openPlaylist(pl) {
   el("playlist-detail").hidden = false;
   el("playlist-title").textContent = pl.title;
   updateCaptureBar();
-  noteInto(el("playlist-tracks"), "Loading tracks…");
+  noteInto(el("playlist-tracks"), t("tracksLoading"));
   port?.postMessage({ type: "getPlaylistTracks", browseId: pl.id });
 }
 
@@ -1821,10 +1853,10 @@ for (const [id, shuffle] of [
 // Queue the whole thing without disturbing what is playing - the counterpart
 // to Play/Shuffle, which replace the queue. Optimistic toast like the row
 // actions; a failed insert answers with its own notice.
-function wireBarQueueing(prefix, noun, source) {
+function wireBarQueueing(prefix, source) {
   for (const [id, command, toast] of [
-    [`${prefix}-next`, "queuePlaylistNext", `${noun} will play next`],
-    [`${prefix}-queue`, "queuePlaylistLast", `${noun} added to queue`],
+    [`${prefix}-next`, "queuePlaylistNext", t(`${prefix}WillPlayNext`)],
+    [`${prefix}-queue`, "queuePlaylistLast", t(`${prefix}AddedToQueue`)],
   ]) {
     el(id).addEventListener("click", () => {
       const target = source();
@@ -1835,7 +1867,7 @@ function wireBarQueueing(prefix, noun, source) {
   }
 }
 
-wireBarQueueing("playlist", "Playlist", () =>
+wireBarQueueing("playlist", () =>
   // Playlists page, so the loaded rows are not the whole list - the id has to
   // carry it, and there is no half-queued fallback worth offering.
   playlistDetailId ? { playlistId: playlistDetailId } : null
@@ -1848,13 +1880,13 @@ function renderPlaylistTracks(msg) {
   if (!msg.tracks) {
     // A failed continuation just stops paging; keep what's rendered.
     if (msg.append) playlistMore.remove();
-    else noteInto(list, "Couldn’t load this playlist.");
+    else noteInto(list, t("playlistFailed"));
     return;
   }
   if (!msg.append) {
     list.textContent = "";
     if (!msg.tracks.length && !msg.continuation) {
-      noteInto(list, "This playlist is empty.");
+      noteInto(list, t("playlistEmpty"));
       playlistNextToken = null;
       return;
     }
@@ -1931,7 +1963,7 @@ function openAlbum(url, fallbackTitle = "") {
   // the words arrive together. Titling the header (or the bar) early meant
   // the name sat next to "Loading album…" claiming to be loaded, and put it
   // briefly in both places at once, which read as a flash.
-  el("album-title").textContent = fallbackTitle || "Album";
+  el("album-title").textContent = fallbackTitle || t("album");
   el("album-name").textContent = "";
   el("album-artist").textContent = "";
   el("album-meta").textContent = "";
@@ -1986,10 +2018,10 @@ function renderAlbum(msg) {
   if (!album) {
     albumFailed = true;
     el("album-head").hidden = true;
-    noteInto(list, "Couldn’t load this album.");
+    noteInto(list, t("albumFailed"));
     return;
   }
-  el("album-title").textContent = album.title || "Album";
+  el("album-title").textContent = album.title || t("album");
   el("album-name").textContent = album.title;
   el("album-artist").textContent = album.artist;
   // YTM writes both of these in the user's language; shown verbatim, joined
@@ -2000,7 +2032,7 @@ function renderAlbum(msg) {
   albumVideoIds = album.tracks.map((track) => track.videoId).filter(Boolean);
   setAlbumActionsEnabled(Boolean(albumPlaylistId));
   if (!album.tracks.length) {
-    noteInto(list, "No tracks in this album.");
+    noteInto(list, t("albumEmpty"));
     return;
   }
   list.textContent = "";
@@ -2013,7 +2045,7 @@ function setAlbumActionsEnabled(on) {
   }
 }
 
-wireBarQueueing("album", "Album", () =>
+wireBarQueueing("album", () =>
   albumPlaylistId ? { playlistId: albumPlaylistId, videoIds: albumVideoIds } : null
 );
 
@@ -2099,11 +2131,10 @@ function renderLyricsOptIn() {
   pane.textContent = "";
   const note = document.createElement("div");
   note.className = "list-note";
-  note.textContent =
-    "Lyrics are looked up on lrclib.net using the track’s title and artist.";
+  note.textContent = t("lyricsOptIn");
   const button = document.createElement("button");
   button.id = "lyrics-enable";
-  button.textContent = "Enable lyrics";
+  button.textContent = t("lyricsEnable");
   button.addEventListener("click", () => setLyricsEnabled(true));
   pane.append(note, button);
 }
@@ -2149,11 +2180,11 @@ function showLyricsEntry(entry) {
   pane.textContent = "";
   lyricsLines = null;
   if (entry.error) {
-    lyricsNote("Couldn’t reach the lyrics service. It’ll retry on the next play.");
+    lyricsNote(t("lyricsUnreachable"));
     return;
   }
   if (entry.instrumental) {
-    lyricsNote("Instrumental track.");
+    lyricsNote(t("lyricsInstrumental"));
     return;
   }
   if (entry.synced) {
@@ -2180,7 +2211,7 @@ function showLyricsEntry(entry) {
     pane.scrollTop = 0;
     return;
   }
-  lyricsNote("No lyrics found for this track.");
+  lyricsNote(t("lyricsNotFound"));
 }
 
 function updateLyricsHighlight(position, force = false) {
@@ -2217,13 +2248,13 @@ async function renderLyrics() {
   if (!state?.available || !state.title) {
     lyricsKey = null;
     lyricsLines = null;
-    lyricsNote("Nothing is playing.");
+    lyricsNote(t("lyricsNothingPlaying"));
     return;
   }
   if (!lyricsEligible(state)) {
     lyricsKey = null;
     lyricsLines = null;
-    lyricsNote("Lyrics are available for official songs only.");
+    lyricsNote(t("lyricsSongsOnly"));
     return;
   }
   if (!(await getLyricsEnabled())) {
@@ -2235,7 +2266,7 @@ async function renderLyrics() {
   const key = state.videoId || `${state.title}|${state.artist}`;
   if (key === lyricsKey) return; // pane already reflects this track
   lyricsKey = key;
-  lyricsNote("Looking up lyrics…");
+  lyricsNote(t("lyricsLooking"));
   const fetchId = ++lyricsFetchId;
   // The videoId flips before the bar's title and duration do. A lookup sent
   // in that window asks LRCLIB about the previous track and the background
@@ -2361,8 +2392,8 @@ function offerToOpenTab(tabId, { reload = false } = {}) {
   sleepingTabId = tabId;
   reloadOnOpen = reload;
   if (!reload) {
-    el("empty-title").textContent = "Your YouTube Music tab is asleep";
-    el("empty-sub").textContent = "The browser only loads it once you open it.";
+    el("empty-title").textContent = t("emptyAsleepTitle");
+    el("empty-sub").textContent = t("emptyAsleepSub");
   }
   el("empty-open").hidden = false;
   showEmpty();
@@ -2382,15 +2413,15 @@ el("empty-open").addEventListener("click", async () => {
 
 function showWaking() {
   el("empty-open").hidden = true;
-  el("empty-title").textContent = "Waking YouTube Music\u2026";
-  el("empty-sub").textContent = "Your tab was unloaded, giving it a nudge.";
+  el("empty-title").textContent = t("emptyWakingTitle");
+  el("empty-sub").textContent = t("emptyWakingSub");
   showEmpty();
 }
 
 function resetEmptyCopy() {
   el("empty-open").hidden = true;
-  el("empty-title").textContent = "YouTube Music isn\u2019t open";
-  el("empty-sub").textContent = "Open it in a tab and this popup becomes your player.";
+  el("empty-title").textContent = t("emptyTitle");
+  el("empty-sub").textContent = t("emptySub");
 }
 
 function tryTab(candidates, index) {
@@ -2433,9 +2464,8 @@ function tryTab(candidates, index) {
     // it and hand over the button, which reloads that tab.
     const orphan = candidates.find((candidate) => !candidate.discarded);
     if (orphan) {
-      el("empty-title").textContent = "Reload the YouTube Music tab";
-      el("empty-sub").textContent =
-        "The tab is open but can’t hear the extension - this happens after an update. One reload reconnects it.";
+      el("empty-title").textContent = t("emptyReloadTitle");
+      el("empty-sub").textContent = t("emptyReloadSub");
       offerToOpenTab(orphan.id, { reload: true });
       return;
     }
@@ -2482,17 +2512,17 @@ function tryTab(candidates, index) {
           setPendingPlay(null);
           clearTimeout(queueSwitchFallback);
           queueSwitchFallback = null;
-          showToast("Couldn’t start that playlist.");
+          showToast(t("playlistStartFailed"));
         }
       }
     }
     else if (msg.type === "addToPlaylistResult") {
       showToast(
         msg.result === "added"
-          ? `Added to ${msg.name}`
+          ? t("playlistAdded", msg.name)
           : msg.result === "duplicate"
-            ? `Already in ${msg.name}`
-            : "Couldn’t add to that playlist.",
+            ? t("playlistAlready", msg.name)
+            : t("playlistAddFailed"),
         msg.result === "added" ? "success" : "notice"
       );
       if (msg.result === "added") {
@@ -2521,7 +2551,7 @@ function tryTab(candidates, index) {
     }
     else if (msg.type === "removeFromPlaylistResult") {
       if (msg.ok) {
-        showToast(`Removed from ${msg.name}`, "success");
+        showToast(t("playlistRemoved", msg.name), "success");
         // Drop the row in place - a refetch would reset infinite scroll.
         if (playlistDetailId === msg.playlistId) {
           el("playlist-tracks")
@@ -2530,7 +2560,7 @@ function tryTab(candidates, index) {
         }
         requestPlaylists(true); // keep list track counts honest
       } else {
-        showToast("Couldn’t remove that song.");
+        showToast(t("playlistRemoveFailed"));
       }
     }
     else if (msg.type === "queueImported") {
@@ -2538,14 +2568,14 @@ function tryTab(candidates, index) {
       // - saying so beats a silently short queue.
       showToast(
         msg.count === msg.asked
-          ? `Queue replaced - ${msg.count} tracks.`
-          : `Queue replaced - ${msg.count} of ${msg.asked}, the rest are unavailable.`,
+          ? tn("queueReplaced", msg.count)
+          : t("queueReplacedPartial", msg.count, msg.asked),
         msg.count === msg.asked ? "success" : "notice"
       );
     } else if (msg.type === "notice") {
       // Errors end whatever play was pending.
       setPendingPlay(null);
-      showToast(msg.text);
+      showToast(t(msg.key));
     }
   });
   port.postMessage({ type: "getQueue" });
