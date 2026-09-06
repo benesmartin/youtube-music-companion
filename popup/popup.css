@@ -1029,6 +1029,45 @@ body.compact #settings-pane {
   text-overflow: ellipsis;
 }
 
+.tab-order-row.off .tab-order-name {
+  color: var(--text-dim);
+}
+
+.tab-order-row .pick {
+  width: 24px;
+  height: 22px;
+  flex: none;
+  color: var(--text-dim);
+}
+
+.tab-order-row .pick.on {
+  color: var(--accent);
+}
+
+.tab-order-row .pick:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.tab-order-row .pick:disabled {
+  opacity: 0.3;
+}
+
+.tab-order-row .pick svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.tab-order-row .switch {
+  margin: 0 4px;
+}
+
+.tab-order-row .switch:disabled {
+  opacity: 0.4;
+}
+
 .tab-order-row .move {
   width: 24px;
   height: 22px;

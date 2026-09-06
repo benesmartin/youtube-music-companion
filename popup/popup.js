@@ -847,6 +847,8 @@ const DEFAULT_SETTINGS = {
   rowAddToQueue: true,
   rowRadio: true,
   tabOrder: ["queue", "history", "lyrics", "search", "playlists", "home"],
+  hiddenTabs: [],
+  defaultTab: "queue",
 };
 // Named hues with per-theme variants (bright on dark, deep on light).
 const ACCENTS = [
@@ -987,11 +989,15 @@ async function loadSettings() {
   updateLyricsTab();
   applySettings();
   renderTabOrder();
+  // The markup starts on Queue; open on the chosen tab instead. Only from
+  // the untouched start - a click that already landed wins.
+  if (activeTab === "queue" && homeTab() !== "queue") switchTab(homeTab());
 }
 
-// ---- tab order ----
-// Persisted as an array of tab ids; the strip is re-sorted in place, so the
-// tabs keep their listeners and the lyrics tab keeps its hidden flag.
+// ---- tab order, hidden tabs, default tab ----
+// Order is an array of tab ids; the strip is re-sorted in place, so the tabs
+// keep their listeners. Hidden ids are a second array; lyrics is hidden by
+// its own opt-in as well. The default tab is whichever opens with the popup.
 const TAB_IDS = DEFAULT_SETTINGS.tabOrder;
 
 // Pure: unknown ids and repeats drop out, tabs missing from a stored order
@@ -1003,16 +1009,52 @@ function normalizeTabOrder(order) {
   return [...known, ...TAB_IDS.filter((id) => !known.includes(id))];
 }
 
+function tabVisible(id) {
+  if (id === "lyrics" && !lyricsEnabled) return false;
+  return !settings.hiddenTabs.includes(id);
+}
+
+function visibleTabs() {
+  return settings.tabOrder.filter(tabVisible);
+}
+
+// The tab the popup opens with, and the fallback whenever a tab goes away
+// under the user: the chosen default if it is visible, else the first one.
+function homeTab() {
+  const visible = visibleTabs();
+  return visible.includes(settings.defaultTab) ? settings.defaultTab : (visible[0] ?? "queue");
+}
+
 function applyTabOrder() {
   settings.tabOrder = normalizeTabOrder(settings.tabOrder);
+  if (!Array.isArray(settings.hiddenTabs)) settings.hiddenTabs = [];
   const strip = el("tabs");
   for (const id of settings.tabOrder) {
-    strip.insertBefore(strip.querySelector(`.tab[data-tab="${id}"]`), el("autoplay-toggle"));
+    const tab = strip.querySelector(`.tab[data-tab="${id}"]`);
+    tab.hidden = !tabVisible(id);
+    strip.insertBefore(tab, el("autoplay-toggle"));
   }
 }
 
 function setTabOrder(order) {
   settings.tabOrder = normalizeTabOrder(order);
+  saveSettings();
+  renderTabOrder();
+}
+
+function setTabHidden(id, hidden) {
+  const hiddenTabs = settings.hiddenTabs.filter((other) => other !== id);
+  if (hidden) hiddenTabs.push(id);
+  settings.hiddenTabs = hiddenTabs;
+  // Hiding the default hands the role to the first visible tab, visibly, so
+  // the dot never sits on a row that is switched off.
+  if (hidden && settings.defaultTab === id) settings.defaultTab = homeTab();
+  saveSettings();
+  renderTabOrder();
+}
+
+function setDefaultTab(id) {
+  settings.defaultTab = id;
   saveSettings();
   renderTabOrder();
 }
@@ -1035,6 +1077,28 @@ function renderTabOrder() {
     name.className = "tab-order-name";
     name.textContent = document.querySelector(`.tab[data-tab="${id}"]`).textContent;
     row.append(grip, name);
+    const visible = tabVisible(id);
+    row.classList.toggle("off", !visible);
+    const pick = document.createElement("button");
+    pick.className = "pick";
+    pick.classList.toggle("on", visible && homeTab() === id);
+    pick.title = t("tabOpensFirst");
+    pick.disabled = !visible;
+    const pickSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const pickUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    pickUse.setAttribute("href", visible && homeTab() === id ? "#i-radio-on" : "#i-radio-off");
+    pickSvg.append(pickUse);
+    pick.append(pickSvg);
+    pick.addEventListener("click", () => setDefaultTab(id));
+    const show = document.createElement("button");
+    show.className = "switch";
+    show.setAttribute("role", "switch");
+    show.classList.toggle("on", visible);
+    show.title = t("tabShow");
+    // The last visible tab stays; lyrics is governed by its own opt-in.
+    show.disabled = (visible && visibleTabs().length === 1) || (id === "lyrics" && !lyricsEnabled);
+    show.addEventListener("click", () => setTabHidden(id, visible));
+    row.append(pick, show);
     for (const [icon, delta, title] of [
       ["#i-chevron-up", -1, t("moveUp")],
       ["#i-chevron-down", 1, t("moveDown")],
@@ -1069,11 +1133,19 @@ function renderTabOrder() {
     });
     wrap.append(row);
   });
-  if (order.join() !== TAB_IDS.join()) {
+  const untouched =
+    order.join() === TAB_IDS.join() &&
+    !settings.hiddenTabs.length &&
+    settings.defaultTab === DEFAULT_SETTINGS.defaultTab;
+  if (!untouched) {
     const reset = document.createElement("button");
     reset.className = "shortcut-manage";
     reset.textContent = t("tabsReset");
-    reset.addEventListener("click", () => setTabOrder(TAB_IDS));
+    reset.addEventListener("click", () => {
+      settings.hiddenTabs = [];
+      settings.defaultTab = DEFAULT_SETTINGS.defaultTab;
+      setTabOrder(TAB_IDS);
+    });
     wrap.append(reset);
   }
 }
@@ -1173,7 +1245,7 @@ el("settings-open").addEventListener("click", () => {
   if (activeTab === "settings") {
     // The remembered tab may have been disabled meanwhile (lyrics opt-out).
     const chip = document.querySelector(`.tab[data-tab="${settingsReturnTab}"]`);
-    switchTab(chip && !chip.hidden ? settingsReturnTab : "queue");
+    switchTab(chip && !chip.hidden ? settingsReturnTab : homeTab());
   } else {
     settingsReturnTab = activeTab;
     switchTab("settings");
@@ -2252,13 +2324,14 @@ function setLyricsEnabled(value) {
     // session-only preference
   }
   lyricsKey = null; // force the pane to re-evaluate (fetch or opt-in prompt)
-  if (!value && activeTab === "lyrics") switchTab("queue");
+  if (!value && activeTab === "lyrics") switchTab(homeTab());
   else if (activeTab === "lyrics") renderLyrics();
 }
 
 // Lyrics off → the tab (and its size control) disappears entirely.
 function updateLyricsTab() {
-  document.querySelector('.tab[data-tab="lyrics"]').hidden = !lyricsEnabled;
+  applyTabOrder();
+  renderTabOrder(); // the lyrics row locks off while lyrics are off
   el("lyrics-size-row").hidden = !lyricsEnabled;
 }
 
@@ -2434,7 +2507,8 @@ function doQueueSwitch() {
   queueSwitchFallback = null;
   queueSwitchVideoId = null;
   queueSwitchLoaded = false;
-  switchTab("queue");
+  // A hidden queue tab stays hidden - the play still happened.
+  if (tabVisible("queue")) switchTab("queue");
 }
 
 let activeTab = "queue";
