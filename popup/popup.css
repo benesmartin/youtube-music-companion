@@ -1005,7 +1005,6 @@ body.compact #settings-pane {
   align-items: center;
   gap: 8px;
   padding: 3px 0;
-  font-size: 12.5px;
   cursor: grab;
 }
 
@@ -1021,15 +1020,7 @@ body.compact #settings-pane {
   stroke: none;
 }
 
-.tab-order-name {
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.tab-order-row.off .tab-order-name {
+.tab-order-row.off .setting-name {
   color: var(--text-dim);
 }
 

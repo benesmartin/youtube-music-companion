@@ -1073,20 +1073,33 @@ function renderTabOrder() {
     const gripUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
     gripUse.setAttribute("href", "#i-grip");
     grip.append(gripUse);
-    const name = document.createElement("span");
-    name.className = "tab-order-name";
-    name.textContent = document.querySelector(`.tab[data-tab="${id}"]`).textContent;
-    row.append(grip, name);
     const visible = tabVisible(id);
+    const isHome = visible && homeTab() === id;
+    // Same shape as every other setting row: white name, dim sub. The sub
+    // only exists on the starting tab, so it explains the dot right where
+    // the dot is, and moves with it.
+    const text = document.createElement("div");
+    text.className = "setting-text";
+    const name = document.createElement("div");
+    name.className = "setting-name";
+    name.textContent = document.querySelector(`.tab[data-tab="${id}"]`).textContent;
+    text.append(name);
+    if (isHome) {
+      const sub = document.createElement("div");
+      sub.className = "setting-sub";
+      sub.textContent = t("tabStartingSub");
+      text.append(sub);
+    }
+    row.append(grip, text);
     row.classList.toggle("off", !visible);
     const pick = document.createElement("button");
     pick.className = "pick";
-    pick.classList.toggle("on", visible && homeTab() === id);
-    pick.title = t("tabOpensFirst");
+    pick.classList.toggle("on", isHome);
+    pick.title = t("tabSetStarting");
     pick.disabled = !visible;
     const pickSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     const pickUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
-    pickUse.setAttribute("href", visible && homeTab() === id ? "#i-radio-on" : "#i-radio-off");
+    pickUse.setAttribute("href", isHome ? "#i-radio-on" : "#i-radio-off");
     pickSvg.append(pickUse);
     pick.append(pickSvg);
     pick.addEventListener("click", () => setDefaultTab(id));
