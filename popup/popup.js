@@ -64,6 +64,19 @@ for (const node of document.querySelectorAll("[data-i18n-placeholder]")) {
 // The tab strip's bold ghost (see .tab::after) needs the translated label.
 for (const tab of document.querySelectorAll(".tab")) tab.dataset.label = tab.textContent;
 
+// Whatever an ellipsis clipped shows whole on hover. One delegated listener
+// rather than a title per element: rows are rebuilt on every queue push and
+// only the hovered one needs measuring. The player card measures its own
+// title and album on each state push, so those are not in the list.
+const CLIPPED =
+  ".tab, .qtitle, .qartist, .shortcut-name, #sleep-title, #sleep-remaining, " +
+  "#album-title, #playlist-title, #album-artist, #album-meta";
+document.addEventListener("pointerover", (e) => {
+  const node = e.target.closest?.(CLIPPED);
+  if (!node) return;
+  node.title = node.scrollWidth > node.clientWidth ? node.textContent : "";
+});
+
 const playerView = el("player");
 const emptyView = el("empty");
 
