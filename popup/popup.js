@@ -1139,7 +1139,7 @@ function renderTabOrder() {
     settings.defaultTab === DEFAULT_SETTINGS.defaultTab;
   if (!untouched) {
     const reset = document.createElement("button");
-    reset.className = "shortcut-manage";
+    reset.className = "settings-manage";
     reset.textContent = t("tabsReset");
     reset.addEventListener("click", () => {
       settings.hiddenTabs = [];
@@ -1156,7 +1156,7 @@ el("tab-order").addEventListener("dragover", (e) => {
   if (!dragging) return;
   e.preventDefault();
   const after = dragRowAfter(wrap, e.clientY, ".tab-order-row:not(.dragging)");
-  if (after === null) wrap.insertBefore(dragging, wrap.querySelector(".shortcut-manage"));
+  if (after === null) wrap.insertBefore(dragging, wrap.querySelector(".settings-manage"));
   else if (after !== dragging) wrap.insertBefore(dragging, after);
 });
 
@@ -1366,7 +1366,7 @@ async function renderShortcuts() {
   }
   if (canEditShortcuts) {
     const reset = document.createElement("button");
-    reset.className = "shortcut-manage";
+    reset.className = "settings-manage";
     reset.textContent = t("shortcutReset");
     reset.addEventListener("click", async () => {
       for (const command of commandList) {
@@ -1382,7 +1382,7 @@ async function renderShortcuts() {
   } else {
     // Chrome: rebinding only works on its own settings page.
     const note = document.createElement("button");
-    note.className = "shortcut-manage";
+    note.className = "settings-manage";
     note.textContent = t("shortcutEditInBrowser");
     note.addEventListener("click", () => {
       ext.tabs.create({ url: "chrome://extensions/shortcuts" });

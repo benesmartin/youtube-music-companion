@@ -1068,17 +1068,18 @@ body.compact #settings-pane {
   opacity: 0.4;
 }
 
+/* Quiet glyphs, not pills: the row already carries a dot and a switch. */
 .tab-order-row .move {
   width: 24px;
   height: 22px;
   border-radius: 6px;
   flex: none;
   color: var(--text-dim);
-  background: var(--surface);
 }
 
 .tab-order-row .move:hover:not(:disabled) {
   color: var(--text);
+  background: var(--surface-2);
 }
 
 .tab-order-row .move:disabled {
@@ -1137,7 +1138,8 @@ body.compact #settings-pane {
   color: var(--text);
 }
 
-#settings-pane .shortcut-manage {
+/* quiet outlined action under a settings section (reset, edit elsewhere) */
+#settings-pane .settings-manage {
   margin-top: 6px;
   padding: 5px 12px;
   border-radius: 999px;
@@ -1147,7 +1149,7 @@ body.compact #settings-pane {
   align-self: flex-start;
 }
 
-#settings-pane .shortcut-manage:hover {
+#settings-pane .settings-manage:hover {
   color: var(--text);
   background: var(--surface);
 }
