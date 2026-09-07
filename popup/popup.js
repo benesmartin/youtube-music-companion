@@ -5,20 +5,48 @@ const ext = globalThis.browser ?? globalThis.chrome;
 
 const el = (id) => document.getElementById(id);
 
-// Strings live in _locales/<lang>/messages.json. A missing key returns the
-// key itself so an untranslated spot reads as a leak, never as blank UI.
-function t(key, ...subs) {
-  return ext.i18n.getMessage(key, subs.map(String)) || key;
+// Strings live in _locales/<lang>/messages.json. The browser picks the
+// catalog by its UI language; settings.language overrides that with one of
+// LANGUAGES. The override is cached whole in localStorage because the
+// data-i18n scan below runs synchronously at load and storage.local does
+// not - loadSettings keeps the cache in step and reloads the popup once
+// when it changes. Keys the override lacks fall through to the browser's
+// pick, so a partial translation shows English gaps, never blanks.
+const LANGUAGES = [
+  ["system", ""], // label comes from the catalog; the rest are native names
+  ["en", "English"],
+  ["cs", "Čeština"],
+];
+let overrideCatalog = null;
+try {
+  overrideCatalog = JSON.parse(localStorage.getItem("i18n"));
+} catch {
+  // no cache, or storage unavailable - the browser's catalog it is
 }
 
-// Plural pick: `${base}_one` / `_few` / `_many` / `_other` by the UI locale's
+function getMessage(key, subs = []) {
+  const entry = overrideCatalog?.messages?.[key];
+  if (!entry) return ext.i18n.getMessage(key, subs);
+  return entry.message.replace(/\$(\w+)\$/g, (_, name) => {
+    const slot = entry.placeholders?.[name.toLowerCase()]?.content ?? "";
+    return slot.replace(/\$(\d)/, (__, i) => subs[Number(i) - 1] ?? "");
+  });
+}
+
+// A missing key returns the key itself so an untranslated spot reads as a
+// leak, never as blank UI.
+function t(key, ...subs) {
+  return getMessage(key, subs.map(String)) || key;
+}
+
+// Plural pick: `${base}_one` / `_few` / `_many` / `_other` by the locale's
 // CLDR category, falling back to `_other`. Chrome's catalog format has no
 // plural support of its own, so the forms are separate keys.
-const pluralRules = new Intl.PluralRules(ext.i18n.getUILanguage());
+const pluralRules = new Intl.PluralRules(overrideCatalog?.lang ?? ext.i18n.getUILanguage());
 function tn(base, count, ...subs) {
   const form = pluralRules.select(count);
   const key = `${base}_${form}`;
-  return ext.i18n.getMessage(key, [count, ...subs].map(String)) || t(`${base}_other`, count, ...subs);
+  return getMessage(key, [count, ...subs].map(String)) || t(`${base}_other`, count, ...subs);
 }
 
 // Static markup: data-i18n fills textContent, data-i18n-title the title,
@@ -849,6 +877,7 @@ const DEFAULT_SETTINGS = {
   tabOrder: ["queue", "history", "lyrics", "search", "playlists", "home"],
   hiddenTabs: [],
   defaultTab: "queue",
+  language: "system", // "system" or a LANGUAGES code
 };
 // Named hues with per-theme variants (bright on dark, deep on light).
 const ACCENTS = [
@@ -911,8 +940,12 @@ function applySettings() {
       : hslToHex(h, Math.min(Math.max(s, 0.6), 0.95), 0.62);
   }
   document.documentElement.style.setProperty("--accent", accentHex);
-  for (const option of document.querySelectorAll(".theme-opt")) {
+  for (const option of document.querySelectorAll("#theme-options .theme-opt")) {
     option.classList.toggle("active", option.dataset.theme === settings.theme);
+  }
+
+  for (const option of document.querySelectorAll("#language-options .theme-opt")) {
+    option.classList.toggle("active", option.dataset.language === settings.language);
   }
   for (const swatch of document.querySelectorAll(".accent-swatch")) {
     const def = ACCENTS.find((a) => a.name === swatch.dataset.accent);
@@ -992,6 +1025,58 @@ async function loadSettings() {
   // The markup starts on Queue; open on the chosen tab instead. Only from
   // the untouched start - a click that already landed wins.
   if (activeTab === "queue" && homeTab() !== "queue") switchTab(homeTab());
+  // Cache out of step with the setting (first open after a change made
+  // elsewhere, or a cleared cache): rebuild it and start over, once.
+  if ((overrideCatalog?.lang ?? "system") !== settings.language) applyLanguage(settings.language);
+  try {
+    if (sessionStorage.getItem("reopenSettings")) {
+      sessionStorage.removeItem("reopenSettings");
+      switchTab("settings");
+    }
+  } catch {
+    // session storage unavailable - open normally
+  }
+}
+
+// ---- language ----
+// Writes the chosen catalog to the cache and reloads the popup so every
+// string, static and dynamic, comes up in the new language at once. At most
+// one reload per session: a cache that cannot be written must not loop.
+async function applyLanguage(code) {
+  try {
+    if (sessionStorage.getItem("i18nReloaded")) return;
+    if (code === "system") {
+      localStorage.removeItem("i18n");
+    } else {
+      const response = await fetch(ext.runtime.getURL(`_locales/${code}/messages.json`));
+      const messages = await response.json();
+      localStorage.setItem("i18n", JSON.stringify({ lang: code, messages }));
+    }
+    sessionStorage.setItem("i18nReloaded", "1");
+  } catch {
+    return; // keep what is showing; the next open tries again
+  }
+  location.reload();
+}
+
+for (const [code, native] of LANGUAGES) {
+  const option = document.createElement("button");
+  option.className = "theme-opt";
+  option.dataset.language = code;
+  option.textContent = code === "system" ? t("languageBrowser") : native;
+  option.addEventListener("click", () => {
+    if (settings.language === code) return;
+    settings.language = code;
+    saveSettings();
+    try {
+      sessionStorage.removeItem("i18nReloaded");
+      sessionStorage.setItem("reopenSettings", "1");
+    } catch {
+      // the popup comes back on the starting tab instead
+    }
+    applyLanguage(code);
+  });
+  el("language-options").append(option);
 }
 
 // ---- tab order, hidden tabs, default tab ----
@@ -1187,7 +1272,7 @@ for (const def of [...ACCENTS, { name: "auto" }]) {
   el("accent-options").append(swatch);
 }
 
-for (const option of document.querySelectorAll(".theme-opt")) {
+for (const option of document.querySelectorAll("#theme-options .theme-opt")) {
   option.addEventListener("click", () => {
     settings.theme = option.dataset.theme;
     saveSettings();
@@ -1344,6 +1429,16 @@ function beginShortcutCapture(name, chip) {
   window.addEventListener("keydown", onKey, true);
 }
 
+const COMMAND_KEYS = {
+  "play-pause": "cmdPlayPause",
+  "next-track": "cmdNext",
+  "previous-track": "cmdPrevious",
+  "toggle-like": "cmdLike",
+  "toggle-dislike": "cmdDislike",
+  "volume-up": "cmdVolumeUp",
+  "volume-down": "cmdVolumeDown",
+};
+
 async function renderShortcuts() {
   const wrap = el("shortcut-rows");
   let commandList = [];
@@ -1363,8 +1458,12 @@ async function renderShortcuts() {
     label.className = "shortcut-name";
     // Browsers add reserved commands (no description) on their own,
     // e.g. Chrome's _execute_action.
+    // Descriptions arrive in the BROWSER's language; a language override
+    // has to re-translate them by command name.
     label.textContent =
-      command.name === "_execute_action" ? t("shortcutOpenPopup") : command.description || command.name;
+      command.name === "_execute_action"
+        ? t("shortcutOpenPopup")
+        : getMessage(COMMAND_KEYS[command.name] ?? "") || command.description || command.name;
     const chip = document.createElement("button");
     chip.className = "shortcut-chip";
     chip.textContent = command.shortcut || t("shortcutNotSet");

@@ -179,6 +179,8 @@
   "accentBlue": { "message": "blue" },
   "accentPurple": { "message": "purple" },
   "accentPink": { "message": "pink" },
+  "settingsLanguage": { "message": "Language" },
+  "languageBrowser": { "message": "Browser" },
   "settingsBehavior": { "message": "Behavior" },
   "setLyrics": { "message": "Lyrics" },
   "setLyricsSub": { "message": "Looks up title & artist on lrclib.net" },

@@ -180,6 +180,8 @@
   "accentBlue": { "message": "modrá" },
   "accentPurple": { "message": "fialová" },
   "accentPink": { "message": "růžová" },
+  "settingsLanguage": { "message": "Jazyk" },
+  "languageBrowser": { "message": "Podle prohlížeče" },
   "settingsBehavior": { "message": "Chování" },
   "setLyrics": { "message": "Texty" },
   "setLyricsSub": { "message": "Vyhledá název a interpreta na lrclib.net" },

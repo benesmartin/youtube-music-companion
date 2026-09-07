@@ -870,9 +870,11 @@ body.compact #settings-pane {
   margin-bottom: 7px;
 }
 
-#theme-options {
+#theme-options,
+#language-options {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .theme-opt {
