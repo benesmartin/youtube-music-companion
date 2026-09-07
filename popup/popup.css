@@ -854,6 +854,13 @@ body.compact #settings-pane {
   scrollbar-color: var(--surface-2) transparent;
 }
 
+/* The same hairline the about footer draws: a section boundary that
+   survives scrolling and a section that ends in a button. */
+.settings-section + .settings-section {
+  padding-top: 12px;
+  border-top: 1px solid var(--surface-2);
+}
+
 .settings-label {
   font-size: 10.5px;
   font-weight: 600;
