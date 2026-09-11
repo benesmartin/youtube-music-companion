@@ -1032,9 +1032,8 @@ async function loadSettings() {
     lyricsEnabled = false;
   }
   el("set-lyrics").classList.toggle("on", lyricsEnabled);
-  updateLyricsTab();
   applySettings();
-  renderTabOrder();
+  updateLyricsTab();
   // The markup starts on Queue; open on the chosen tab instead. Only from
   // the untouched start - a click that already landed wins.
   if (activeTab === "queue" && homeTab() !== "queue") switchTab(homeTab());
@@ -2448,6 +2447,14 @@ function renderLyricsOptIn() {
 function setLyricsEnabled(value) {
   lyricsEnabled = value;
   el("set-lyrics").classList.toggle("on", value);
+  // Lyrics was the last visible tab: the strip must keep one, so the first
+  // tab in order comes back and takes the default, as the Show switches do.
+  if (!value && !visibleTabs().length) {
+    const first = settings.tabOrder.find((id) => id !== "lyrics");
+    settings.hiddenTabs = settings.hiddenTabs.filter((id) => id !== first);
+    settings.defaultTab = first;
+    saveSettings();
+  }
   updateLyricsTab();
   try {
     ext.storage.local.set({ lyricsEnabled: value });
