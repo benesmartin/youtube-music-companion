@@ -1,8 +1,8 @@
 {
-  "extName": { "message": "Companion pro YouTube Music - Mini přehrávač" },
+  "extName": { "message": "Companion for YouTube Music - Mini Player" },
   "extShortName": { "message": "Companion" },
   "extDescription": {
-    "message": "Ovládejte YouTube Music z vyskakovacího okna na liště: přehrávání, fronta, alba, doporučení, historie, hledání, playlisty a synchronizované texty."
+    "message": "Ovládejte YouTube Music z lišty: přehrávání, fronta, alba, doporučení, historie, hledání, playlisty a synchronizované texty."
   },
   "actionTitle": { "message": "Companion pro YouTube Music" },
 
