@@ -2176,11 +2176,18 @@ function wireBarQueueing(prefix, source) {
   }
 }
 
-wireBarQueueing("playlist", () =>
-  // Playlists page, so the loaded rows are not the whole list - the id has to
-  // carry it, and there is no half-queued fallback worth offering.
-  playlistDetailId ? { playlistId: playlistDetailId } : null
-);
+wireBarQueueing("playlist", () => {
+  if (!playlistDetailId) return null;
+  // Playlists page, so the loaded rows are only the whole list once the last
+  // page is in - then they are a fallback for ids get_queue declines (Liked
+  // Music); before that, a half-queued fallback is worse than the notice.
+  const rows = [...el("playlist-tracks").querySelectorAll("[data-video-id]")];
+  const complete = !playlistNextToken && rows.length > 0;
+  return {
+    playlistId: playlistDetailId,
+    videoIds: complete ? rows.map((row) => row.dataset.videoId) : undefined,
+  };
+});
 
 function renderPlaylistTracks(msg) {
   if (msg.browseId !== playlistDetailId) return; // navigated away meanwhile
