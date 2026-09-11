@@ -258,6 +258,10 @@
     }
   }
 
+  // Set once the play path gives up on in-page navigation: the page is about
+  // to unload, and anything this bridge copy still had to do is lost.
+  let fallbackNavigation = false;
+
   async function playVideo({ videoId, playlistId, params, videoType } = {}) {
     if (!videoId) return false;
     // Watch the HIGHLIGHTED row, not the queue order - a restored queue
@@ -330,6 +334,7 @@
     const url = `${location.origin}/watch?v=${encodeURIComponent(videoId)}${
       playlistId ? `&list=${encodeURIComponent(playlistId)}` : ""
     }&ytmc_restart=1`;
+    fallbackNavigation = true;
     setTimeout(() => location.assign(url), 50);
     return true;
   }
@@ -449,25 +454,16 @@
   // (every chunk targets the same index) and are pointless in the append one.
   const QUEUE_FETCH_CHUNK = 30;
   async function fetchQueueItems(videoIds) {
-    const items = [];
+    const chunks = [];
     for (let at = 0; at < videoIds.length; at += QUEUE_FETCH_CHUNK) {
-      const chunk = videoIds.slice(at, at + QUEUE_FETCH_CHUNK);
-      const data = await innertubeRequest("music/get_queue", { videoIds: chunk });
-      const contents = queueContents(data);
-      // A chunk that comes back empty is a dead id run, not a reason to drop
-      // everything after it.
-      items.push(...contents);
+      chunks.push(videoIds.slice(at, at + QUEUE_FETCH_CHUNK));
     }
-    return items;
-  }
-
-  // Import: ids parsed out of pasted text. Returns how many rows actually
-  // went in - the caller reports it, since ids can silently drop (private or
-  // region-blocked videos come back with no renderer).
-  async function queueVideoIds(videoIds, atEnd) {
-    if (!videoIds?.length) return 0;
-    const items = await fetchQueueItems(videoIds);
-    return insertQueueItems(items, atEnd, videoIds[0]) ? items.length : 0;
+    // A chunk that comes back empty is a dead id run, not a reason to drop
+    // everything after it.
+    const results = await Promise.all(
+      chunks.map((chunk) => innertubeRequest("music/get_queue", { videoIds: chunk }))
+    );
+    return results.flatMap(queueContents);
   }
 
   // Replace the queue with an imported one. There is no verified "clear the
@@ -475,15 +471,71 @@
   // navigation never produces - so the first track is a REAL play through the
   // hardened watch path (which rebuilds the queue coherently, location.assign
   // fallback and all) and the rest is appended behind it.
+  // Returns the imported count, 0 when nothing played, or -1 when the first
+  // track plays but the rest could not be appended.
   async function queueReplace(videoIds) {
     if (!videoIds?.length) return 0;
-    if (!(await playVideo({ videoId: videoIds[0] }))) return 0;
-    if (videoIds.length === 1) return 1;
-    // The play resolves as soon as the app is coherent; the store settles a
-    // beat later, and appending into a half-built queue lands in the wrong
-    // spot.
-    await wait(600);
-    return 1 + (await queueVideoIds(videoIds.slice(1), true));
+    const rest = videoIds.slice(1);
+    // The play may fall back to a full navigation, which takes this bridge
+    // copy with it - the next copy finishes the append from this stash.
+    stashImportRest(rest);
+    const played = await playVideo({ videoId: videoIds[0] });
+    if (fallbackNavigation) return played ? videoIds.length : 0;
+    stashImportRest(null);
+    if (!played) return 0;
+    if (!rest.length) return 1;
+    const added = await appendImported(videoIds[0], rest);
+    return added < 0 ? -1 : 1 + added;
+  }
+
+  const IMPORT_REST_KEY = "ytmc_import_rest";
+  function stashImportRest(rest) {
+    try {
+      if (rest?.length) sessionStorage.setItem(IMPORT_REST_KEY, JSON.stringify(rest));
+      else sessionStorage.removeItem(IMPORT_REST_KEY);
+    } catch {
+      // no stash, no continuation - the in-page path still works
+    }
+  }
+
+  // The play resolves as soon as the app is coherent; the store settles a
+  // beat later, and appending into a half-built queue lands in the wrong
+  // spot. Wait for the played track to show up as current, not a fixed beat.
+  async function waitForQueueSettled(videoId) {
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const state = document.querySelector("ytmusic-player-queue")?.queue?.store?.store?.getState?.()
+        ?.queue;
+      if (state && currentQueueIndex(state, videoId) >= 0) return true;
+      await wait(200);
+    }
+    return false;
+  }
+
+  // How many of the rest went in: 0 when every id was dead (no renderer came
+  // back), -1 when the rows arrived but the store refused the insert.
+  async function appendImported(playedId, rest) {
+    if (!rest?.length) return 0;
+    const items = await fetchQueueItems(rest);
+    if (!items.length) return 0;
+    await waitForQueueSettled(playedId);
+    await wait(200);
+    return insertQueueItems(items, true, rest[0]) ? items.length : -1;
+  }
+
+  // A replace-import whose first play fell back to a navigation left the rest
+  // of its ids behind; the queue observer carries the result to the popup.
+  {
+    let importRest = null;
+    try {
+      importRest = JSON.parse(sessionStorage.getItem(IMPORT_REST_KEY));
+    } catch {
+      // nothing stashed
+    }
+    stashImportRest(null);
+    if (Array.isArray(importRest) && importRest.length) {
+      const playedId = new URLSearchParams(location.search).get("v");
+      appendImported(playedId, importRest);
+    }
   }
 
   // Whole album/playlist queueing - what YTM's own header ⋯ menu does with
@@ -1234,9 +1286,7 @@
       return;
     }
     if (command === "queueImport") {
-      const result = payload.replace
-        ? await queueReplace(payload.videoIds)
-        : await queueVideoIds(payload.videoIds, true);
+      const result = await queueReplace(payload.videoIds);
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result },
         window.location.origin

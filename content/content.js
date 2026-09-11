@@ -643,6 +643,16 @@ function currentVolume() {
   return sliderVolume() ?? pageStatus?.volume ?? (media ? Math.round(media.volume * 100) : 100);
 }
 
+function queuePlaylist(command, payload) {
+  return askBridgeAsync(command, {
+    playlistId: payload.playlistId,
+    videoIds: payload.videoIds,
+  }).then((ok) => {
+    if (!ok) notifyPorts("noticeQueueUpFailed");
+    setTimeout(pushQueue, 700);
+    return ok;
+  });
+}
 const commands = {
   async playPause() {
     // When in doubt, try to PLAY: a stuck-buffering tab used to take the
@@ -769,33 +779,18 @@ const commands = {
   // Whole album/playlist, from the album and playlist pane bars. The queue
   // push is delayed like the row actions - the store settles a frame or two
   // after the dispatch.
-  queuePlaylistNext: (payload) =>
-    askBridgeAsync("queuePlaylistNext", {
-      playlistId: payload.playlistId,
-      videoIds: payload.videoIds,
-    }).then((ok) => {
-      if (!ok) notifyPorts("noticeQueueUpFailed");
-      setTimeout(pushQueue, 700);
-      return ok;
-    }),
-  queuePlaylistLast: (payload) =>
-    askBridgeAsync("queuePlaylistLast", {
-      playlistId: payload.playlistId,
-      videoIds: payload.videoIds,
-    }).then((ok) => {
-      if (!ok) notifyPorts("noticeQueueUpFailed");
-      setTimeout(pushQueue, 700);
-      return ok;
-    }),
+  queuePlaylistNext: (payload) => queuePlaylist("queuePlaylistNext", payload),
+  queuePlaylistLast: (payload) => queuePlaylist("queuePlaylistLast", payload),
   // Import: a pasted queue, already reduced to videoIds by the popup. The
   // chunked get_queue makes this slower than any other command, hence the
   // longer leash.
   queueImport: (payload) =>
-    askBridgeAsync(
-      "queueImport",
-      { videoIds: payload.videoIds, replace: payload.replace },
-      30000
-    ).then((count) => {
+    askBridgeAsync("queueImport", { videoIds: payload.videoIds }, 30000).then((count) => {
+      // -1: the first track plays but the store refused the rest.
+      if (count < 0) {
+        notifyPorts("noticeImportAppendFailed");
+        return 0;
+      }
       if (!count) {
         notifyPorts("noticeImportFailed");
         return 0;
