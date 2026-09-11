@@ -505,33 +505,9 @@ body.compact #settings-pane {
   color: var(--text-dim);
 }
 
-#import-cancel,
-#import-add {
-  width: auto;
-  height: 24px;
-  padding: 0 10px;
-  font-size: 11px;
-  font-weight: 600;
-  border-radius: 999px;
-  background: var(--surface-2);
-}
-
-#import-add {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  color: var(--accent);
-}
-
 #import-add:disabled {
   opacity: 0.4;
   pointer-events: none;
-}
-
-#import-cancel:hover {
-  background: color-mix(in srgb, var(--text) 9%, var(--surface-2));
-}
-
-#import-add:hover {
-  background: color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 #sheet-tiles svg {
@@ -614,8 +590,11 @@ body.compact #settings-pane {
   margin-left: auto;
 }
 
+/* the small pill actions: sleep presets and the import sheet's pair */
 .sleep-opt,
-#sleep-set {
+#sleep-set,
+#import-cancel,
+#import-add {
   width: auto;
   height: 24px;
   font-size: 11px;
@@ -627,17 +606,20 @@ body.compact #settings-pane {
   color: var(--text);
 }
 
-.sleep-opt:hover {
+.sleep-opt:hover,
+#import-cancel:hover {
   background: color-mix(in srgb, var(--text) 9%, var(--surface-2));
 }
 
 /* the confirm action wears the active-tab tint */
-#sleep-set {
+#sleep-set,
+#import-add {
   background: color-mix(in srgb, var(--accent) 16%, transparent);
   color: var(--accent);
 }
 
-#sleep-set:hover {
+#sleep-set:hover,
+#import-add:hover {
   background: color-mix(in srgb, var(--accent) 26%, transparent);
 }
 
