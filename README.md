@@ -131,4 +131,9 @@ If this extension makes your listening a little nicer, you can
 use it, fork it, learn from it, but derivatives must stay open source under the
 same terms.
 
+The name "Companion for YouTube Music" and the icon identify this project. Forks are
+welcome under the GPL, but please ship them under your own name and icon so users can
+tell the two apart. If you fork the project, keeping the upstream Ko-fi link next to
+your own is appreciated.
+
 *This is an independent project, not affiliated with or endorsed by Google or YouTube.*
