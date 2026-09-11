@@ -76,9 +76,10 @@
   "copyQueue": { "message": "Copy queue" },
   "copyFailed": { "message": "Couldn’t copy to the clipboard." },
   "copyQueueEmpty": { "message": "Nothing in the queue to copy." },
+  "copyQueueNoLinks": { "message": "The queue has no links to copy yet. Try again in a moment." },
   "copyQueueHeader_one": {
     "message": "# Companion queue - $COUNT$ track - $DATE$",
-    "description": "First line of the copied tracklist. Keep the leading #; the import skips lines that start with it.",
+    "description": "First line of the copied tracklist. Keep the leading # and the space after it; the import skips lines that start with them.",
     "placeholders": { "count": { "content": "$1" }, "date": { "content": "$2" } }
   },
   "copyQueueHeader_other": {
@@ -247,5 +248,6 @@
   "noticeMoveFailed": { "message": "Couldn’t move that song. Try again." },
   "noticeQueueUpFailed": { "message": "Couldn’t queue that up. Try again." },
   "noticeImportFailed": { "message": "Couldn’t import that queue." },
+  "noticeImportAppendFailed": { "message": "Started the first track, but the rest couldn’t be added. Try again." },
   "noticeRemoveFailed": { "message": "Couldn’t remove that song. Try again." }
 }

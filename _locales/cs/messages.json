@@ -76,6 +76,7 @@
   "copyQueue": { "message": "Kopírovat frontu" },
   "copyFailed": { "message": "Nepodařilo se zkopírovat do schránky." },
   "copyQueueEmpty": { "message": "Ve frontě není co kopírovat." },
+  "copyQueueNoLinks": { "message": "Fronta zatím nemá odkazy ke kopírování. Zkuste to za chvíli." },
   "copyQueueHeader_one": {
     "message": "# Fronta Companion - $COUNT$ skladba - $DATE$",
     "placeholders": { "count": { "content": "$1" }, "date": { "content": "$2" } }
@@ -248,5 +249,6 @@
   "noticeMoveFailed": { "message": "Nepodařilo se přesunout tuto skladbu. Zkuste to znovu." },
   "noticeQueueUpFailed": { "message": "Nepodařilo se zařadit do fronty. Zkuste to znovu." },
   "noticeImportFailed": { "message": "Nepodařilo se importovat tuto frontu." },
+  "noticeImportAppendFailed": { "message": "První skladba hraje, zbytek se nepodařilo přidat. Zkuste to znovu." },
   "noticeRemoveFailed": { "message": "Nepodařilo se odebrat tuto skladbu. Zkuste to znovu." }
 }

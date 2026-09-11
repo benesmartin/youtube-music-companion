@@ -463,8 +463,6 @@ function toggleMenu(open) {
   if (show) {
     // No point churning YTM's menu for library state while signed out.
     if (lastState?.signedIn !== false) send("probeLibrary");
-    // Copy queue needs a queue in hand even if the Queue tab was never opened.
-    port?.postMessage({ type: "getQueue" });
     refreshSleep();
   }
   placeToast();
@@ -512,17 +510,24 @@ el("copy-info").addEventListener("click", () => {
 // Copy writes a format that reads as a tracklist and imports as one: a "#"
 // header line, then one line per track, tab-separated so it also pastes into
 // a spreadsheet. Only the watch URL is load-bearing - the name is there for
-// the human, and the import ignores it.
+// the human, and the import ignores it. Automix suggestions are YTM's, not
+// the user's queue, and a row without an id would import as nothing.
 let lastQueue = [];
 
 el("copy-queue").addEventListener("click", () => {
-  if (!lastQueue.length) {
+  const own = lastQueue.filter((item) => !item.automix);
+  if (!own.length) {
     showToast(t("copyQueueEmpty"));
     return;
   }
-  const lines = lastQueue.map((item) => {
+  const linked = own.filter((item) => item.videoId);
+  if (!linked.length) {
+    showToast(t("copyQueueNoLinks"));
+    return;
+  }
+  const lines = linked.map((item) => {
     const name = [item.title, item.artist].filter(Boolean).join(" - ");
-    return item.videoId ? `${name}\t${YTM_BASE}watch?v=${item.videoId}` : name;
+    return `${name}\t${YTM_BASE}watch?v=${item.videoId}`;
   });
   const stamp = new Date().toISOString().slice(0, 10);
   const header = tn("copyQueueHeader", lines.length, stamp);
@@ -532,11 +537,12 @@ el("copy-queue").addEventListener("click", () => {
 // Deliberately tolerant: pull every watch id out of whatever was pasted, in
 // order, and ignore the rest. That way a queue survives a chat app eating the
 // tabs, a partial copy, hand-edited lines, or a plain list of YouTube links -
-// and the pretty half of the format costs the parser nothing.
+// and the pretty half of the format costs the parser nothing. "# " opens a
+// comment line (the header); a bare "#1 Crush" is a title and stays.
 function videoIdsFromText(text) {
   const ids = [];
   for (const line of text.split("\n")) {
-    if (line.startsWith("#")) continue;
+    if (line.startsWith("# ")) continue;
     const fromUrl = line.match(/[?&]v=([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/);
     // A bare id on its own line is the other thing people paste.
     const bare = line.trim().match(/^([A-Za-z0-9_-]{11})$/);
@@ -563,7 +569,6 @@ function refreshImportCount() {
   // The "?" is what makes the armed state read as a different button rather
   // than the same one with a number in it.
   el("import-add").textContent = importArmed ? t("importReplaceCount", n) : t("importReplace");
-  el("import-add").classList.toggle("armed", importArmed);
   el("import-add").disabled = !n;
 }
 
@@ -596,7 +601,7 @@ el("import-add").addEventListener("click", () => {
     refreshImportCount();
     return;
   }
-  send("queueImport", { videoIds: importIds, replace: true });
+  send("queueImport", { videoIds: importIds });
   showToast(t("importReplacing", importIds.length), "success");
   toggleImport(false);
 });
