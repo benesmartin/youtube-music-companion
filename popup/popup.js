@@ -1039,11 +1039,16 @@ async function loadSettings() {
   // the untouched start - a click that already landed wins.
   if (activeTab === "queue" && homeTab() !== "queue") switchTab(homeTab());
   // Cache out of step with the setting (first open after a change made
-  // elsewhere, or a cleared cache): rebuild it and start over, once.
-  if ((overrideCatalog?.lang ?? "system") !== settings.language) applyLanguage(settings.language);
+  // elsewhere, or a cleared cache) or with the installed version (an update
+  // reworded or added strings): rebuild it and start over, once.
+  const cacheStale =
+    (overrideCatalog?.lang ?? "system") !== settings.language ||
+    (overrideCatalog && overrideCatalog.version !== ext.runtime.getManifest().version);
+  if (cacheStale) applyLanguage(settings.language);
   try {
     if (sessionStorage.getItem("reopenSettings")) {
       sessionStorage.removeItem("reopenSettings");
+      settingsReturnTab = activeTab;
       switchTab("settings");
     }
   } catch {
@@ -1063,7 +1068,8 @@ async function applyLanguage(code) {
     } else {
       const response = await fetch(ext.runtime.getURL(`_locales/${code}/messages.json`));
       const messages = await response.json();
-      localStorage.setItem("i18n", JSON.stringify({ lang: code, messages }));
+      const version = ext.runtime.getManifest().version;
+      localStorage.setItem("i18n", JSON.stringify({ lang: code, version, messages }));
     }
     sessionStorage.setItem("i18nReloaded", "1");
   } catch {
