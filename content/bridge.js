@@ -438,12 +438,28 @@
   // misses the other version leaves the song liked. Likes and dislikes stay
   // on the pressed version; an unlike also clears the other version's LIKE
   // (never its dislike).
-  async function rateVideo(videoId, status, previous) {
+  async function rateVideo(rowId, status, previous) {
+    const videoId = playingVersionOf(rowId);
     const ok = await sendRating(videoId, status, previous);
     if (!ok || status !== "INDIFFERENT") return ok;
     const other = await counterpartOf(videoId);
     if (!other || (storedRatings()?.[other] ?? (await serverRating(other))) !== "LIKE") return true;
     return sendRating(other, "INDIFFERENT", "LIKE");
+  }
+
+  // A row and the player can hold different versions of one track (Liked
+  // Music plays a liked music video from its song row). Rating the playing
+  // version is what the player bar shows; the queue entry pairing the two
+  // ids proves they are one track.
+  function playingVersionOf(videoId) {
+    const playing = player()?.getVideoData?.()?.video_id;
+    if (!videoId || !playing || playing === videoId) return videoId;
+    const queue = appStore()?.getState?.()?.queue;
+    const entries = [...(queue?.items ?? []), ...(queue?.automixItems ?? [])];
+    const paired = entries.some(
+      (entry) => entryMatchesId(entry, playing) && entryMatchesId(entry, videoId)
+    );
+    return paired ? playing : videoId;
   }
 
   async function watchNext(videoId) {
