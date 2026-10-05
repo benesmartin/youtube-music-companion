@@ -2032,6 +2032,14 @@ button.busy {
   fill: currentColor;
 }
 
+/* unliked in the open Liked Music view: dimmed, thumbs still at full
+   strength so it can be liked again */
+.qrow.unliked > .qthumb,
+.qrow.unliked > .qmeta,
+.qrow.unliked > .qdur {
+  opacity: 0.4;
+}
+
 .qactions svg {
   width: 14px;
   height: 14px;

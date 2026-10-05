@@ -732,10 +732,14 @@ const rowRating = (item) => ratingOverrides.get(item.videoId) ?? item.rating ?? 
 
 function setRowRating(videoId, status) {
   ratingOverrides.set(videoId, status);
-  for (const button of document.querySelectorAll(
-    `.qrow[data-video-id="${CSS.escape(videoId)}"] button.rate`
-  )) {
+  const selector = `.qrow[data-video-id="${CSS.escape(videoId)}"]`;
+  for (const button of document.querySelectorAll(`${selector} button.rate`)) {
     button.classList.toggle("rated", button.dataset.rating === status);
+  }
+  if (playlistDetailId === LIKED_MUSIC_ID) {
+    for (const row of el("playlist-tracks").querySelectorAll(selector)) {
+      row.classList.toggle("unliked", status !== "LIKE");
+    }
   }
 }
 
@@ -2283,6 +2287,11 @@ function renderPlaylistTracks(msg) {
 // Rows whose own YTM menu offers removal get the remove action; the
 // endpoint is replayed verbatim, so rows without one (other people's
 // playlists, Liked Music) never show the button.
+// Unliking a song takes it out of Liked Music. The row stays, dimmed, until
+// the playlist is reopened: rows don't shift under the cursor, and liking it
+// again undoes it in place.
+const LIKED_MUSIC_ID = "VLLM";
+
 function buildPlaylistTrackRow(item, browseId) {
   const removable = Boolean(item.removeEndpoint && item.setVideoId);
   const row = buildTrackRow(
@@ -2301,6 +2310,9 @@ function buildPlaylistTrackRow(item, browseId) {
       : {}
   );
   if (removable) row.dataset.setVideoId = item.setVideoId;
+  if (browseId === LIKED_MUSIC_ID && rowRating(item) && rowRating(item) !== "LIKE") {
+    row.classList.add("unliked");
+  }
   return row;
 }
 
