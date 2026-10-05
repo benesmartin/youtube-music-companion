@@ -458,10 +458,12 @@
     for (let at = 0; at < videoIds.length; at += QUEUE_FETCH_CHUNK) {
       chunks.push(videoIds.slice(at, at + QUEUE_FETCH_CHUNK));
     }
-    // A chunk that comes back empty is a dead id run, not a reason to drop
-    // everything after it.
+    // A chunk that comes back empty or fails is a dead id run, not a reason
+    // to drop everything after it.
     const results = await Promise.all(
-      chunks.map((chunk) => innertubeRequest("music/get_queue", { videoIds: chunk }))
+      chunks.map((chunk) =>
+        innertubeRequest("music/get_queue", { videoIds: chunk }).catch(() => null)
+      )
     );
     return results.flatMap(queueContents);
   }
@@ -534,7 +536,7 @@
     stashImportRest(null);
     if (Array.isArray(importRest) && importRest.length) {
       const playedId = new URLSearchParams(location.search).get("v");
-      appendImported(playedId, importRest);
+      appendImported(playedId, importRest).catch(() => {});
     }
   }
 
