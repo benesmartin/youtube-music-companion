@@ -453,6 +453,7 @@
   // Chunked inserts would reverse the block order in the play-next case
   // (every chunk targets the same index) and are pointless in the append one.
   const QUEUE_FETCH_CHUNK = 30;
+  const QUEUE_FETCH_PARALLEL = 4;
   // strict: any failed chunk fails the whole fetch, for callers that answer
   // plain success and so can't report a partial result.
   async function fetchQueueItems(videoIds, { strict = false } = {}) {
@@ -461,11 +462,20 @@
       chunks.push(videoIds.slice(at, at + QUEUE_FETCH_CHUNK));
     }
     // A chunk that comes back empty or fails is a dead id run, not a reason
-    // to drop everything after it.
-    const results = await Promise.all(
-      chunks.map((chunk) =>
-        innertubeRequest("music/get_queue", { videoIds: chunk }).catch(() => null)
-      )
+    // to drop everything after it. A few in flight at once: a 2,000-track
+    // list all at once invites a 429.
+    const results = new Array(chunks.length);
+    let next = 0;
+    const worker = async () => {
+      while (next < chunks.length) {
+        const at = next++;
+        results[at] = await innertubeRequest("music/get_queue", { videoIds: chunks[at] }).catch(
+          () => null
+        );
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(QUEUE_FETCH_PARALLEL, chunks.length) }, worker)
     );
     if (strict && results.some((data) => !data)) return [];
     return results.flatMap(queueContents);
