@@ -2279,19 +2279,34 @@ function renderPlaylistTracks(msg) {
   } else {
     playlistMore.remove();
   }
-  for (const item of msg.tracks) list.append(buildPlaylistTrackRow(item, msg.browseId));
+  // Pages are positional: a song liked, unliked or removed meanwhile shifts
+  // the list, and the next page repeats a row already shown.
+  const shown = new Set(
+    [...list.querySelectorAll(".qrow")].map((row) => playlistRowKey(row.dataset, msg.browseId))
+  );
+  for (const item of msg.tracks) {
+    const key = playlistRowKey(item, msg.browseId);
+    if (msg.append && key && shown.has(key)) continue;
+    list.append(buildPlaylistTrackRow(item, msg.browseId));
+  }
   playlistNextToken = msg.continuation;
   if (playlistNextToken) list.append(playlistMore);
 }
 
-// Rows whose own YTM menu offers removal get the remove action; the
-// endpoint is replayed verbatim, so rows without one (other people's
-// playlists, Liked Music) never show the button.
 // Unliking a song takes it out of Liked Music. The row stays, dimmed, until
 // the playlist is reopened: rows don't shift under the cursor, and liking it
 // again undoes it in place.
 const LIKED_MUSIC_ID = "VLLM";
 
+// A song is liked once, so Liked Music keys on the song; other playlists can
+// hold it twice, and only the entry id tells those apart.
+function playlistRowKey(item, browseId) {
+  return browseId === LIKED_MUSIC_ID ? item.videoId : item.setVideoId;
+}
+
+// Rows whose own YTM menu offers removal get the remove action; the
+// endpoint is replayed verbatim, so rows without one (other people's
+// playlists, Liked Music) never show the button.
 function buildPlaylistTrackRow(item, browseId) {
   const removable = Boolean(item.removeEndpoint && item.setVideoId);
   const row = buildTrackRow(
@@ -2309,7 +2324,7 @@ function buildPlaylistTrackRow(item, browseId) {
         }
       : {}
   );
-  if (removable) row.dataset.setVideoId = item.setVideoId;
+  if (item.setVideoId) row.dataset.setVideoId = item.setVideoId;
   if (browseId === LIKED_MUSIC_ID && rowRating(item) && rowRating(item) !== "LIKE") {
     row.classList.add("unliked");
   }
