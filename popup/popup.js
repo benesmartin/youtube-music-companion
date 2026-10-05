@@ -46,9 +46,8 @@ function t(key, ...subs) {
 // would pick "1 tracks". Folder names are Chrome's (pt_BR); Intl wants pt-BR
 // and throws on anything it can't parse.
 const pluralRules = (() => {
-  const lang = (overrideCatalog?.lang ?? t("locale")).replace(/_/g, "-");
   try {
-    return new Intl.PluralRules(lang);
+    return new Intl.PluralRules(String(overrideCatalog?.lang ?? t("locale")).replace(/_/g, "-"));
   } catch {
     return new Intl.PluralRules("en");
   }
