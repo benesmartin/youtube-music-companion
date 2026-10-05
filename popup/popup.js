@@ -45,9 +45,10 @@ function t(key, ...subs) {
 // the catalog on screen: a ja browser gets the en catalog, and ja's rules
 // would pick "1 tracks". Folder names are Chrome's (pt_BR); Intl wants pt-BR
 // and throws on anything it can't parse.
+const catalogLang = String(overrideCatalog?.lang ?? t("locale")).replace(/_/g, "-");
 const pluralRules = (() => {
   try {
-    return new Intl.PluralRules(String(overrideCatalog?.lang ?? t("locale")).replace(/_/g, "-"));
+    return new Intl.PluralRules(catalogLang);
   } catch {
     return new Intl.PluralRules("en");
   }
@@ -57,6 +58,9 @@ function tn(base, count, ...subs) {
   const key = `${base}_${form}`;
   return getMessage(key, [count, ...subs].map(String)) || t(`${base}_other`, count, ...subs);
 }
+
+// Screen readers pick their voice from lang.
+document.documentElement.lang = catalogLang;
 
 // Static markup: data-i18n fills textContent, data-i18n-title the title,
 // data-i18n-placeholder the placeholder; data-i18n-args passes one
