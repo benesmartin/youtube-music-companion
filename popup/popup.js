@@ -41,8 +41,10 @@ function t(key, ...subs) {
 
 // Plural pick: `${base}_one` / `_few` / `_many` / `_other` by the locale's
 // CLDR category, falling back to `_other`. Chrome's catalog format has no
-// plural support of its own, so the forms are separate keys.
-const pluralRules = new Intl.PluralRules(overrideCatalog?.lang ?? ext.i18n.getUILanguage());
+// plural support of its own, so the forms are separate keys. The rules follow
+// the catalog on screen: a ja browser gets the en catalog, and ja's rules
+// would pick "1 tracks".
+const pluralRules = new Intl.PluralRules(overrideCatalog?.lang ?? t("locale"));
 function tn(base, count, ...subs) {
   const form = pluralRules.select(count);
   const key = `${base}_${form}`;

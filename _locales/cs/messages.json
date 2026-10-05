@@ -1,6 +1,7 @@
 {
   "extName": { "message": "Companion for YouTube Music - Mini Player" },
   "extShortName": { "message": "Companion" },
+  "locale": { "message": "cs", "description": "This catalog's language code; it picks the plural rules. Set it to the folder name." },
   "extDescription": {
     "message": "Ovládejte YouTube Music z lišty: přehrávání, fronta, alba, doporučení, historie, hledání, playlisty a synchronizované texty."
   },

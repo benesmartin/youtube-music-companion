@@ -1,6 +1,7 @@
 {
   "extName": { "message": "Companion for YouTube Music - Mini Player" },
   "extShortName": { "message": "Companion" },
+  "locale": { "message": "en", "description": "This catalog's language code; it picks the plural rules. Set it to the folder name." },
   "extDescription": {
     "message": "Control YouTube Music from a toolbar popup: playback, queue, albums, recommendations, history, search, playlists and synced lyrics."
   },
