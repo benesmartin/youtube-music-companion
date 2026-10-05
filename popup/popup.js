@@ -536,18 +536,18 @@ el("copy-queue").addEventListener("click", () => {
   copyToClipboard(el("copy-queue"), [header, ...lines].join("\n"));
 });
 
-// Deliberately tolerant: pull every watch id out of whatever was pasted, in
-// order, and ignore the rest. That way a queue survives a chat app eating the
-// tabs, a partial copy, hand-edited lines, or a plain list of YouTube links -
-// and the pretty half of the format costs the parser nothing. "# " opens a
+// Deliberately tolerant: pull every watch or youtu.be id out of whatever was
+// pasted, in order, and ignore the rest. That way a queue survives a chat app
+// eating the tabs, a partial copy, hand-edited lines, or a plain list of
+// YouTube links - and the pretty half of the format costs the parser nothing. "# " opens a
 // comment line (the header, or a URL commented out) unless a title comes
 // before its watch URL, so "# Hashtag" and a bare "#1 Crush" are titles and
 // stay.
 function videoIdsFromText(text) {
   const ids = [];
   for (const line of text.split("\n")) {
-    const fromUrl = line.match(/[?&]v=([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/);
-    const urlStart = line.search(/\S*[?&]v=[A-Za-z0-9_-]{11}(?![A-Za-z0-9_-])/);
+    const fromUrl = line.match(/(?:[?&]v=|youtu\.be\/)([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/);
+    const urlStart = fromUrl ? line.slice(0, fromUrl.index).search(/\S*$/) : -1;
     const titled = fromUrl && line.slice(2, urlStart).trim() !== "";
     if (line.startsWith("# ") && !titled) continue;
     // A bare id on its own line is the other thing people paste.
