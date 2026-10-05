@@ -507,7 +507,8 @@
     for (let attempt = 0; attempt < 20; attempt++) {
       const state = document.querySelector("ytmusic-player-queue")?.queue?.store?.store?.getState?.()
         ?.queue;
-      if (state && currentQueueIndex(state, videoId) >= 0) return true;
+      const combined = (state?.items ?? []).concat(state?.automixItems ?? []);
+      if (state && entryMatchesId(combined[currentQueueIndex(state, videoId)], videoId)) return true;
       await wait(200);
     }
     return false;
