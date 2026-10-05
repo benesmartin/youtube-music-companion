@@ -433,8 +433,50 @@
     return (videoId && storedRatings()?.[videoId]) || rendererRating(renderer);
   }
 
-  // previous: what the row showed, for the rollback when the server refuses.
+  // Songs and their music videos are rated separately (counterparts), and
+  // Liked Music lists a liked video under its song's id - so an unlike that
+  // misses the other version leaves the song liked. Likes and dislikes stay
+  // on the pressed version; an unlike also clears the other version's LIKE
+  // (never its dislike).
   async function rateVideo(videoId, status, previous) {
+    const ok = await sendRating(videoId, status, previous);
+    if (!ok || status !== "INDIFFERENT") return ok;
+    const other = await counterpartOf(videoId);
+    if (!other || (storedRatings()?.[other] ?? (await serverRating(other))) !== "LIKE") return true;
+    return sendRating(other, "INDIFFERENT", "LIKE");
+  }
+
+  async function watchNext(videoId) {
+    return innertubeRequest("next", { videoId }).catch(() => null);
+  }
+
+  async function counterpartOf(videoId) {
+    const data = await watchNext(videoId);
+    const entries =
+      data?.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer
+        ?.watchNextTabbedResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.musicQueueRenderer
+        ?.content?.playlistPanelRenderer?.contents ?? [];
+    for (const entry of entries) {
+      const wrapper = entry?.playlistPanelVideoWrapperRenderer;
+      if (wrapper?.primaryRenderer?.playlistPanelVideoRenderer?.videoId !== videoId) continue;
+      return (
+        wrapper.counterpart?.[0]?.counterpartRenderer?.playlistPanelVideoRenderer?.videoId ?? null
+      );
+    }
+    return null;
+  }
+
+  async function serverRating(videoId) {
+    const data = await watchNext(videoId);
+    return (
+      (data?.playerOverlays?.playerOverlayRenderer?.actions ?? []).find(
+        (action) => action?.likeButtonRenderer?.target?.videoId === videoId
+      )?.likeButtonRenderer.likeStatus ?? null
+    );
+  }
+
+  // previous: what the row showed, for the rollback when the server refuses.
+  async function sendRating(videoId, status, previous) {
     const app = document.querySelector("ytmusic-app");
     const store = appStore();
     if (!videoId || !app || !store || !storedRatings()) return false;
