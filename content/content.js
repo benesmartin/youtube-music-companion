@@ -790,7 +790,8 @@ const commands = {
   // longer leash.
   queueImport: (payload) =>
     askBridgeAsync("queueImport", { videoIds: payload.videoIds }, 30000).then((count) => {
-      // -1: the first track plays but the store refused the rest.
+      // -1: the first track plays but the rest wasn't added (the store
+      // refused it, or the play fell back to a page reload).
       if (count < 0) {
         notifyPorts("noticeImportAppendFailed");
         return 0;
