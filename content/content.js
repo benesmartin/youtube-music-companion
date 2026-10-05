@@ -643,10 +643,17 @@ function currentVolume() {
   return sliderVolume() ?? pageStatus?.volume ?? (media ? Math.round(media.volume * 100) : 100);
 }
 
+// The bridge fetches rows in get_queue batches of 30, four in flight
+// (bridge.js QUEUE_FETCH_*), so one wave of 120 rows can take most of a
+// second; a long list outgrows a fixed leash, and a timeout here is a lie -
+// the bridge still finishes, and a retry duplicates the list.
+const ROWS_PER_WAVE = 120;
+function rowFetchLeash(count) {
+  return 30000 + Math.ceil(count / ROWS_PER_WAVE) * 1000;
+}
+
 function queuePlaylist(command, payload) {
-  // Loaded rows run through the same chunked get_queue as an import, so they
-  // get its leash.
-  const timeoutMs = payload.videoIds?.length ? 30000 : undefined;
+  const timeoutMs = payload.videoIds?.length ? rowFetchLeash(payload.videoIds.length) : undefined;
   return askBridgeAsync(
     command,
     { playlistId: payload.playlistId, videoIds: payload.videoIds },
@@ -789,10 +796,12 @@ const commands = {
   queuePlaylistNext: (payload) => queuePlaylist("queuePlaylistNext", payload),
   queuePlaylistLast: (payload) => queuePlaylist("queuePlaylistLast", payload),
   // Import: a pasted queue, already reduced to videoIds by the popup. The
-  // chunked get_queue makes this slower than any other command, hence the
-  // longer leash.
   queueImport: (payload) =>
-    askBridgeAsync("queueImport", { videoIds: payload.videoIds }, 30000).then((count) => {
+    askBridgeAsync(
+      "queueImport",
+      { videoIds: payload.videoIds },
+      rowFetchLeash(payload.videoIds.length)
+    ).then((count) => {
       // -1: the first track plays but the rest wasn't added (the store
       // refused it, or the play fell back to a page reload).
       if (count < 0) {
