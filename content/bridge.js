@@ -453,7 +453,9 @@
   // Chunked inserts would reverse the block order in the play-next case
   // (every chunk targets the same index) and are pointless in the append one.
   const QUEUE_FETCH_CHUNK = 30;
-  async function fetchQueueItems(videoIds) {
+  // strict: any failed chunk fails the whole fetch, for callers that answer
+  // plain success and so can't report a partial result.
+  async function fetchQueueItems(videoIds, { strict = false } = {}) {
     const chunks = [];
     for (let at = 0; at < videoIds.length; at += QUEUE_FETCH_CHUNK) {
       chunks.push(videoIds.slice(at, at + QUEUE_FETCH_CHUNK));
@@ -465,6 +467,7 @@
         innertubeRequest("music/get_queue", { videoIds: chunk }).catch(() => null)
       )
     );
+    if (strict && results.some((data) => !data)) return [];
     return results.flatMap(queueContents);
   }
 
@@ -527,7 +530,7 @@
       }).catch(() => null);
       items = queueContents(data);
     }
-    if (!items.length && videoIds?.length) items = await fetchQueueItems(videoIds);
+    if (!items.length && videoIds?.length) items = await fetchQueueItems(videoIds, { strict: true });
     return insertQueueItems(items, atEnd, videoIds?.[0]);
   }
 
