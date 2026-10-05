@@ -644,10 +644,14 @@ function currentVolume() {
 }
 
 function queuePlaylist(command, payload) {
-  return askBridgeAsync(command, {
-    playlistId: payload.playlistId,
-    videoIds: payload.videoIds,
-  }).then((ok) => {
+  // Loaded rows run through the same chunked get_queue as an import, so they
+  // get its leash.
+  const timeoutMs = payload.videoIds?.length ? 30000 : undefined;
+  return askBridgeAsync(
+    command,
+    { playlistId: payload.playlistId, videoIds: payload.videoIds },
+    timeoutMs
+  ).then((ok) => {
     if (!ok) notifyPorts("noticeQueueUpFailed");
     setTimeout(pushQueue, 700);
     return ok;
