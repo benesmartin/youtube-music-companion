@@ -487,17 +487,21 @@
   // hardened watch path (which rebuilds the queue coherently) and the rest is
   // appended behind it. A play that falls back to location.assign takes this
   // bridge copy with it, so the rest is reported as not added.
-  // Returns the imported count, 0 when nothing played, or -1 when the first
-  // track plays but the rest could not be appended.
+  // Returns the imported count, 0 when nothing played, -1 when the first
+  // track plays but the rest could not be appended, or -2 when a newer
+  // import took over before the rest went in.
+  let importGeneration = 0;
   async function queueReplace(videoIds) {
     if (!videoIds?.length) return 0;
+    const generation = ++importGeneration;
     const rest = videoIds.slice(1);
     fallbackNavigation = false;
     const played = await playVideo({ videoId: videoIds[0] });
     if (!played) return 0;
     if (!rest.length) return 1;
     if (fallbackNavigation) return -1;
-    const added = await appendImported(videoIds[0], rest);
+    const added = await appendImported(videoIds[0], rest, generation);
+    if (added === null) return -2;
     return added < 0 ? -1 : 1 + added;
   }
 
@@ -517,12 +521,15 @@
 
   // How many of the rest went in: 0 when every id was dead (no renderer came
   // back), -1 when the rows arrived but the store refused the insert.
-  async function appendImported(playedId, rest) {
+  // A newer import replaced the queue while this one fetched: its rows
+  // would land behind the wrong first track.
+  async function appendImported(playedId, rest, generation = importGeneration) {
     if (!rest?.length) return 0;
     const items = await fetchQueueItems(rest);
     if (!items.length) return 0;
     await waitForQueueSettled(playedId);
     await wait(200);
+    if (generation !== importGeneration) return null;
     return insertQueueItems(items, true, rest[0]) ? items.length : -1;
   }
 
