@@ -471,34 +471,21 @@
   // Replace the queue with an imported one. There is no verified "clear the
   // store" dispatch, and inventing one would put the app in a state its own
   // navigation never produces - so the first track is a REAL play through the
-  // hardened watch path (which rebuilds the queue coherently, location.assign
-  // fallback and all) and the rest is appended behind it.
+  // hardened watch path (which rebuilds the queue coherently) and the rest is
+  // appended behind it. A play that falls back to location.assign takes this
+  // bridge copy with it, so the rest is reported as not added.
   // Returns the imported count, 0 when nothing played, or -1 when the first
   // track plays but the rest could not be appended.
   async function queueReplace(videoIds) {
     if (!videoIds?.length) return 0;
     const rest = videoIds.slice(1);
     fallbackNavigation = false;
-    // The play may fall back to a full navigation, which takes this bridge
-    // copy with it - the next copy finishes the append from this stash.
-    stashImportRest(rest);
     const played = await playVideo({ videoId: videoIds[0] });
-    if (fallbackNavigation) return played ? videoIds.length : 0;
-    stashImportRest(null);
     if (!played) return 0;
     if (!rest.length) return 1;
+    if (fallbackNavigation) return -1;
     const added = await appendImported(videoIds[0], rest);
     return added < 0 ? -1 : 1 + added;
-  }
-
-  const IMPORT_REST_KEY = "ytmc_import_rest";
-  function stashImportRest(rest) {
-    try {
-      if (rest?.length) sessionStorage.setItem(IMPORT_REST_KEY, JSON.stringify(rest));
-      else sessionStorage.removeItem(IMPORT_REST_KEY);
-    } catch {
-      // no stash, no continuation - the in-page path still works
-    }
   }
 
   // The play resolves as soon as the app is coherent; the store settles a
@@ -524,22 +511,6 @@
     await waitForQueueSettled(playedId);
     await wait(200);
     return insertQueueItems(items, true, rest[0]) ? items.length : -1;
-  }
-
-  // A replace-import whose first play fell back to a navigation left the rest
-  // of its ids behind; the queue observer carries the result to the popup.
-  {
-    let importRest = null;
-    try {
-      importRest = JSON.parse(sessionStorage.getItem(IMPORT_REST_KEY));
-    } catch {
-      // nothing stashed
-    }
-    stashImportRest(null);
-    if (Array.isArray(importRest) && importRest.length) {
-      const playedId = new URLSearchParams(location.search).get("v");
-      appendImported(playedId, importRest).catch(() => {});
-    }
   }
 
   // Whole album/playlist queueing - what YTM's own header ⋯ menu does with
