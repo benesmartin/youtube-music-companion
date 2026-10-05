@@ -795,7 +795,7 @@ const commands = {
   // after the dispatch.
   queuePlaylistNext: (payload) => queuePlaylist("queuePlaylistNext", payload),
   queuePlaylistLast: (payload) => queuePlaylist("queuePlaylistLast", payload),
-  // Import: a pasted queue, already reduced to videoIds by the popup. The
+  // Import: a pasted queue, already reduced to videoIds by the popup.
   queueImport: (payload) =>
     askBridgeAsync(
       "queueImport",
