@@ -545,7 +545,7 @@ function videoIdsFromText(text) {
   const ids = [];
   for (const line of text.split("\n")) {
     const fromUrl = line.match(/[?&]v=([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/);
-    const urlStart = line.search(/https?:\/\//);
+    const urlStart = line.search(/\S*[?&]v=[A-Za-z0-9_-]{11}(?![A-Za-z0-9_-])/);
     const titled = fromUrl && line.slice(2, urlStart).trim() !== "";
     if (line.startsWith("# ") && !titled) continue;
     // A bare id on its own line is the other thing people paste.
