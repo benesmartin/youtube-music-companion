@@ -130,7 +130,8 @@ YouTube Music itself, so they follow your YTM account language instead.
 To add a language: copy `_locales/en/messages.json` to
 `_locales/<code>/messages.json` (Chrome's locale codes, e.g. `de`, `pt_BR`),
 translate the `message` values, keep the `$PLACEHOLDER$` tokens as they
-are, and open a PR. Keys ending in `_one` / `_other` are plural forms - add
+are, set the `locale` message to your folder name (it picks the plural
+rules), and open a PR. Keys ending in `_one` / `_other` are plural forms - add
 whatever forms your language needs (`_few`, `_many`), `_other` is required.
 Then add the code and the language's own name to `LANGUAGES` at the top of
 `popup/popup.js` so the picker offers it. Toolbar and tab labels have little
