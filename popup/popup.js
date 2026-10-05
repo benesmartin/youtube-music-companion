@@ -538,13 +538,16 @@ el("copy-queue").addEventListener("click", () => {
 // order, and ignore the rest. That way a queue survives a chat app eating the
 // tabs, a partial copy, hand-edited lines, or a plain list of YouTube links -
 // and the pretty half of the format costs the parser nothing. "# " opens a
-// comment line (the header) unless it carries the tab of a track line, so
-// "# Hashtag" and a bare "#1 Crush" are titles and stay.
+// comment line (the header, or a URL commented out) unless a title comes
+// before its watch URL, so "# Hashtag" and a bare "#1 Crush" are titles and
+// stay.
 function videoIdsFromText(text) {
   const ids = [];
   for (const line of text.split("\n")) {
-    if (line.startsWith("# ") && !line.includes("\t")) continue;
     const fromUrl = line.match(/[?&]v=([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/);
+    const urlStart = line.search(/https?:\/\//);
+    const titled = fromUrl && line.slice(2, urlStart).trim() !== "";
+    if (line.startsWith("# ") && !titled) continue;
     // A bare id on its own line is the other thing people paste.
     const bare = line.trim().match(/^([A-Za-z0-9_-]{11})$/);
     const id = fromUrl?.[1] ?? bare?.[1];
