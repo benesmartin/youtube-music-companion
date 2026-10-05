@@ -247,6 +247,7 @@
   "noticeReorderAutoplay": { "message": "That row can’t be reordered. Autoplay suggestions stay put." },
   "noticeQueueAddFailed": { "message": "Couldn’t add that song to the queue." },
   "noticeMoveFailed": { "message": "Couldn’t move that song. Try again." },
+  "noticeRateFailed": { "message": "Couldn’t rate that song. Try again." },
   "noticeQueueUpFailed": { "message": "Couldn’t queue that up. Try again." },
   "noticeQueueUpScroll": { "message": "Couldn’t queue that up. Scroll to the end of the playlist, then try again." },
   "noticeImportFailed": { "message": "Couldn’t import that queue." },

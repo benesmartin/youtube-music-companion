@@ -725,6 +725,52 @@ let lastSelectedIndex = null;
 // Autoplay header now appears only when real rows exist, and the toggle's
 // own busy state is the feedback for switching it on.
 
+// Ratings the tab reported since this popup opened win over a row's fetched
+// data: cached panes (home, history) can hold an older rating.
+const ratingOverrides = new Map();
+const rowRating = (item) => ratingOverrides.get(item.videoId) ?? item.rating ?? null;
+
+function setRowRating(videoId, status) {
+  ratingOverrides.set(videoId, status);
+  for (const button of document.querySelectorAll(
+    `.qrow[data-video-id="${CSS.escape(videoId)}"] button.rate`
+  )) {
+    button.classList.toggle("rated", button.dataset.rating === status);
+  }
+}
+
+// Outlined until set, filled once set, like the player card's own pair.
+// An unlit press sets the rating, a lit one clears it - an unknown rating
+// (search rows, a queue row's hidden dislike) reads as unlit, and setting it
+// again is harmless.
+function appendRateButtons(actions, item) {
+  for (const [key, icon, rating, setting] of [
+    ["like", "#i-thumb-up", "LIKE", "showLike"],
+    ["dislike", "#i-thumb-down", "DISLIKE", "showDislike"],
+  ]) {
+    if (settings[setting] === false) continue;
+    const button = document.createElement("button");
+    button.className = "rate";
+    button.title = t(key);
+    button.dataset.rating = rating;
+    button.classList.toggle("rated", rowRating(item) === rating);
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttribute("href", icon);
+    svg.append(use);
+    button.append(svg);
+    button.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (requireSignIn("signInRate")) return;
+      const previous = rowRating(item) ?? "INDIFFERENT";
+      const next = previous === rating ? "INDIFFERENT" : rating;
+      setRowRating(item.videoId, next);
+      send("rateVideo", { videoId: item.videoId, rating: next, previous });
+    });
+    actions.append(button);
+  }
+}
+
 function renderQueue(queue) {
   const list = el("queue-list");
   // A push mid-drag would destroy the dragged row; the post-drop push repaints.
@@ -796,6 +842,7 @@ function renderQueue(queue) {
       row.classList.add("has-actions");
       const actions = document.createElement("div");
       actions.className = "qactions";
+      if (item.videoId) appendRateButtons(actions, item);
       for (const [title, icon, command, toast, setting] of [
         [t("playNext"), "#i-play-next", "queuePlayNext", t("rowWillPlayNext"), "rowPlayNext"],
         [t("addToQueue"), "#i-add-to-queue", "queueAddToQueue", t("rowAddedToQueue"), "rowAddToQueue"],
@@ -1758,8 +1805,10 @@ function buildTrackRow(item, { onRemove, number } = {}) {
       actions.append(button);
       return button;
     };
-    // Radio leads: it plays, the other two only queue. The ⋯ menu can only
-    // radio the PLAYING song - this seeds a station from any row.
+    appendRateButtons(actions, item);
+    // Radio leads the queue actions: it plays, the other two only queue. The
+    // ⋯ menu can only radio the PLAYING song - this seeds a station from any
+    // row.
     if (settings.rowRadio !== false) actionButton(t("startRadio"), "#i-radio", () => {
       if (row.classList.contains("loading")) return;
       setPendingPlay(row, "loading");
@@ -2842,6 +2891,9 @@ function tryTab(candidates, index) {
       renderQueue(msg.queue);
       if (queueSwitchLoaded && msg.queue.some((item) => item.selected)) doQueueSwitch();
     } else if (msg.type === "history") renderHistory(msg.history);
+    else if (msg.type === "ratings") {
+      for (const [videoId, status] of Object.entries(msg.ratings)) setRowRating(videoId, status);
+    }
     else if (msg.type === "home") renderHome(msg.home, msg.append);
     else if (msg.type === "searchResults") renderSearchResults(msg);
     else if (msg.type === "playlists") renderPlaylists(msg.playlists, msg.append);

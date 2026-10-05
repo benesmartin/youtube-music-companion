@@ -248,6 +248,7 @@
   "noticeReorderAutoplay": { "message": "Tento řádek nelze přesunout. Návrhy automatického přehrávání zůstávají na místě." },
   "noticeQueueAddFailed": { "message": "Nepodařilo se přidat tuto skladbu do fronty." },
   "noticeMoveFailed": { "message": "Nepodařilo se přesunout tuto skladbu. Zkuste to znovu." },
+  "noticeRateFailed": { "message": "Skladbu se nepodařilo ohodnotit. Zkuste to znovu." },
   "noticeQueueUpFailed": { "message": "Nepodařilo se zařadit do fronty. Zkuste to znovu." },
   "noticeQueueUpScroll": { "message": "Nepodařilo se zařadit do fronty. Sjeďte na konec playlistu a zkuste to znovu." },
   "noticeImportFailed": { "message": "Nepodařilo se importovat tuto frontu." },

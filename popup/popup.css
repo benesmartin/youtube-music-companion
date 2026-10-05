@@ -2024,6 +2024,14 @@ button.busy {
   color: var(--text);
 }
 
+.qactions button.rate.rated {
+  color: var(--text);
+}
+
+.qactions button.rate.rated svg {
+  fill: currentColor;
+}
+
 .qactions svg {
   width: 14px;
   height: 14px;

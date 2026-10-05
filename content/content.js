@@ -68,6 +68,8 @@ window.addEventListener("message", (e) => {
       byline: e.data.byline ?? null,
     };
     broadcastThrottled();
+  } else if (e.data.type === "ratings") {
+    for (const port of ports) port.postMessage({ type: "ratings", ratings: e.data.ratings });
   } else if (e.data.type === "response" && pendingBridgeRequests.has(e.data.requestId)) {
     pendingBridgeRequests.get(e.data.requestId)(e.data.result);
     pendingBridgeRequests.delete(e.data.requestId);
@@ -524,6 +526,7 @@ function applyQueueStoreData(queue, data) {
     // Only the index-aligned entry may name the row's video: a title match
     // would hand duplicate titles the same id.
     if (aligned?.videoId) item.videoId = aligned.videoId;
+    if (aligned?.rating) item.rating = aligned.rating;
   }
 }
 
@@ -743,6 +746,17 @@ const commands = {
       if (!ok) notifyPorts("noticeReorderAutoplay");
       // Re-push either way: confirms the new order or snaps the preview back.
       setTimeout(pushQueue, 400);
+      return ok;
+    });
+  },
+  // The bridge's own 10s cap on the request, plus slack.
+  rateVideo(payload) {
+    return askBridgeAsync(
+      "rateVideo",
+      { videoId: payload.videoId, rating: payload.rating, previous: payload.previous },
+      12000
+    ).then((ok) => {
+      if (!ok) notifyPorts("noticeRateFailed");
       return ok;
     });
   },

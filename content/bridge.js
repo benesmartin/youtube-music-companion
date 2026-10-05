@@ -67,6 +67,7 @@
   function postStatus() {
     const p = player();
     if (!isCurrent() || !p?.getVolume) return;
+    watchRatings();
     window.postMessage(
       {
         source: FROM_BRIDGE,
@@ -401,6 +402,97 @@
     return byId.length ? byId[0] : -1;
   }
 
+  // ---- ratings ----
+  // Every thumb YTM renders shows its app store's likeStatus.videos[id],
+  // falling back to the rating baked into its own renderer. A native press
+  // writes that store, then the server, through the app's own
+  // "yt-service-request" action - and going through the same action keeps
+  // every thumb on the page coherent. A direct like/* call skips the store,
+  // which is what sank the row thumbs pulled before 1.3.0.
+  const appStore = () => document.querySelector("ytmusic-player-queue")?.queue?.store?.store ?? null;
+
+  function storedRatings() {
+    return appStore()?.getState?.()?.likeStatus?.videos ?? null;
+  }
+
+  // List rows carry a like button renderer; queue rows only a library
+  // toggle, which tells liked from not but never shows a dislike.
+  function rendererRating(renderer) {
+    const menu = renderer?.menu?.menuRenderer;
+    const button = (menu?.topLevelButtons ?? []).find((b) => b?.likeButtonRenderer)
+      ?.likeButtonRenderer;
+    if (button?.likeStatus) return button.likeStatus;
+    const toggle = (menu?.items ?? []).find(
+      (item) => item?.toggleMenuServiceItemRenderer?.defaultServiceEndpoint?.likeEndpoint
+    )?.toggleMenuServiceItemRenderer;
+    if (toggle) return toggle.isToggled ? "LIKE" : "INDIFFERENT";
+    return null;
+  }
+
+  function ratingOf(videoId, renderer) {
+    return (videoId && storedRatings()?.[videoId]) || rendererRating(renderer);
+  }
+
+  // previous: what the row showed, for the rollback when the server refuses.
+  async function rateVideo(videoId, status, previous) {
+    const app = document.querySelector("ytmusic-app");
+    const store = appStore();
+    if (!videoId || !app || !store || !storedRatings()) return false;
+    const before = storedRatings()[videoId] ?? previous ?? "INDIFFERENT";
+    const action = {
+      actionName: "yt-service-request",
+      optionalAction: false,
+      args: [app, { likeEndpoint: { status, target: { videoId } } }],
+      returnValue: [],
+    };
+    app.dispatchEvent(
+      new CustomEvent("yt-action", { bubbles: true, composed: true, detail: action })
+    );
+    const request = action.returnValue[0]?.ajaxPromise;
+    if (!request) return false;
+    const setStored = (value) =>
+      store.dispatch({ type: "SET_VIDEO_LIKE_STATUS", payload: { id: videoId, status: value } });
+    if (storedRatings()[videoId] !== status) setStored(status);
+    // The handle is a Closure promise: Promise.resolve adopts it (a bare
+    // await on it hung in the probes). A timeout is not a refusal - the
+    // write may still land - so only a refusal rolls back.
+    const outcome = await Promise.race([
+      Promise.resolve(request).then(
+        (res) => (res?.error || res?.data?.error ? "refused" : "ok"),
+        () => "refused"
+      ),
+      wait(10000).then(() => "timeout"),
+    ]);
+    if (outcome === "refused") setStored(before);
+    return outcome === "ok";
+  }
+
+  // Ratings changed anywhere on the page - a row press, YTM's own thumbs -
+  // reach the popup's rows without a refetch. State lives on the function:
+  // postStatus calls this before the rest of the script has run.
+  function watchRatings() {
+    const store = appStore();
+    if (!store?.subscribe || watchRatings.store === store) return;
+    watchRatings.store = store;
+    watchRatings.last = storedRatings();
+    store.subscribe(() => {
+      if (!isCurrent()) return;
+      const now = storedRatings();
+      if (!now || now === watchRatings.last) return;
+      const changed = {};
+      for (const [id, status] of Object.entries(now)) {
+        if (watchRatings.last?.[id] !== status) changed[id] = status;
+      }
+      watchRatings.last = now;
+      if (Object.keys(changed).length) {
+        window.postMessage(
+          { source: FROM_BRIDGE, type: "ratings", ratings: changed },
+          window.location.origin
+        );
+      }
+    });
+  }
+
   // Play-next / add-to-queue: get_queue renderers → ADD_ITEMS, mirroring the
   // captured native payload (no shuffleEnabled key). atEnd appends after the
   // last user item - the native "Add to queue" spot; automix suggestions stay
@@ -646,6 +738,7 @@
       const videoId = renderer?.videoId ?? counterpart?.videoId ?? null;
       return {
         videoId,
+        rating: ratingOf(videoId, renderer),
         title: (renderer?.title?.runs ?? []).map((run) => run.text).join(""),
         artist: bylineArtists(renderer),
         thumb: thumbs.length
@@ -763,8 +856,10 @@
               (a?.removedVideoId && a?.setVideoId)
           )
         ) ?? null;
+    const videoId = renderer.playlistItemData?.videoId ?? endpoint?.videoId ?? null;
     return {
-      videoId: renderer.playlistItemData?.videoId ?? endpoint?.videoId ?? null,
+      videoId,
+      rating: ratingOf(videoId, renderer),
       setVideoId: renderer.playlistItemData?.playlistSetVideoId ?? null,
       removeEndpoint,
       playlistId: endpoint?.playlistId ?? null,
@@ -1274,6 +1369,14 @@
     }
     if (command === "queueVideoNext" || command === "queueVideoLast") {
       const result = await queueVideoNext(payload.videoId, command === "queueVideoLast");
+      window.postMessage(
+        { source: FROM_BRIDGE, type: "response", requestId, result },
+        window.location.origin
+      );
+      return;
+    }
+    if (command === "rateVideo") {
+      const result = await rateVideo(payload.videoId, payload.rating, payload.previous);
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result },
         window.location.origin
