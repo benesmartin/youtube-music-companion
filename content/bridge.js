@@ -478,6 +478,7 @@
   async function queueReplace(videoIds) {
     if (!videoIds?.length) return 0;
     const rest = videoIds.slice(1);
+    fallbackNavigation = false;
     // The play may fall back to a full navigation, which takes this bridge
     // copy with it - the next copy finishes the append from this stash.
     stashImportRest(rest);
