@@ -524,7 +524,7 @@
     if (playlistId) {
       const data = await innertubeRequest("music/get_queue", {
         playlistId: playlistId.replace(/^VL/, ""),
-      });
+      }).catch(() => null);
       items = queueContents(data);
     }
     if (!items.length && videoIds?.length) items = await fetchQueueItems(videoIds);
