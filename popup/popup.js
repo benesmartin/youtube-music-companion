@@ -43,8 +43,16 @@ function t(key, ...subs) {
 // CLDR category, falling back to `_other`. Chrome's catalog format has no
 // plural support of its own, so the forms are separate keys. The rules follow
 // the catalog on screen: a ja browser gets the en catalog, and ja's rules
-// would pick "1 tracks".
-const pluralRules = new Intl.PluralRules(overrideCatalog?.lang ?? t("locale"));
+// would pick "1 tracks". Folder names are Chrome's (pt_BR); Intl wants pt-BR
+// and throws on anything it can't parse.
+const pluralRules = (() => {
+  const lang = (overrideCatalog?.lang ?? t("locale")).replace(/_/g, "-");
+  try {
+    return new Intl.PluralRules(lang);
+  } catch {
+    return new Intl.PluralRules("en");
+  }
+})();
 function tn(base, count, ...subs) {
   const form = pluralRules.select(count);
   const key = `${base}_${form}`;
