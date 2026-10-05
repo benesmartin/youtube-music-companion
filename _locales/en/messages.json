@@ -247,6 +247,7 @@
   "noticeQueueAddFailed": { "message": "Couldn’t add that song to the queue." },
   "noticeMoveFailed": { "message": "Couldn’t move that song. Try again." },
   "noticeQueueUpFailed": { "message": "Couldn’t queue that up. Try again." },
+  "noticeQueueUpScroll": { "message": "Couldn’t queue that up. Scroll to the end of the playlist, then try again." },
   "noticeImportFailed": { "message": "Couldn’t import that queue." },
   "noticeImportAppendFailed": { "message": "Started the first track, but the rest couldn’t be added. Try again." },
   "noticeRemoveFailed": { "message": "Couldn’t remove that song. Try again." }

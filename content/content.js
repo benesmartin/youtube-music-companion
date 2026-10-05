@@ -652,7 +652,10 @@ function queuePlaylist(command, payload) {
     { playlistId: payload.playlistId, videoIds: payload.videoIds },
     timeoutMs
   ).then((ok) => {
-    if (!ok) notifyPorts("noticeQueueUpFailed");
+    // Without loaded rows there was no fallback for a playlist get_queue
+    // refuses (Liked Music); scrolling to the end is what makes one.
+    if (!ok && payload.videoIds?.length) notifyPorts("noticeQueueUpFailed");
+    else if (!ok) notifyPorts("noticeQueueUpScroll");
     setTimeout(pushQueue, 700);
     return ok;
   });
