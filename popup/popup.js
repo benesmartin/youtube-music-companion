@@ -2814,6 +2814,7 @@ function offerToOpenTab(tabId, { reload = false } = {}) {
     el("empty-title").textContent = t("emptyAsleepTitle");
     el("empty-sub").textContent = t("emptyAsleepSub");
   }
+  el("empty-allow").hidden = true;
   el("empty-open").hidden = false;
   showEmpty();
 }
@@ -2831,13 +2832,48 @@ el("empty-open").addEventListener("click", async () => {
 });
 
 function showWaking() {
+  el("empty-allow").hidden = true;
   el("empty-open").hidden = true;
   el("empty-title").textContent = t("emptyWakingTitle");
   el("empty-sub").textContent = t("emptyWakingSub");
   showEmpty();
 }
 
+// Without site access the browser hides YTM tabs from the query and keeps the
+// content script off the page, so "isn't open" may be a lie: Firefox's
+// per-site toggle (off for a temporary add-on) and Chrome's "on click" site
+// access both land here.
+const SITE_ACCESS = { origins: [`${YTM_BASE}*`] };
+
+async function offerSiteAccessIfMissing() {
+  let granted = true;
+  try {
+    granted = (await ext.permissions?.contains?.(SITE_ACCESS)) ?? true;
+  } catch {
+    // no permissions API - nothing to offer
+  }
+  if (granted) return;
+  el("empty-title").textContent = t("emptyAccessTitle");
+  el("empty-sub").textContent = t("emptyAccessSub");
+  el("empty-allow").hidden = false;
+}
+
+// request() needs the click's user gesture, so nothing may be awaited first.
+// Firefox may close the popup for its prompt; the next open finds the tab.
+el("empty-allow").addEventListener("click", () => {
+  Promise.resolve(ext.permissions.request(SITE_ACCESS)).then(
+    (granted) => {
+      if (!granted) return;
+      el("empty-allow").hidden = true;
+      reconnectAttempts = 0;
+      connect();
+    },
+    () => {}
+  );
+});
+
 function resetEmptyCopy() {
+  el("empty-allow").hidden = true;
   el("empty-open").hidden = true;
   el("empty-title").textContent = t("emptyTitle");
   el("empty-sub").textContent = t("emptySub");
@@ -2890,6 +2926,7 @@ function tryTab(candidates, index) {
     }
     resetEmptyCopy();
     showEmpty();
+    offerSiteAccessIfMissing();
     return;
   }
   currentTabId = tab.id;
