@@ -2059,23 +2059,6 @@ button.busy {
   margin-top: -4px;
 }
 
-/* offered when a sleeping tab refuses to wake in the background (Firefox
-   loads session-restored tabs only once they are selected) */
-#empty-open,
-#empty-allow {
-  margin: 14px auto 0;
-  padding: 7px 14px;
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--text);
-  font-size: 12.5px;
-}
-
-#empty-open:hover,
-#empty-allow:hover {
-  background: var(--surface-2);
-}
-
 /* one-time rating ask: a quiet strip under the tabs, never a modal, and gone
    for good once answered. Hidden in compact mode - there is no room and the
    user asked for less UI, not more. */
@@ -2156,7 +2139,7 @@ body.compact #rate-bar {
 /* ---- empty state ---- */
 
 #empty {
-  height: 176px;
+  min-height: 176px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2197,7 +2180,11 @@ body.compact #rate-bar {
   color: var(--text-dim);
 }
 
-#open-ytm {
+/* a state's own action (wake, reload, allow access) replaces Open YouTube
+   Music, so it takes that button's place and look */
+#open-ytm,
+#empty-open,
+#empty-allow {
   background: var(--accent);
   color: #fff;
   border-radius: 999px;
@@ -2208,6 +2195,8 @@ body.compact #rate-bar {
   transition: filter 0.15s;
 }
 
-#open-ytm:hover {
+#open-ytm:hover,
+#empty-open:hover,
+#empty-allow:hover {
   filter: brightness(1.1);
 }

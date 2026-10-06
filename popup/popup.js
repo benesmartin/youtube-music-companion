@@ -2816,6 +2816,7 @@ function offerToOpenTab(tabId, { reload = false } = {}) {
   }
   el("empty-allow").hidden = true;
   el("empty-open").hidden = false;
+  el("open-ytm").hidden = true;
   showEmpty();
 }
 
@@ -2856,25 +2857,19 @@ async function offerSiteAccessIfMissing() {
   el("empty-title").textContent = t("emptyAccessTitle");
   el("empty-sub").textContent = t("emptyAccessSub");
   el("empty-allow").hidden = false;
+  el("open-ytm").hidden = true;
 }
 
-// request() needs the click's user gesture, so nothing may be awaited first.
-// Firefox may close the popup for its prompt; the next open finds the tab.
-el("empty-allow").addEventListener("click", () => {
-  Promise.resolve(ext.permissions.request(SITE_ACCESS)).then(
-    (granted) => {
-      if (!granted) return;
-      el("empty-allow").hidden = true;
-      reconnectAttempts = 0;
-      connect();
-    },
-    () => {}
-  );
+// Asked from a tab, not here: Firefox opens its prompt under the popup.
+el("empty-allow").addEventListener("click", async () => {
+  await ext.tabs.create({ url: ext.runtime.getURL("popup/access.html") });
+  window.close();
 });
 
 function resetEmptyCopy() {
   el("empty-allow").hidden = true;
   el("empty-open").hidden = true;
+  el("open-ytm").hidden = false;
   el("empty-title").textContent = t("emptyTitle");
   el("empty-sub").textContent = t("emptySub");
 }
