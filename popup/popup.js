@@ -2845,6 +2845,8 @@ function showWaking() {
 // per-site toggle (off for a temporary add-on) and Chrome's "on click" site
 // access both land here.
 const SITE_ACCESS = { origins: [`${YTM_BASE}*`] };
+// Lyrics come from LRCLIB; one prompt covers both.
+const SITE_ACCESS_ALL = { origins: [`${YTM_BASE}*`, "https://lrclib.net/*"] };
 
 async function offerSiteAccessIfMissing() {
   let granted = true;
@@ -2860,10 +2862,19 @@ async function offerSiteAccessIfMissing() {
   el("open-ytm").hidden = true;
 }
 
-// Asked from a tab, not here: Firefox opens its prompt under the popup.
-el("empty-allow").addEventListener("click", async () => {
-  await ext.tabs.create({ url: ext.runtime.getURL("popup/access.html") });
-  window.close();
+// request() needs the click's user gesture, so nothing may be awaited first.
+// Firefox anchors its prompt under the popup: closing the popup a beat after
+// asking uncovers it (the grant is the browser's, not this page's).
+el("empty-allow").addEventListener("click", () => {
+  Promise.resolve(ext.permissions.request(SITE_ACCESS_ALL)).then(
+    (granted) => {
+      if (!granted) return;
+      reconnectAttempts = 0;
+      connect();
+    },
+    () => {}
+  );
+  if (ext.runtime.getBrowserInfo) setTimeout(() => window.close(), 100);
 });
 
 function resetEmptyCopy() {
