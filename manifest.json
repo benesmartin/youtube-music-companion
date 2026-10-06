@@ -22,7 +22,8 @@
   "permissions": [
     "storage",
     "clipboardWrite",
-    "alarms"
+    "alarms",
+    "scripting"
   ],
   "host_permissions": [
     "https://music.youtube.com/*",

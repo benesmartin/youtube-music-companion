@@ -311,6 +311,21 @@ ext.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   }
 });
 
+// Site access granted at runtime (Firefox's per-site switch, Chrome's "on
+// click"): tabs already open got no content script, and asking the user to
+// reload would cut playback. A tab that already has one rejects the second
+// copy on its redeclared globals, which is harmless.
+ext.permissions?.onAdded?.addListener(async ({ origins = [] }) => {
+  if (!origins.some((origin) => origin.startsWith("https://music.youtube.com/"))) return;
+  const tabs = await ext.tabs.query({ url: "https://music.youtube.com/*" });
+  for (const tab of tabs) {
+    if (tab.discarded) continue;
+    Promise.resolve(
+      ext.scripting.executeScript({ target: { tabId: tab.id }, files: ["content/content.js"] })
+    ).catch(() => {});
+  }
+});
+
 // On (re)start, ask the content script for the real state instead of
 // assuming disconnected.
 (async () => {
