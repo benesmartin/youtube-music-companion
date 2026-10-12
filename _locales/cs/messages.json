@@ -226,7 +226,7 @@
   "rateText": { "message": "Líbí se vám Companion? Hodnocení pomůže ostatním ho najít." },
   "rateGo": { "message": "Ohodnotit" },
   "rateNotNow": { "message": "Teď ne" },
-  "updateText": { "message": "Aktualizováno na $VERSION$", "placeholders": { "version": { "content": "$1" } } },
+  "updateText": { "message": "Companion aktualizován na $VERSION$", "placeholders": { "version": { "content": "$1" } } },
   "updateGo": { "message": "Co je nového" },
   "updateDismiss": { "message": "Zavřít" },
 

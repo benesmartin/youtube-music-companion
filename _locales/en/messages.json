@@ -225,7 +225,7 @@
   "rateText": { "message": "Enjoying Companion? A rating helps others find it." },
   "rateGo": { "message": "Rate it" },
   "rateNotNow": { "message": "Not now" },
-  "updateText": { "message": "Updated to $VERSION$", "placeholders": { "version": { "content": "$1" } } },
+  "updateText": { "message": "Companion updated to $VERSION$", "placeholders": { "version": { "content": "$1" } } },
   "updateGo": { "message": "What’s new" },
   "updateDismiss": { "message": "Dismiss" },
 
