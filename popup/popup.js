@@ -3083,10 +3083,8 @@ const RATE_MIN_OPENS = 40;
 const RATE_SNOOZE_DAYS = 30;
 const RATE_SNOOZE_OPENS = 60;
 const RATE_MAX_ASKS = 2;
-// Ignoring the strip is an answer too: someone who closes the popup without
-// touching it (or clicks the x reflexively) should not meet it on every open.
-// After this many appearances it snoozes itself, exactly like a dismissal.
-const RATE_MAX_SHOWS = 5;
+// Once due it stays until answered, like the update notice: the x is one
+// click, and a strip that leaves on its own is one most people never saw.
 const RATE_URLS = {
   firefox: "https://addons.mozilla.org/firefox/addon/companion-for-youtube-music/reviews/",
   chrome:
@@ -3176,23 +3174,11 @@ async function trackOpenAndMaybeAsk() {
   // One strip at a time, and the notice is the one with a date on it.
   if (await announceUpdate(existingUser)) return;
   if (!rateEligible(rateState)) return;
-  const shown = (rateState.shown ?? 0) + 1;
-  if (shown > RATE_MAX_SHOWS) {
-    // Shown its fill and never answered - snooze it as if dismissed.
-    await snoozeRate();
-    return;
-  }
-  rateState = { ...rateState, shown };
-  try {
-    await ext.storage.local.set({ rateState });
-  } catch {
-    // showing it is still fine; the count just will not persist
-  }
   el("rate-bar").hidden = false;
 }
 
-// A "not now" - by button or by ignoring it - costs one of the two asks and
-// buys silence for a month of real use.
+// A "not now" costs one of the two asks and buys silence for a month of real
+// use.
 async function snoozeRate() {
   const now = Date.now();
   rateState = {
@@ -3200,7 +3186,6 @@ async function snoozeRate() {
     dismissals: (rateState?.dismissals ?? 0) + 1,
     snoozeUntil: now + RATE_SNOOZE_DAYS * 86400000,
     snoozeOpens: (rateState?.opens ?? 0) + RATE_SNOOZE_OPENS,
-    shown: 0,
   };
   try {
     await ext.storage.local.set({ rateState });
