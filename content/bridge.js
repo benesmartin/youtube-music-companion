@@ -617,31 +617,53 @@
   // (every chunk targets the same index) and are pointless in the append one.
   const QUEUE_FETCH_CHUNK = 30;
   const QUEUE_FETCH_PARALLEL = 4;
+  // Extra requests one fetch may spend halving 404'd runs. They go out in the
+  // same waves of four, and content.js's rowFetchLeash has to outlast them.
+  const QUEUE_FETCH_RETRIES = 60;
   // strict: any failed chunk fails the whole fetch, for callers that answer
   // plain success and so can't report a partial result.
   async function fetchQueueItems(videoIds, { strict = false } = {}) {
-    const chunks = [];
+    let runs = [];
     for (let at = 0; at < videoIds.length; at += QUEUE_FETCH_CHUNK) {
-      chunks.push(videoIds.slice(at, at + QUEUE_FETCH_CHUNK));
+      runs.push({ at, ids: videoIds.slice(at, at + QUEUE_FETCH_CHUNK) });
     }
     // A chunk that comes back empty or fails is a dead id run, not a reason
     // to drop everything after it. A few in flight at once: a 2,000-track
     // list all at once invites a 429.
-    const results = new Array(chunks.length);
-    let next = 0;
-    const worker = async () => {
-      while (next < chunks.length) {
-        const at = next++;
-        results[at] = await innertubeRequest("music/get_queue", { videoIds: chunks[at] }).catch(
-          () => null
-        );
-      }
-    };
-    await Promise.all(
-      Array.from({ length: Math.min(QUEUE_FETCH_PARALLEL, chunks.length) }, worker)
-    );
-    if (strict && results.some((data) => !data)) return [];
-    return results.flatMap(queueContents);
+    // One id YTM does not know 404s its whole request, though, so a 404'd
+    // run goes round again as two halves until the dead ids stand alone.
+    // Any other failure would fail the halves too.
+    const fetched = [];
+    let lost = false;
+    let retries = strict ? 0 : QUEUE_FETCH_RETRIES;
+    while (runs.length) {
+      const halves = [];
+      let next = 0;
+      const worker = async () => {
+        while (next < runs.length) {
+          const { at, ids } = runs[next++];
+          const failure = {};
+          const data = await innertubeRequest("music/get_queue", { videoIds: ids }, failure).catch(
+            () => null
+          );
+          if (data) {
+            fetched.push({ at, items: queueContents(data) });
+          } else if (failure.status === 404 && ids.length > 1 && retries >= 2) {
+            retries -= 2;
+            const half = Math.ceil(ids.length / 2);
+            halves.push({ at, ids: ids.slice(0, half) }, { at: at + half, ids: ids.slice(half) });
+          } else {
+            lost = true;
+          }
+        }
+      };
+      await Promise.all(
+        Array.from({ length: Math.min(QUEUE_FETCH_PARALLEL, runs.length) }, worker)
+      );
+      runs = halves;
+    }
+    if (strict && lost) return [];
+    return fetched.sort((a, b) => a.at - b.at).flatMap((run) => run.items);
   }
 
   // Replace the queue with an imported one. There is no verified "clear the
@@ -850,7 +872,8 @@
   // are diagnosed from the reason, so callers can name it in their error.
   let lastRequestFailure = null;
 
-  async function innertubeRequest(path, body) {
+  // failure: an object that receives the HTTP status of a refused request.
+  async function innertubeRequest(path, body, failure) {
     const endpoint = path.split("?")[0];
     const context = cfgGet("INNERTUBE_CONTEXT");
     if (!context) {
@@ -875,6 +898,7 @@
     });
     if (!res.ok) {
       lastRequestFailure = `${endpoint}: HTTP ${res.status}`;
+      if (failure) failure.status = res.status;
       return null;
     }
     return res.json();
