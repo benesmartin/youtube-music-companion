@@ -736,6 +736,8 @@
     if (!videoIds?.length) return 0;
     const generation = ++importGeneration;
     const rest = videoIds.slice(1);
+    await waitForLastPlayToSettle();
+    if (generation !== importGeneration) return -2;
     fallbackNavigation = false;
     const played =
       (await replayForImport(videoIds[0])) || (await playVideo({ videoId: videoIds[0] }));
@@ -745,6 +747,24 @@
     const added = await appendImported(videoIds[0], rest, generation);
     if (added === null) return -2;
     return added < 0 ? -1 : 1 + added;
+  }
+
+  // YTM adds a queue's autoplay rows whenever their request comes back, even
+  // after a newer play has cleared that queue. Rows that land between the
+  // newer play's clear and its own first row make YTM file the new track
+  // under autoplay too, and an import's rest then goes in above it. They are
+  // due a second or two after a play or a page load, and nothing in the
+  // store marks them pending - isGenerating ends with the play's first row -
+  // so an empty autoplay list is the only sign. Bounded for the queue that
+  // never gets any.
+  async function waitForLastPlayToSettle() {
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const queue = appStore()?.getState?.()?.queue;
+      const autoplayRowsDue =
+        queue?.autoplay && !queue.isInfinite && queue.items?.length && !queue.automixItems?.length;
+      if (!queue?.isGenerating && !autoplayRowsDue) return;
+      await wait(100);
+    }
   }
 
   // Track one of an import can be the track already playing (a backup of
