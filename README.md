@@ -41,6 +41,9 @@
   from results
 - **Start a radio from any song** in search, history, playlists or home -
   not just the one that's playing
+- **Like or dislike from any row**: thumbs on queue, history, search, home,
+  playlist and album rows - no need to play the song first. In Liked Music an
+  unliked song dims in place, so you can undo it
 - **Playlists**: browse your library, play, shuffle, play next or add a whole
   playlist to the queue, open its tracks, save the current song to any
   playlist (with a duplicate guard), remove songs - long playlists load as
@@ -57,6 +60,8 @@
   optionally tinting the toolbar icon to match
 - **Compact mode**: one click collapses the popup to just the player card -
   art, controls, seek and volume
+- **Tabs your way**: drag them into your own order, hide the ones you never
+  open, and pick which one the popup starts on
 - **Keyboard shortcuts**: play/pause, next, previous, like - plus unbound
   volume up/down and dislike commands. Rebind everything right in the
   popup's settings on Firefox (Chrome: chrome://extensions/shortcuts)
