@@ -488,8 +488,10 @@
   // liked. So a video's next rating goes out only once the one before it has
   // settled, and of several waiting only the newest. A timeout settles
   // nothing - that write may still land - so a rating waiting behind one is
-  // dropped as failed rather than sent into the same race.
+  // dropped as failed rather than sent into the same race, and so is every
+  // press on that video until the request answers or is given up on.
   const ratingLanes = new Map();
+  const RATING_GIVEN_UP_MS = 20000;
 
   // Resolves like sendRating, or "superseded" for a rating that a newer one
   // replaced before it went out.
@@ -497,6 +499,10 @@
     return new Promise((resolve) => {
       const waiting = { status, previous, resolve };
       const lane = ratingLanes.get(videoId);
+      if (lane?.stalled) {
+        resolve("timeout");
+        return;
+      }
       if (lane) {
         lane.waiting?.resolve("superseded");
         lane.waiting = waiting;
@@ -512,10 +518,14 @@
     while (lane.waiting) {
       const { status, previous, resolve } = lane.waiting;
       lane.waiting = null;
-      const outcome = await sendRating(videoId, status, previous).catch(() => "refused");
+      const flight = {};
+      const outcome = await sendRating(videoId, status, previous, flight).catch(() => "refused");
       resolve(outcome);
       if (outcome === "timeout") {
         lane.waiting?.resolve("timeout");
+        lane.waiting = null;
+        lane.stalled = true;
+        await Promise.race([flight.answered, wait(RATING_GIVEN_UP_MS)]);
         break;
       }
     }
@@ -569,7 +579,8 @@
   // previous: what the row showed, for the rollback when the server refuses.
   // Resolves "ok", "timeout" or "refused" - the last also when nothing was
   // sent.
-  async function sendRating(videoId, status, previous) {
+  // flight: receives the request's own answer, which outlives the timeout.
+  async function sendRating(videoId, status, previous, flight) {
     const app = document.querySelector("ytmusic-app");
     const store = appStore();
     if (!videoId || !app || !store || !storedRatings()) return "refused";
@@ -591,13 +602,12 @@
     // The handle is a Closure promise: Promise.resolve adopts it (a bare
     // await on it hung in the probes). A timeout is not a refusal - the
     // write may still land - so only a refusal rolls back.
-    const outcome = await Promise.race([
-      Promise.resolve(request).then(
-        (res) => (res?.error || res?.data?.error ? "refused" : "ok"),
-        () => "refused"
-      ),
-      wait(10000).then(() => "timeout"),
-    ]);
+    const answered = Promise.resolve(request).then(
+      (res) => (res?.error || res?.data?.error ? "refused" : "ok"),
+      () => "refused"
+    );
+    if (flight) flight.answered = answered;
+    const outcome = await Promise.race([answered, wait(10000).then(() => "timeout")]);
     if (outcome === "refused") setStored(before);
     return outcome;
   }
