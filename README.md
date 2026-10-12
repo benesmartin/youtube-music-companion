@@ -20,7 +20,7 @@
 <p align="center"><sub>Edge, Brave, Opera and Vivaldi install the Chrome Web Store build.</sub></p>
 
 <p align="center">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/01-player-queue.png" width="640" alt="Player with queue, dark theme">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.5.0/01-player-queue.png" width="640" alt="Player with queue, dark theme">
 </p>
 
 ## Features
@@ -74,16 +74,16 @@
 <summary><b>More screenshots</b> - home, playlists, lyrics, search, history, settings</summary>
 <br>
 <p align="center">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/07-home.png" width="404" alt="Home tab with recommendation shelves">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/08-playlists.png" width="404" alt="Playlists with the save-current-song bar">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.5.0/07-home.png" width="404" alt="Home tab with recommendation shelves">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.5.0/08-playlists.png" width="404" alt="Playlists with the save-current-song bar">
 </p>
 <p align="center">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/02-synced-lyrics.png" width="404" alt="Time-synced lyrics">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/03-search.png" width="404" alt="Search with songs and videos filters">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.5.0/02-synced-lyrics.png" width="404" alt="Time-synced lyrics">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.5.0/03-search.png" width="404" alt="Search with songs and videos filters">
 </p>
 <p align="center">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/04-history.png" width="404" alt="Listening history">
-  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.3.0/05-settings.png" width="404" alt="Settings with themes and accent colors">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.5.0/04-history.png" width="404" alt="Listening history">
+  <img src="https://github.com/benesmartin/youtube-music-companion/releases/download/v1.5.0/05-settings.png" width="404" alt="Settings with themes and accent colors">
 </p>
 </details>
 
