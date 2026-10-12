@@ -441,6 +441,19 @@
   async function rateVideo(rowId, status, previous) {
     const videoId = playingVersionOf(rowId);
     const ok = await sendRating(videoId, status, previous);
+    // The popup lit the row before asking. A failure that never reached the
+    // store, or rolled back another id, changes nothing watchRatings would
+    // push for this row - so tell the row what the page holds.
+    if (!ok) {
+      window.postMessage(
+        {
+          source: FROM_BRIDGE,
+          type: "ratings",
+          ratings: { [rowId]: storedRatings()?.[videoId] ?? previous ?? "INDIFFERENT" },
+        },
+        window.location.origin
+      );
+    }
     if (!ok || status !== "INDIFFERENT") return ok;
     const other = await counterpartOf(videoId);
     if (!other || (storedRatings()?.[other] ?? (await serverRating(other))) !== "LIKE") return true;
