@@ -2032,6 +2032,11 @@ button.busy {
   fill: currentColor;
 }
 
+body.hide-like .qactions button.rate[data-rating="LIKE"],
+body.hide-dislike .qactions button.rate[data-rating="DISLIKE"] {
+  display: none;
+}
+
 /* unliked in the open Liked Music view: dimmed, thumbs still at full
    strength so it can be liked again */
 .qrow.unliked > .qthumb,

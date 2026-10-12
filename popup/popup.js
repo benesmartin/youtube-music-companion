@@ -746,13 +746,13 @@ function setRowRating(videoId, status) {
 // Outlined until set, filled once set, like the player card's own pair.
 // An unlit press sets the rating, a lit one clears it - an unknown rating
 // (search rows, a queue row's hidden dislike) reads as unlit, and setting it
-// again is harmless.
+// again is harmless. Always built: body.hide-like / hide-dislike hide them, so
+// the settings switches reach rows already drawn.
 function appendRateButtons(actions, item) {
-  for (const [key, icon, rating, setting] of [
-    ["like", "#i-thumb-up", "LIKE", "showLike"],
-    ["dislike", "#i-thumb-down", "DISLIKE", "showDislike"],
+  for (const [key, icon, rating] of [
+    ["like", "#i-thumb-up", "LIKE"],
+    ["dislike", "#i-thumb-down", "DISLIKE"],
   ]) {
-    if (settings[setting] === false) continue;
     const button = document.createElement("button");
     button.className = "rate";
     button.title = t(key);
@@ -1044,8 +1044,10 @@ function applySettings() {
   el("compact-toggle").title = t(settings.compact === true ? "expand" : "compactMode");
   el("set-like").classList.toggle("on", settings.showLike !== false);
   el("like").hidden = settings.showLike === false;
+  document.body.classList.toggle("hide-like", settings.showLike === false);
   el("set-dislike").classList.toggle("on", settings.showDislike !== false);
   el("dislike").hidden = settings.showDislike === false;
+  document.body.classList.toggle("hide-dislike", settings.showDislike === false);
   el("set-accent-icon").classList.toggle("on", settings.accentIcon === true);
   el("set-row-play-next").classList.toggle("on", settings.rowPlayNext !== false);
   el("set-row-add").classList.toggle("on", settings.rowAddToQueue !== false);
