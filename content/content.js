@@ -749,12 +749,13 @@ const commands = {
       return ok;
     });
   },
-  // The bridge's own 10s cap on the request, plus slack.
+  // The bridge's own 10s cap on the request - twice, as a press can wait out
+  // the one before it on the same track - plus slack.
   rateVideo(payload) {
     return askBridgeAsync(
       "rateVideo",
       { videoId: payload.videoId, rating: payload.rating, previous: payload.previous },
-      12000
+      22000
     ).then((ok) => {
       if (!ok) notifyPorts("noticeRateFailed");
       return ok;

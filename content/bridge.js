@@ -451,7 +451,10 @@
   // (never its dislike).
   async function rateVideo(rowId, status, previous) {
     const videoId = playingVersionOf(rowId);
-    const ok = await sendRating(videoId, status, previous);
+    const outcome = await rateInOrder(videoId, status, previous);
+    // A newer press took this one's place and answers for the row.
+    if (outcome === "superseded") return true;
+    const ok = outcome === "ok";
     // The popup lit the row before asking. A failure that never reached the
     // store, or rolled back another id, changes nothing watchRatings would
     // push for this row - so tell the row what the page holds.
@@ -468,7 +471,47 @@
     if (!ok || status !== "INDIFFERENT") return ok;
     const other = await counterpartOf(videoId);
     if (!other || (storedRatings()?.[other] ?? (await serverRating(other))) !== "LIKE") return true;
-    return sendRating(other, "INDIFFERENT", "LIKE");
+    const cleared = await rateInOrder(other, "INDIFFERENT", "LIKE");
+    return cleared === "ok" || cleared === "superseded";
+  }
+
+  // YTM applies two ratings of one video in the order they land, not the
+  // order they were sent: an unlike 120ms behind a like left the server
+  // liked. So a video's next rating goes out only once the one before it has
+  // settled, and of several waiting only the newest. A timeout settles
+  // nothing - that write may still land - so a rating waiting behind one is
+  // dropped as failed rather than sent into the same race.
+  const ratingLanes = new Map();
+
+  // Resolves like sendRating, or "superseded" for a rating that a newer one
+  // replaced before it went out.
+  function rateInOrder(videoId, status, previous) {
+    return new Promise((resolve) => {
+      const waiting = { status, previous, resolve };
+      const lane = ratingLanes.get(videoId);
+      if (lane) {
+        lane.waiting?.resolve("superseded");
+        lane.waiting = waiting;
+        return;
+      }
+      ratingLanes.set(videoId, { waiting });
+      drainRatings(videoId);
+    });
+  }
+
+  async function drainRatings(videoId) {
+    const lane = ratingLanes.get(videoId);
+    while (lane.waiting) {
+      const { status, previous, resolve } = lane.waiting;
+      lane.waiting = null;
+      const outcome = await sendRating(videoId, status, previous).catch(() => "refused");
+      resolve(outcome);
+      if (outcome === "timeout") {
+        lane.waiting?.resolve("timeout");
+        break;
+      }
+    }
+    ratingLanes.delete(videoId);
   }
 
   // A row and the player can hold different versions of one track (Liked
@@ -516,10 +559,12 @@
   }
 
   // previous: what the row showed, for the rollback when the server refuses.
+  // Resolves "ok", "timeout" or "refused" - the last also when nothing was
+  // sent.
   async function sendRating(videoId, status, previous) {
     const app = document.querySelector("ytmusic-app");
     const store = appStore();
-    if (!videoId || !app || !store || !storedRatings()) return false;
+    if (!videoId || !app || !store || !storedRatings()) return "refused";
     const before = storedRatings()[videoId] ?? previous ?? "INDIFFERENT";
     const action = {
       actionName: "yt-service-request",
@@ -531,7 +576,7 @@
       new CustomEvent("yt-action", { bubbles: true, composed: true, detail: action })
     );
     const request = action.returnValue[0]?.ajaxPromise;
-    if (!request) return false;
+    if (!request) return "refused";
     const setStored = (value) =>
       store.dispatch({ type: "SET_VIDEO_LIKE_STATUS", payload: { id: videoId, status: value } });
     if (storedRatings()[videoId] !== status) setStored(status);
@@ -546,7 +591,7 @@
       wait(10000).then(() => "timeout"),
     ]);
     if (outcome === "refused") setStored(before);
-    return outcome === "ok";
+    return outcome;
   }
 
   // Ratings changed anywhere on the page - a row press, YTM's own thumbs -
