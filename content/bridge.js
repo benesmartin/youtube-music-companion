@@ -681,13 +681,54 @@
     const generation = ++importGeneration;
     const rest = videoIds.slice(1);
     fallbackNavigation = false;
-    const played = await playVideo({ videoId: videoIds[0] });
+    const played =
+      (await replayForImport(videoIds[0])) || (await playVideo({ videoId: videoIds[0] }));
     if (!played) return 0;
     if (!rest.length) return 1;
     if (fallbackNavigation) return -1;
     const added = await appendImported(videoIds[0], rest, generation);
     if (added === null) return -2;
     return added < 0 ? -1 : 1 + added;
+  }
+
+  // Track one of an import can be the track already playing (a backup of
+  // this very queue). playVideo's endpoint carries a start time, and for the
+  // playing track YTM takes that as a seek: the old queue stays and the rest
+  // lands behind it. Without a start time it is a fresh play that rebuilds
+  // the queue. The highlight never leaves the track, so a new entry under it
+  // is the only sign the rebuild is in.
+  async function replayForImport(videoId) {
+    const app = document.querySelector("ytmusic-app");
+    const highlighted = () => {
+      const state = appStore()?.getState?.()?.queue;
+      return (state?.items ?? []).concat(state?.automixItems ?? [])[currentQueueIndex(state, null)];
+    };
+    const stale = highlighted();
+    if (!app || !entryMatchesId(stale, videoId)) return false;
+    app.dispatchEvent(
+      new CustomEvent("yt-navigate", {
+        bubbles: true,
+        composed: true,
+        detail: {
+          endpoint: {
+            watchEndpoint: {
+              videoId,
+              watchEndpointMusicSupportedConfigs: {
+                watchEndpointMusicConfig: { musicVideoType: "MUSIC_VIDEO_TYPE_ATV" },
+              },
+            },
+          },
+        },
+      })
+    );
+    for (let attempt = 0; attempt < 20; attempt++) {
+      await wait(200);
+      const entry = highlighted();
+      if (entry === stale || !entryMatchesId(entry, videoId)) continue;
+      restartIfResumed();
+      return true;
+    }
+    return false;
   }
 
   // The play resolves as soon as the app is coherent; the store settles a
