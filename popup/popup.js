@@ -3078,11 +3078,11 @@ function tryTab(candidates, index) {
 const RATE_MIN_DAYS = 14;
 const RATE_MIN_OPENS = 40;
 // A dismissal means "not now", not "never" - so it snoozes rather than ends.
-// The second ask needs another month AND another stretch of real use, and
-// there is never a third.
-const RATE_SNOOZE_DAYS = 30;
-const RATE_SNOOZE_OPENS = 60;
-const RATE_MAX_ASKS = 2;
+// Each later ask needs another fortnight AND some more real use, and the
+// third no is final.
+const RATE_SNOOZE_DAYS = 14;
+const RATE_SNOOZE_OPENS = 10;
+const RATE_MAX_ASKS = 3;
 // Once due it stays until answered, like the update notice: the x is one
 // click, and a strip that leaves on its own is one most people never saw.
 const RATE_URLS = {
@@ -3177,8 +3177,7 @@ async function trackOpenAndMaybeAsk() {
   el("rate-bar").hidden = false;
 }
 
-// A "not now" costs one of the two asks and buys silence for a month of real
-// use.
+// A "not now" costs one of the three asks and buys a fortnight of silence.
 async function snoozeRate() {
   const now = Date.now();
   rateState = {
