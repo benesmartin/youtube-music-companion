@@ -728,11 +728,14 @@ let lastSelectedIndex = null;
 // Ratings the tab reported since this popup opened win over a row's fetched
 // data: cached panes (home, history) can hold an older rating.
 const ratingOverrides = new Map();
-const rowRating = (item) => ratingOverrides.get(item.videoId) ?? item.rating ?? null;
+// A row's thumbs rate what YTM's own thumb on that row rates. In Liked Music
+// that can be a liked music video, listed under its song's id.
+const ratedId = (item) => item.ratedId ?? item.videoId;
+const rowRating = (item) => ratingOverrides.get(ratedId(item)) ?? item.rating ?? null;
 
 function setRowRating(videoId, status) {
   ratingOverrides.set(videoId, status);
-  const selector = `.qrow[data-video-id="${CSS.escape(videoId)}"]`;
+  const selector = `.qrow[data-rated-id="${CSS.escape(videoId)}"]`;
   for (const button of document.querySelectorAll(`${selector} button.rate`)) {
     button.classList.toggle("rated", button.dataset.rating === status);
   }
@@ -768,8 +771,8 @@ function appendRateButtons(actions, item) {
       if (requireSignIn("signInRate")) return;
       const previous = rowRating(item) ?? "INDIFFERENT";
       const next = previous === rating ? "INDIFFERENT" : rating;
-      setRowRating(item.videoId, next);
-      send("rateVideo", { videoId: item.videoId, rating: next, previous });
+      setRowRating(ratedId(item), next);
+      send("rateVideo", { videoId: ratedId(item), rating: next, previous });
     });
     actions.append(button);
   }
@@ -824,6 +827,7 @@ function renderQueue(queue) {
     if (item.automix) row.classList.add("automix");
     // Present once the store aligns; the e2e specs key on it.
     if (item.videoId) row.dataset.videoId = item.videoId;
+    if (item.videoId) row.dataset.ratedId = ratedId(item);
     const thumb = document.createElement("div");
     thumb.className = "qthumb";
     if (item.thumb) thumb.style.backgroundImage = `url("${item.thumb}")`;
@@ -1769,6 +1773,7 @@ function buildTrackRow(item, { onRemove, number } = {}) {
   const row = document.createElement("div");
   row.className = "qrow";
   if (item.videoId) row.dataset.videoId = item.videoId;
+  if (item.videoId) row.dataset.ratedId = ratedId(item);
   const thumb = document.createElement("div");
   thumb.className = "qthumb";
   // Album rows all share one cover, so repeating it down the list says

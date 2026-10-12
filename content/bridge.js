@@ -415,12 +415,15 @@
     return appStore()?.getState?.()?.likeStatus?.videos ?? null;
   }
 
+  const likeButtonOf = (renderer) =>
+    (renderer?.menu?.menuRenderer?.topLevelButtons ?? []).find((b) => b?.likeButtonRenderer)
+      ?.likeButtonRenderer;
+
   // List rows carry a like button renderer; queue rows only a library
   // toggle, which tells liked from not but never shows a dislike.
   function rendererRating(renderer) {
     const menu = renderer?.menu?.menuRenderer;
-    const button = (menu?.topLevelButtons ?? []).find((b) => b?.likeButtonRenderer)
-      ?.likeButtonRenderer;
+    const button = likeButtonOf(renderer);
     if (button?.likeStatus) return button.likeStatus;
     const toggle = (menu?.items ?? []).find(
       (item) => item?.toggleMenuServiceItemRenderer?.defaultServiceEndpoint?.likeEndpoint
@@ -429,8 +432,16 @@
     return null;
   }
 
+  // YTM's own thumb on a row rates its like button's target, which is not
+  // always the row's id: Liked Music lists a liked music video under its
+  // song's id, and that row's button targets the video.
+  function ratedIdOf(videoId, renderer) {
+    return likeButtonOf(renderer)?.target?.videoId ?? videoId;
+  }
+
   function ratingOf(videoId, renderer) {
-    return (videoId && storedRatings()?.[videoId]) || rendererRating(renderer);
+    const ratedId = ratedIdOf(videoId, renderer);
+    return (ratedId && storedRatings()?.[ratedId]) || rendererRating(renderer);
   }
 
   // Songs and their music videos are rated separately (counterparts), and
@@ -995,6 +1006,7 @@
     const videoId = renderer.playlistItemData?.videoId ?? endpoint?.videoId ?? null;
     return {
       videoId,
+      ratedId: ratedIdOf(videoId, renderer),
       rating: ratingOf(videoId, renderer),
       setVideoId: renderer.playlistItemData?.playlistSetVideoId ?? null,
       removeEndpoint,
