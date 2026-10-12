@@ -825,7 +825,8 @@ const commands = {
       { videoIds: payload.videoIds },
       rowFetchLeash(payload.videoIds.length)
     ).then((count) => {
-      // -2: a newer import took over; its own answer speaks for both.
+      // -2: a newer import took over and its own answer speaks for both,
+      // or the user played something else, which needs no answer.
       if (count === -2) return 0;
       // -1: the first track plays but the rest wasn't added (the store
       // refused it, or the play fell back to a page reload).

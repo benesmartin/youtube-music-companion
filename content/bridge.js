@@ -264,6 +264,17 @@
   // to unload, and anything this bridge copy still had to do is lost.
   let fallbackNavigation = false;
 
+  // YTM starts a play inside the dispatch, which is how watchPlays tells the
+  // bridge's own navigations from a play made in the tab.
+  let navigating = false;
+  function navigate(app, endpoint) {
+    navigating = true;
+    app.dispatchEvent(
+      new CustomEvent("yt-navigate", { bubbles: true, composed: true, detail: { endpoint } })
+    );
+    navigating = false;
+  }
+
   async function playVideo({ videoId, playlistId, params, videoType } = {}) {
     if (!videoId) return false;
     // Watch the HIGHLIGHTED row, not the queue order - a restored queue
@@ -304,13 +315,7 @@
       // stuck state cost 5s before the fallback even started).
       let restartWatcher = false;
       for (let round = 0; round < 2; round++) {
-        app.dispatchEvent(
-          new CustomEvent("yt-navigate", {
-            bubbles: true,
-            composed: true,
-            detail: { endpoint: { watchEndpoint } },
-          })
-        );
+        navigate(app, { watchEndpoint });
         for (let attempt = 0; attempt < (round === 0 ? 10 : 7); attempt++) {
           await wait(150);
           if (player()?.getVideoData?.()?.video_id !== videoId) continue;
@@ -733,14 +738,19 @@
   // bridge copy with it, so the rest is reported as not added.
   // Returns the imported count, 0 when nothing played, -1 when the first
   // track plays but the rest could not be appended, or -2 when a newer
-  // import took over before the rest went in.
+  // import took over before the rest went in, or the user played something
+  // else while this one waited to begin.
   let importGeneration = 0;
+  // Plays the user asked for: the popup's, counted as the command arrives,
+  // and those made in the tab, which watchPlays sees start.
+  let userPlays = 0;
   async function queueReplace(videoIds) {
     if (!videoIds?.length) return 0;
     const generation = ++importGeneration;
+    const plays = userPlays;
     const rest = videoIds.slice(1);
     await waitForLastPlayToSettle();
-    if (generation !== importGeneration) return -2;
+    if (generation !== importGeneration || plays !== userPlays) return -2;
     fallbackNavigation = false;
     const played =
       (await replayForImport(videoIds[0])) || (await playVideo({ videoId: videoIds[0] }));
@@ -768,10 +778,18 @@
     if (!store?.subscribe || watchPlays.store === store) return;
     watchPlays.store = store;
     let generating = Boolean(store.getState()?.queue?.isGenerating);
+    let items = store.getState()?.queue?.items;
     store.subscribe(() => {
-      const now = Boolean(store.getState()?.queue?.isGenerating);
+      const queue = store.getState()?.queue;
+      const now = Boolean(queue?.isGenerating);
+      // A play raises isGenerating, then clears the queue. One that starts
+      // while the play before it is still generating shows only as a second
+      // clear: another empty items array.
+      const cleared = now && queue.items !== items && !queue.items?.length;
+      if (((now && !generating) || cleared) && !navigating) userPlays++;
       if (generating && !now) queueBuiltAt = Date.now();
       generating = now;
+      items = queue?.items;
     });
   }
 
@@ -805,22 +823,14 @@
     };
     const stale = highlighted();
     if (!app || !entryMatchesId(stale, videoId)) return false;
-    app.dispatchEvent(
-      new CustomEvent("yt-navigate", {
-        bubbles: true,
-        composed: true,
-        detail: {
-          endpoint: {
-            watchEndpoint: {
-              videoId,
-              watchEndpointMusicSupportedConfigs: {
-                watchEndpointMusicConfig: { musicVideoType: "MUSIC_VIDEO_TYPE_ATV" },
-              },
-            },
-          },
+    navigate(app, {
+      watchEndpoint: {
+        videoId,
+        watchEndpointMusicSupportedConfigs: {
+          watchEndpointMusicConfig: { musicVideoType: "MUSIC_VIDEO_TYPE_ATV" },
         },
-      })
-    );
+      },
+    });
     for (let attempt = 0; attempt < 20; attempt++) {
       await wait(200);
       const entry = highlighted();
@@ -1512,13 +1522,7 @@
     const watchPlaylistEndpoint = { playlistId: pid };
     // The params blob YTM's own shuffle buttons carry on this endpoint.
     if (shuffle) watchPlaylistEndpoint.params = "wAEB8gECKAE%3D";
-    app.dispatchEvent(
-      new CustomEvent("yt-navigate", {
-        bubbles: true,
-        composed: true,
-        detail: { endpoint: { watchPlaylistEndpoint } },
-      })
-    );
+    navigate(app, { watchPlaylistEndpoint });
     for (let attempt = 0; attempt < 10; attempt++) {
       await wait(200);
       if (player()?.getPlaylistId?.() === pid) return true;
@@ -1589,6 +1593,7 @@
       return;
     }
     if (command === "playVideoById") {
+      userPlays++;
       const result = await playVideo(payload);
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result },
@@ -1665,7 +1670,10 @@
         getPlaylists: () => getPlaylists(payload.continuation),
         getPlaylistTracks: () => getPlaylistTracks(payload.browseId, payload.continuation),
         getAlbum: () => getAlbum(payload.browseId),
-        playPlaylist: () => playPlaylist(payload.playlistId, payload.shuffle),
+        playPlaylist: () => {
+          userPlays++;
+          return playPlaylist(payload.playlistId, payload.shuffle);
+        },
         addToPlaylist: () => addToPlaylist(payload.playlistId, payload.videoId),
         removeFromPlaylist: () => removeFromPlaylist(payload.endpoint),
       };
