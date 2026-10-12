@@ -68,6 +68,7 @@
     const p = player();
     if (!isCurrent() || !p?.getVolume) return;
     watchRatings();
+    watchPlays();
     window.postMessage(
       {
         source: FROM_BRIDGE,
@@ -752,16 +753,37 @@
   // YTM adds a queue's autoplay rows whenever their request comes back, even
   // after a newer play has cleared that queue. Rows that land between the
   // newer play's clear and its own first row make YTM file the new track
-  // under autoplay too, and an import's rest then goes in above it. They are
-  // due a second or two after a play or a page load, and nothing in the
-  // store marks them pending - isGenerating ends with the play's first row -
-  // so an empty autoplay list is the only sign. Bounded for the queue that
-  // never gets any.
+  // under autoplay too, and an import's rest then goes in above it. Nothing
+  // in the store marks them pending. They are asked for as a play's first
+  // row lands - when isGenerating falls, whoever started the play - or as a
+  // restored session loads, and are a second or two away: a queue still
+  // without them that soon after is waiting for them, a later one gets none.
+  const AUTOPLAY_ROWS_MS = 5000;
+  let queueBuiltAt = Date.now();
+
+  function watchPlays() {
+    const store = appStore();
+    if (!store?.subscribe || watchPlays.store === store) return;
+    watchPlays.store = store;
+    let generating = Boolean(store.getState()?.queue?.isGenerating);
+    store.subscribe(() => {
+      const now = Boolean(store.getState()?.queue?.isGenerating);
+      if (generating && !now) queueBuiltAt = Date.now();
+      generating = now;
+    });
+  }
+
+  // At most 3s, which content.js's leash for an import allows for.
   async function waitForLastPlayToSettle() {
+    watchPlays();
     for (let attempt = 0; attempt < 30; attempt++) {
       const queue = appStore()?.getState?.()?.queue;
       const autoplayRowsDue =
-        queue?.autoplay && !queue.isInfinite && queue.items?.length && !queue.automixItems?.length;
+        Date.now() - queueBuiltAt < AUTOPLAY_ROWS_MS &&
+        queue?.autoplay &&
+        !queue.isInfinite &&
+        queue.items?.length &&
+        !queue.automixItems?.length;
       if (!queue?.isGenerating && !autoplayRowsDue) return;
       await wait(100);
     }

@@ -651,8 +651,11 @@ function currentVolume() {
 // second; a long list outgrows a fixed leash, and a timeout here is a lie -
 // the bridge still finishes, and a retry duplicates the list.
 const ROWS_PER_WAVE = 120;
+// An import can first wait this long for the play before it to settle
+// (bridge.js waitForLastPlayToSettle).
+const PLAY_SETTLE_MS = 3000;
 function rowFetchLeash(count) {
-  return 30000 + Math.ceil(count / ROWS_PER_WAVE) * 1000;
+  return 30000 + PLAY_SETTLE_MS + Math.ceil(count / ROWS_PER_WAVE) * 1000;
 }
 
 function queuePlaylist(command, payload) {
