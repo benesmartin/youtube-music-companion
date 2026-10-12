@@ -757,7 +757,12 @@ const commands = {
   rateVideo(payload) {
     return askBridgeAsync(
       "rateVideo",
-      { videoId: payload.videoId, rating: payload.rating, previous: payload.previous },
+      {
+        videoId: payload.videoId,
+        rating: payload.rating,
+        previous: payload.previous,
+        exact: payload.exact,
+      },
       22000
     ).then((ok) => {
       if (!ok) notifyPorts("noticeRateFailed");

@@ -772,7 +772,12 @@ function appendRateButtons(actions, item) {
       const previous = rowRating(item) ?? "INDIFFERENT";
       const next = previous === rating ? "INDIFFERENT" : rating;
       setRowRating(ratedId(item), next);
-      send("rateVideo", { videoId: ratedId(item), rating: next, previous });
+      send("rateVideo", {
+        videoId: ratedId(item),
+        rating: next,
+        previous,
+        exact: ratedId(item) !== item.videoId,
+      });
     });
     actions.append(button);
   }

@@ -450,8 +450,10 @@
   // misses the other version leaves the song liked. Likes and dislikes stay
   // on the pressed version; an unlike also clears the other version's LIKE
   // (never its dislike).
-  async function rateVideo(rowId, status, previous) {
-    const videoId = playingVersionOf(rowId);
+  // exact: rowId is the row's own like target (ratedIdOf), the version it
+  // shows as liked - the press is for that one whichever version is playing.
+  async function rateVideo(rowId, status, previous, exact) {
+    const videoId = exact ? rowId : playingVersionOf(rowId);
     const outcome = await rateInOrder(videoId, status, previous);
     // A newer press took this one's place and answers for the row.
     if (outcome === "superseded") return true;
@@ -1611,7 +1613,12 @@
       return;
     }
     if (command === "rateVideo") {
-      const result = await rateVideo(payload.videoId, payload.rating, payload.previous);
+      const result = await rateVideo(
+        payload.videoId,
+        payload.rating,
+        payload.previous,
+        payload.exact
+      );
       window.postMessage(
         { source: FROM_BRIDGE, type: "response", requestId, result },
         window.location.origin
