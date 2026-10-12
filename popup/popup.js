@@ -3110,9 +3110,60 @@ const storeUrl = () =>
 
 let rateState = null;
 
+// ---- the update notice ----
+// Shares the rating strip: a feature release (x.y) announces itself once to
+// people who had the extension before it and links its release notes. As
+// with the ask, ignoring it is an answer - a few appearances and it is gone.
+const UPDATE_MAX_SHOWS = 3;
+const RELEASES_URL = "https://github.com/benesmartin/youtube-music-companion/releases/tag/";
+const featureOf = (version) => String(version).split(".").slice(0, 2).join(".");
+
+// Pure, like rateEligible. seen: the last version whose notice was settled.
+function updateNoticeDue(notice, version, existingUser) {
+  if (!notice?.seen) return existingUser;
+  return featureOf(notice.seen) !== featureOf(version);
+}
+
+let updateShowing = false;
+
+async function announceUpdate(existingUser) {
+  const version = ext.runtime.getManifest().version;
+  try {
+    const notice = (await ext.storage.local.get("updateNotice")).updateNotice ?? null;
+    const shown = (notice?.pending === version ? notice.shown ?? 0 : 0) + 1;
+    if (!updateNoticeDue(notice, version, existingUser) || shown > UPDATE_MAX_SHOWS) {
+      if (notice?.seen !== version) await ext.storage.local.set({ updateNotice: { seen: version } });
+      return false;
+    }
+    await ext.storage.local.set({ updateNotice: { ...notice, pending: version, shown } });
+  } catch {
+    return false;
+  }
+  updateShowing = true;
+  el("rate-text").textContent = t("updateText", version);
+  el("rate-go").textContent = t("updateGo");
+  el("rate-dismiss").title = t("updateDismiss");
+  el("rate-bar").hidden = false;
+  return true;
+}
+
+async function answerUpdate(open) {
+  const version = ext.runtime.getManifest().version;
+  el("rate-bar").hidden = true;
+  updateShowing = false;
+  try {
+    await ext.storage.local.set({ updateNotice: { seen: version } });
+  } catch {
+    // the bar is gone for this session either way
+  }
+  if (open) ext.tabs.create({ url: `${RELEASES_URL}v${featureOf(version)}.0` });
+}
+
 async function trackOpenAndMaybeAsk() {
+  let existingUser = false;
   try {
     const stored = (await ext.storage.local.get("rateState")).rateState ?? {};
+    existingUser = Boolean(stored.installedAt);
     rateState = {
       ...stored,
       // No stored install date means this is the first run since the ask
@@ -3125,6 +3176,8 @@ async function trackOpenAndMaybeAsk() {
   } catch {
     return; // storage unavailable: never nag
   }
+  // One strip at a time, and the notice is the one with a date on it.
+  if (await announceUpdate(existingUser)) return;
   if (!rateEligible(rateState)) return;
   const shown = (rateState.shown ?? 0) + 1;
   if (shown > RATE_MAX_SHOWS) {
@@ -3174,8 +3227,10 @@ async function answerRate(rated) {
   ext.tabs.create({ url: storeUrl() });
 }
 
-el("rate-go").addEventListener("click", () => answerRate(true));
-el("rate-dismiss").addEventListener("click", () => answerRate(false));
+el("rate-go").addEventListener("click", () => (updateShowing ? answerUpdate(true) : answerRate(true)));
+el("rate-dismiss").addEventListener("click", () =>
+  updateShowing ? answerUpdate(false) : answerRate(false)
+);
 
 loadSettings();
 connect();
