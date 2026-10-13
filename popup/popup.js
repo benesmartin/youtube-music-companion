@@ -3148,7 +3148,9 @@ async function announceUpdate(existingUser) {
     return false;
   }
   updateShowing = true;
-  el("rate-text").textContent = t("updateText", version);
+  // Named after the feature release, which is also where the button leads: a
+  // patch on top of it has nothing of its own to announce.
+  el("rate-text").textContent = t("updateText", `${featureOf(version)}.0`);
   el("rate-go").textContent = t("updateGo");
   el("rate-dismiss").title = t("updateDismiss");
   el("rate-bar").hidden = false;
