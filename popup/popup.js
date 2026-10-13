@@ -2852,6 +2852,15 @@ function showWaking() {
   showEmpty();
 }
 
+function showConnecting() {
+  el("empty-allow").hidden = true;
+  el("empty-open").hidden = true;
+  el("open-ytm").hidden = true;
+  el("empty-title").textContent = t("emptyConnectingTitle");
+  el("empty-sub").textContent = t("emptyConnectingSub");
+  showEmpty();
+}
+
 // Without site access the browser hides YTM tabs from the query and keeps the
 // content script off the page, so "isn't open" may be a lie: Firefox's
 // per-site toggle (off for a temporary add-on) and Chrome's "on click" site
@@ -2906,6 +2915,10 @@ function tryTab(candidates, index) {
     // 16 x 500ms: a watch-URL reload plus a cold YTM load can pass 4s.
     if (candidates.length && reconnectAttempts < 16) {
       reconnectAttempts += 1;
+      // Both panes start hidden: with nothing shown yet, these retries left
+      // the popup an empty box for 8s (a tab open since before the install
+      // has no content script, and never answers).
+      if (playerView.hidden && emptyView.hidden) showConnecting();
       setTimeout(connect, 500);
       return;
     }

@@ -241,6 +241,8 @@
   "emptyAsleepSub": { "message": "Prohlížeč ji načte, až ji otevřete." },
   "emptyWakingTitle": { "message": "Probouzím YouTube Music…" },
   "emptyWakingSub": { "message": "Karta byla uvolněna z paměti, znovu ji načítám." },
+  "emptyConnectingTitle": { "message": "Připojuji se k YouTube Music…" },
+  "emptyConnectingSub": { "message": "Bude to jen chvilka." },
   "emptyReloadTitle": { "message": "Obnovte kartu s YouTube Music" },
   "emptyReloadSub": {
     "message": "Karta je otevřená, ale rozšíření neslyší - to se stává po aktualizaci. Jedno obnovení ji znovu připojí."

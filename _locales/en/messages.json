@@ -240,6 +240,8 @@
   "emptyAsleepSub": { "message": "The browser only loads it once you open it." },
   "emptyWakingTitle": { "message": "Waking YouTube Music…" },
   "emptyWakingSub": { "message": "Your tab was unloaded, giving it a nudge." },
+  "emptyConnectingTitle": { "message": "Connecting to YouTube Music…" },
+  "emptyConnectingSub": { "message": "This only takes a moment." },
   "emptyReloadTitle": { "message": "Reload the YouTube Music tab" },
   "emptyReloadSub": {
     "message": "The tab is open but can’t hear the extension - this happens after an update. One reload reconnects it."
