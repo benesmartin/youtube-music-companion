@@ -153,7 +153,12 @@
 
   // Both library states share one bookmark icon; state comes from Polymer
   // data when readable, else from keyword-matching the localized label.
+  // The icon is drawn 250ms+ after the item's data lands, so the data's icon
+  // type finds the item first: LIBRARY_ADD/LIBRARY_SAVED, or since 2026-10
+  // BOOKMARK_BORDER/BOOKMARK with the state in isToggled.
   const LIBRARY_ICON = 'path[d^="M14.25 1.5"]';
+  const LIBRARY_ICON_TYPE = /LIBRARY|BOOKMARK/;
+  const ADD_ICON_TYPE = /ADD|BORDER/;
   const REMOVE_WORDS =
     /odstranit|odebrat|remove|entfernen|supprimer|retirer|eliminar|quitar|rimuovi|remover|usuń|verwijder|ta bort|poista|fjern|удалить|убрать|削除|삭제|移除|删除/i;
   const ADD_WORDS =
@@ -170,21 +175,25 @@
     return document.querySelector("ytmusic-menu-popup-renderer [role='menuitem']") !== null;
   }
 
+  const itemData = (item) => item.data ?? item.__data?.data ?? null;
+
   function findLibrary() {
     const toggles = [...document.querySelectorAll("ytmusic-toggle-menu-service-item-renderer")];
-    const item = toggles.find((t) => t.querySelector(LIBRARY_ICON)) ?? null;
+    const item =
+      toggles.find((t) => LIBRARY_ICON_TYPE.test(itemData(t)?.defaultIcon?.iconType ?? "")) ??
+      toggles.find((t) => t.querySelector(LIBRARY_ICON)) ??
+      null;
     if (!item) return null;
     const shownText = item.querySelector("yt-formatted-string.text")?.textContent?.trim() ?? "";
 
     // Prefer Polymer data when a build exposes it; fall back to keywords.
     let inLibrary = null;
-    const data = item.data ?? item.__data?.data ?? null;
+    const data = itemData(item);
     const defaultIcon = data?.defaultIcon?.iconType ?? "";
-    if (defaultIcon.includes("LIBRARY")) {
+    if (LIBRARY_ICON_TYPE.test(defaultIcon)) {
       const defaultText = (data?.defaultText?.runs ?? []).map((r) => r.text).join("").trim();
-      const showingDefault = shownText !== "" && shownText === defaultText;
-      const defaultIsAdd = defaultIcon.includes("ADD");
-      inLibrary = showingDefault ? !defaultIsAdd : defaultIsAdd;
+      const toggled = shownText ? shownText !== defaultText : data.isToggled;
+      inLibrary = typeof toggled === "boolean" ? toggled === ADD_ICON_TYPE.test(defaultIcon) : null;
     } else {
       inLibrary = libraryStateFromText(shownText);
     }
