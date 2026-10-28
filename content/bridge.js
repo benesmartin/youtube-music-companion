@@ -273,8 +273,16 @@
     // beginning, repeatedly (reported 2026-08-11). Correct at most once,
     // stand down on a deliberate seek, and never touch a track the user has
     // actually been listening to.
+    // A pre-roll ad outlasts the watch, and the resume lands when the song
+    // itself starts - so ad time doesn't count (capped at ~3 min in case the
+    // ad flag never clears).
+    let adPolls = 0;
     for (let attempt = 0; attempt < 50; attempt++) {
       if (lastUserSeekAt > startedAt) return;
+      while (player()?.classList?.contains("ad-showing") && adPolls < 720) {
+        adPolls += 1;
+        await wait(250);
+      }
       const t = player()?.getCurrentTime?.() ?? 0;
       if (t > heard + 5 && heard < 3) {
         player()?.seekTo?.(heard, true);
