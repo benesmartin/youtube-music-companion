@@ -207,14 +207,16 @@ function render(state) {
   // pairs the new id with the old title), and the old title isn't stable
   // either (the bar hops between renditions - "Radio Edit"/"Official
   // Video" - of the outgoing song). Substring both ways covers the
-  // target's own rendition suffixes; the timeout is the safety valve.
+  // target's own rendition suffixes; the timeout is the safety valve. An ad
+  // is the target's pre-roll and never carries its title.
   if (pendingTrackHold) {
     const target = pendingTrackHold.targetTitle;
     const matches =
-      state.available &&
-      state.title &&
-      target &&
-      (state.title.includes(target) || target.includes(state.title));
+      state.ad ||
+      (state.available &&
+        state.title &&
+        target &&
+        (state.title.includes(target) || target.includes(state.title)));
     if (matches) {
       pendingTrackHold = null;
       clearTimeout(pendingTrackTimer);
