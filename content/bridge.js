@@ -274,15 +274,19 @@
     // stand down on a deliberate seek, and never touch a track the user has
     // actually been listening to.
     // A pre-roll ad outlasts the watch, and the resume lands when the song
-    // itself starts - so ad time doesn't count (capped at ~3 min in case the
-    // ad flag never clears).
+    // itself starts - so ad time doesn't count. A flag still set after ~3 min
+    // is stuck (Brave), and the song under it has been playing: give up.
+    // The guard belongs to one song; a pre-roll already carries the song's id.
+    const videoId = () => player()?.getVideoData?.()?.video_id;
+    const adShowing = () => player()?.classList?.contains("ad-showing");
+    const guarded = videoId();
     let adPolls = 0;
     for (let attempt = 0; attempt < 50; attempt++) {
-      if (lastUserSeekAt > startedAt) return;
-      while (player()?.classList?.contains("ad-showing") && adPolls < 720) {
+      while (adShowing() && adPolls < 720) {
         adPolls += 1;
         await wait(250);
       }
+      if (adShowing() || lastUserSeekAt > startedAt || videoId() !== guarded) return;
       const t = player()?.getCurrentTime?.() ?? 0;
       if (t > heard + 5 && heard < 3) {
         player()?.seekTo?.(heard, true);
