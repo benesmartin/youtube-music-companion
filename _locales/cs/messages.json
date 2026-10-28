@@ -40,6 +40,8 @@
 
   "nothingPlaying": { "message": "Nic nehraje!" },
   "nothingPlayingSub": { "message": "Začněte hledáním nebo výběrem playlistu" },
+  "adPlaying": { "message": "Hraje reklama" },
+  "adPlayingSub": { "message": "Hudba bude pokračovat hned po ní" },
 
   "tabQueue": { "message": "Fronta" },
   "tabHistory": { "message": "Historie" },

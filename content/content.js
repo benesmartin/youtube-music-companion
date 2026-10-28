@@ -349,6 +349,8 @@ function readState() {
 
   return {
     available: Boolean(bar && title),
+    // During an ad the bar's title is empty and the bar carries this flag.
+    ad: Boolean(bar?.hasAttribute("is-advertisement")),
     signedIn,
     title,
     artist,
@@ -1128,7 +1130,7 @@ function start() {
     subtree: true,
     characterData: true,
     attributes: true,
-    attributeFilter: ["aria-valuenow", "aria-pressed", "like-status", "repeat-mode_", "repeat-mode"],
+    attributeFilter: ["aria-valuenow", "aria-pressed", "like-status", "repeat-mode_", "repeat-mode", "is-advertisement"],
   });
   watchMedia();
   watchQueue();

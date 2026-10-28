@@ -40,6 +40,8 @@
 
   "nothingPlaying": { "message": "Nothing is playing!" },
   "nothingPlayingSub": { "message": "Search or pick a playlist to get going" },
+  "adPlaying": { "message": "Ad playing" },
+  "adPlayingSub": { "message": "Your music continues right after it" },
 
   "tabQueue": { "message": "Queue" },
   "tabHistory": { "message": "History" },
