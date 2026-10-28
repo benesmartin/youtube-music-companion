@@ -347,8 +347,9 @@ function readState() {
     ?.querySelector("ytmusic-like-button-renderer")
     ?.getAttribute("like-status");
 
-  // During an ad the bar's title is empty and the page's <video> plays the ad
-  // itself. Not every ad sets the bar's flag; the player's class covers those.
+  // An ad is never a track: some leave the bar's title empty, others put the
+  // ad's own title there. The page's <video> plays the ad itself. Not every
+  // ad sets the bar's flag; the player's class covers those.
   const ad =
     Boolean(bar?.hasAttribute("is-advertisement")) ||
     Boolean(document.querySelector("#movie_player")?.classList.contains("ad-showing"));
@@ -366,7 +367,7 @@ function readState() {
     );
 
   return {
-    available: Boolean(bar && title),
+    available: Boolean(bar && title) && !ad,
     ad,
     adLeft,
     adDuration,
