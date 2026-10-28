@@ -347,10 +347,16 @@ function readState() {
     ?.querySelector("ytmusic-like-button-renderer")
     ?.getAttribute("like-status");
 
+  // During an ad the bar's title is empty and the bar carries this flag; the
+  // page's <video> is playing the ad itself.
+  const ad = Boolean(bar?.hasAttribute("is-advertisement"));
+  const adLeft =
+    ad && Number.isFinite(media?.duration) ? Math.max(0, Math.ceil(media.duration - media.currentTime)) : null;
+
   return {
     available: Boolean(bar && title),
-    // During an ad the bar's title is empty and the bar carries this flag.
-    ad: Boolean(bar?.hasAttribute("is-advertisement")),
+    ad,
+    adLeft,
     signedIn,
     title,
     artist,

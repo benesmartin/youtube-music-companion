@@ -42,6 +42,7 @@
   "nothingPlayingSub": { "message": "Search or pick a playlist to get going" },
   "adPlaying": { "message": "Ad playing" },
   "adPlayingSub": { "message": "Your music continues right after it" },
+  "adPlayingLeft": { "message": "Your music continues in $TIME$", "placeholders": { "time": { "content": "$1" } } },
 
   "tabQueue": { "message": "Queue" },
   "tabHistory": { "message": "History" },

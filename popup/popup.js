@@ -126,6 +126,7 @@ function formatTime(totalSeconds) {
 
 let emptyTimer = null;
 let adShowing = false;
+let adLeft = null;
 
 // Tab connected but no track loaded (or an ad playing): placeholder header,
 // dimmed transport, and the tabs stay usable - search or a playlist can
@@ -140,7 +141,11 @@ function renderIdle() {
   setAccentHasTrack(false);
   el("title").textContent = t(adShowing ? "adPlaying" : "nothingPlaying");
   el("title").title = "";
-  el("artist").textContent = t(adShowing ? "adPlayingSub" : "nothingPlayingSub");
+  el("artist").textContent = !adShowing
+    ? t("nothingPlayingSub")
+    : adLeft === null
+      ? t("adPlayingSub")
+      : t("adPlayingLeft", formatTime(adLeft));
   el("album").textContent = "";
   el("album-year").textContent = "";
   el("album").classList.remove("link");
@@ -217,6 +222,7 @@ function render(state) {
   }
   if (!state.available) {
     adShowing = Boolean(state.ad);
+    adLeft = state.adLeft ?? null;
     // SPA navigation blanks the bar briefly - only bail if it stays gone.
     if (lastState?.available) {
       if (!emptyTimer) {
