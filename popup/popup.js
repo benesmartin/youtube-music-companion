@@ -125,8 +125,7 @@ function formatTime(totalSeconds) {
 }
 
 let emptyTimer = null;
-let adShowing = false;
-let adLeft = null;
+let adState = null; // { left, duration, skippable } while an ad plays
 
 // Tab connected but no track loaded (or an ad playing): placeholder header,
 // dimmed transport, and the tabs stay usable - search or a playlist can
@@ -139,20 +138,24 @@ function renderIdle() {
   emptyView.hidden = true;
   playerView.classList.add("idle");
   setAccentHasTrack(false);
-  el("title").textContent = t(adShowing ? "adPlaying" : "nothingPlaying");
+  playerView.classList.toggle("ad", Boolean(adState));
+  el("ad-skip").hidden = !adState?.skippable;
+  el("title").textContent = t(adState ? "adPlaying" : "nothingPlaying");
   el("title").title = "";
-  el("artist").textContent = !adShowing
+  el("artist").textContent = !adState
     ? t("nothingPlayingSub")
-    : adLeft === null
+    : adState.left === null
       ? t("adPlayingSub")
-      : t("adPlayingLeft", formatTime(adLeft));
+      : t("adPlayingLeft", formatTime(adState.left));
   el("album").textContent = "";
   el("album-year").textContent = "";
   el("album").classList.remove("link");
-  el("seek").value = 0;
+  const adElapsed = adState?.duration ? adState.duration - adState.left : 0;
+  if (adState?.duration) el("seek").max = adState.duration;
+  el("seek").value = adElapsed;
   updateFill(el("seek"));
-  el("position").textContent = "0:00";
-  el("duration").textContent = "0:00";
+  el("position").textContent = formatTime(adElapsed);
+  el("duration").textContent = formatTime(adState?.duration ?? 0);
   // Nothing from the previous track may survive: transport states, account
   // flags and the sheet's song tiles (reachable via the sleep chip).
   el("play-pause").classList.remove("playing");
@@ -168,6 +171,8 @@ function renderIdle() {
   el("copy-info").disabled = true;
   updateCaptureBar();
 }
+
+el("ad-skip").addEventListener("click", () => focusYtmTab());
 
 // While a play is in flight the header already shows the TARGET's metadata
 // (showPendingTrack); the tab keeps pushing the OUTGOING song's status for
@@ -221,8 +226,9 @@ function render(state) {
     }
   }
   if (!state.available) {
-    adShowing = Boolean(state.ad);
-    adLeft = state.adLeft ?? null;
+    adState = state.ad
+      ? { left: state.adLeft ?? null, duration: state.adDuration ?? null, skippable: Boolean(state.adSkippable) }
+      : null;
     // SPA navigation blanks the bar briefly - only bail if it stays gone.
     if (lastState?.available) {
       if (!emptyTimer) {
@@ -240,7 +246,8 @@ function render(state) {
   emptyTimer = null;
   playerView.hidden = false;
   emptyView.hidden = true;
-  playerView.classList.remove("idle");
+  playerView.classList.remove("idle", "ad");
+  el("ad-skip").hidden = true;
   setAccentHasTrack(true);
 
   // A track change invalidates an in-flight seek drag.
@@ -2687,7 +2694,7 @@ async function renderLyrics() {
   if (!state?.available || !state.title) {
     lyricsKey = null;
     lyricsLines = null;
-    lyricsNote(t(adShowing ? "adPlaying" : "lyricsNothingPlaying"));
+    lyricsNote(t(adState ? "adPlaying" : "lyricsNothingPlaying"));
     return;
   }
   if (!lyricsEligible(state)) {

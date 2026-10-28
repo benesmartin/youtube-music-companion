@@ -347,16 +347,30 @@ function readState() {
     ?.querySelector("ytmusic-like-button-renderer")
     ?.getAttribute("like-status");
 
-  // During an ad the bar's title is empty and the bar carries this flag; the
-  // page's <video> is playing the ad itself.
-  const ad = Boolean(bar?.hasAttribute("is-advertisement"));
-  const adLeft =
-    ad && Number.isFinite(media?.duration) ? Math.max(0, Math.ceil(media.duration - media.currentTime)) : null;
+  // During an ad the bar's title is empty and the page's <video> plays the ad
+  // itself. Not every ad sets the bar's flag; the player's class covers those.
+  const ad =
+    Boolean(bar?.hasAttribute("is-advertisement")) ||
+    Boolean(document.querySelector("#movie_player")?.classList.contains("ad-showing"));
+  const adTimed = ad && Number.isFinite(media?.duration);
+  const adLeft = adTimed ? Math.max(0, Math.ceil(media.duration - media.currentTime)) : null;
+  const adDuration = adTimed ? Math.ceil(media.duration) : null;
+  // YTM ignores synthetic clicks on Skip (it checks isTrusted), so the popup
+  // can only send the user to the tab while the button shows.
+  const adSkippable =
+    ad &&
+    Boolean(
+      document.querySelector(
+        "#movie_player .ytp-ad-skip-button-modern, #movie_player .ytp-skip-ad-button, #movie_player .ytp-ad-skip-button"
+      )?.offsetParent
+    );
 
   return {
     available: Boolean(bar && title),
     ad,
     adLeft,
+    adDuration,
+    adSkippable,
     signedIn,
     title,
     artist,

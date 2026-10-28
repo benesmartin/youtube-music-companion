@@ -43,6 +43,7 @@
   "adPlaying": { "message": "Hraje reklama" },
   "adPlayingSub": { "message": "Hudba bude pokračovat hned po ní" },
   "adPlayingLeft": { "message": "Hudba bude pokračovat za $TIME$", "placeholders": { "time": { "content": "$1" } } },
+  "adSkipInTab": { "message": "Přeskočit v kartě" },
 
   "tabQueue": { "message": "Fronta" },
   "tabHistory": { "message": "Historie" },

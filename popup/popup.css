@@ -1397,6 +1397,21 @@ body.light #artwork-idle {
   pointer-events: none;
   opacity: 0.35;
 }
+/* YouTube's own ad progress bar: yellow, no thumb */
+#player.ad #seek {
+  --slider-fill: #ffcc00;
+  --thumb: 0px;
+  opacity: 1;
+}
+#ad-skip {
+  margin-top: 6px;
+  padding: 6px 12px 4px;
+  line-height: 1;
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--text);
+  background: var(--surface-2);
+}
 
 /* armed remove button: destructive red regardless of the chosen accent */
 .qactions button.confirm {

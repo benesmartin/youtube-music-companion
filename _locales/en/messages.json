@@ -43,6 +43,7 @@
   "adPlaying": { "message": "Ad playing" },
   "adPlayingSub": { "message": "Your music continues right after it" },
   "adPlayingLeft": { "message": "Your music continues in $TIME$", "placeholders": { "time": { "content": "$1" } } },
+  "adSkipInTab": { "message": "Skip in tab" },
 
   "tabQueue": { "message": "Queue" },
   "tabHistory": { "message": "History" },
