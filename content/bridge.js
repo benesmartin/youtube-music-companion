@@ -818,16 +818,34 @@
 
   // A repeat change raises no player event, and the player overlay (the
   // playing track's rating) lands with the next response, after the play
-  // started - re-post when either moves.
+  // started - re-post when either moves. So can the playing track's queue
+  // row, the only album source on the wiz bar.
   function watchStatusStore() {
     const store = appStore();
     if (!store?.subscribe || watchStatusStore.store === store) return;
     watchStatusStore.store = store;
     let repeat = store.getState()?.queue?.repeatMode;
     let overlay = store.getState()?.playerPage?.playerOverlay;
+    let rows = store.getState()?.queue?.items;
+    let automix = store.getState()?.queue?.automixItems;
+    let byline = JSON.stringify(nowPlayingByline());
     store.subscribe(() => {
       const state = store.getState();
-      if (state?.queue?.repeatMode === repeat && state?.playerPage?.playerOverlay === overlay) return;
+      let bylineMoved = false;
+      if (state?.queue?.items !== rows || state?.queue?.automixItems !== automix) {
+        rows = state?.queue?.items;
+        automix = state?.queue?.automixItems;
+        const now = JSON.stringify(nowPlayingByline());
+        bylineMoved = now !== byline;
+        byline = now;
+      }
+      if (
+        !bylineMoved &&
+        state?.queue?.repeatMode === repeat &&
+        state?.playerPage?.playerOverlay === overlay
+      ) {
+        return;
+      }
       repeat = state?.queue?.repeatMode;
       overlay = state?.playerPage?.playerOverlay;
       postStatus();
