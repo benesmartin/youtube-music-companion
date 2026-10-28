@@ -15,6 +15,9 @@
 
   const player = () => document.getElementById("movie_player");
   const volumeSlider = () => document.querySelector("ytmusic-player-bar #volume-slider");
+  // The wiz-experiment miniplayer's slider is a plain range input.
+  const rangeVolumeSlider = () =>
+    document.querySelector("ytmusic-miniplayer .ytMusicMiniPlayerVolumeWrapper input");
 
   // YTM's player bar sometimes keeps the PREVIOUS track's byline after a
   // transition (user report 2026-08-17: right art and title, stale artist and
@@ -25,10 +28,7 @@
     run?.navigationEndpoint?.browseEndpoint?.browseEndpointContextSupportedConfigs
       ?.browseEndpointContextMusicConfig?.pageType ?? "";
 
-  function nowPlayingByline() {
-    const videoId = player()?.getVideoData?.()?.video_id ?? null;
-    if (!videoId) return null;
-    let renderer = null;
+  function nowPlayingRenderer(videoId) {
     try {
       const q = document.querySelector("ytmusic-player-queue")?.queue?.store?.store?.getState()
         ?.queue;
@@ -37,13 +37,19 @@
         const counterpart =
           entry?.playlistPanelVideoWrapperRenderer?.counterpart?.[0]?.counterpartRenderer
             ?.playlistPanelVideoRenderer ?? null;
-        if (primary?.videoId === videoId) { renderer = primary; break; }
-        if (counterpart?.videoId === videoId) { renderer = counterpart; break; }
+        if (primary?.videoId === videoId) return primary;
+        if (counterpart?.videoId === videoId) return counterpart;
       }
     } catch (err) {
       return null;
     }
-    const runs = renderer?.longBylineText?.runs ?? [];
+    return null;
+  }
+
+  function nowPlayingByline() {
+    const videoId = player()?.getVideoData?.()?.video_id ?? null;
+    if (!videoId) return null;
+    const runs = nowPlayingRenderer(videoId)?.longBylineText?.runs ?? [];
     if (!runs.length) return null;
     const artists = runs
       .filter((run) => BYLINE_ARTIST_PAGE.test(pageTypeOf(run)))
@@ -69,6 +75,7 @@
     if (!isCurrent() || !p?.getVolume) return;
     watchRatings();
     watchPlays();
+    watchStatusStore();
     window.postMessage(
       {
         source: FROM_BRIDGE,
@@ -81,6 +88,10 @@
         // ATV = album track, OMV = official video, UGC = plain upload
         videoType: p.getPlayerResponse?.()?.videoDetails?.musicVideoType ?? null,
         byline: nowPlayingByline(),
+        // The signed-in miniplayer shows no thumbs - the store rates for it.
+        rating: playingRating(),
+        // NONE / ALL / ONE
+        repeatMode: appStore()?.getState?.()?.queue?.repeatMode ?? null,
       },
       window.location.origin
     );
@@ -90,9 +101,14 @@
   function setVolume(value) {
     const clamped = Math.min(100, Math.max(0, value));
     const slider = volumeSlider();
+    const range = rangeVolumeSlider();
     if (slider) {
       slider.value = clamped;
       slider.dispatchEvent(new CustomEvent("change", { bubbles: true, composed: true }));
+    } else if (range) {
+      range.value = String(clamped);
+      range.dispatchEvent(new Event("input", { bubbles: true }));
+      range.dispatchEvent(new Event("change", { bubbles: true }));
     } else {
       player()?.setVolume?.(clamped);
     }
@@ -111,7 +127,7 @@
 
   async function runWithHiddenMenu(worker) {
     const menuButton = document.querySelector(
-      "ytmusic-player-bar ytmusic-menu-renderer #button-shape button"
+      "ytmusic-player-bar ytmusic-menu-renderer #button-shape button, ytmusic-miniplayer .ytMusicMiniPlayerMenuButton button"
     );
     if (!menuButton) return null;
     const veil = document.createElement("style");
@@ -783,6 +799,24 @@
   const AUTOPLAY_ROWS_MS = 5000;
   let queueBuiltAt = Date.now();
 
+  // A repeat change raises no player event, and the player overlay (the
+  // playing track's rating) lands with the next response, after the play
+  // started - re-post when either moves.
+  function watchStatusStore() {
+    const store = appStore();
+    if (!store?.subscribe || watchStatusStore.store === store) return;
+    watchStatusStore.store = store;
+    let repeat = store.getState()?.queue?.repeatMode;
+    let overlay = store.getState()?.playerPage?.playerOverlay;
+    store.subscribe(() => {
+      const state = store.getState();
+      if (state?.queue?.repeatMode === repeat && state?.playerPage?.playerOverlay === overlay) return;
+      repeat = state?.queue?.repeatMode;
+      overlay = state?.playerPage?.playerOverlay;
+      postStatus();
+    });
+  }
+
   function watchPlays() {
     const store = appStore();
     if (!store?.subscribe || watchPlays.store === store) return;
@@ -801,6 +835,20 @@
       generating = now;
       items = queue?.items;
     });
+  }
+
+  // A press this session lands in likeStatus.videos; before that, the player
+  // overlay's like button (what the classic bar's thumbs render) knows.
+  function playingRating() {
+    const videoId = player()?.getVideoData?.()?.video_id ?? null;
+    if (!videoId) return null;
+    const stored = storedRatings()?.[videoId];
+    if (stored) return stored;
+    const overlay = (
+      appStore()?.getState?.()?.playerPage?.playerOverlay?.playerOverlayRenderer?.actions ?? []
+    ).find((action) => action?.likeButtonRenderer)?.likeButtonRenderer;
+    if (overlay?.likeStatus && overlay.target?.videoId === videoId) return overlay.likeStatus;
+    return ratingOf(videoId, nowPlayingRenderer(videoId));
   }
 
   // At most 3s, which content.js's leash for an import allows for.

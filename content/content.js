@@ -66,10 +66,17 @@ window.addEventListener("message", (e) => {
       videoType: e.data.videoType,
       // The playing song's byline taken from its own queue row (id-keyed).
       byline: e.data.byline ?? null,
+      repeatMode: e.data.repeatMode ?? null,
+      rating: e.data.rating ?? null,
     };
     broadcastThrottled();
   } else if (e.data.type === "ratings") {
     for (const port of ports) port.postMessage({ type: "ratings", ratings: e.data.ratings });
+    const playing = pageStatus?.videoId && e.data.ratings[pageStatus.videoId];
+    if (playing) {
+      pageStatus.rating = playing;
+      broadcastThrottled();
+    }
   } else if (e.data.type === "response" && pendingBridgeRequests.has(e.data.requestId)) {
     pendingBridgeRequests.get(e.data.requestId)(e.data.result);
     pendingBridgeRequests.delete(e.data.requestId);
@@ -98,8 +105,11 @@ function askBridgeAsync(command, payload = {}, timeoutMs = 6000) {
 
 // YTM ships no public API, so state comes from scraping the player bar.
 // These selectors are the maintenance hotspot when Google changes the page.
+// Two bars are live: ytmusic-player-bar, and ytmusic-miniplayer for sessions
+// in the music_web_enable_wiz_miniplayer experiment. Selector lists name the
+// classic bar's element first, then the miniplayer's.
 function playerBar() {
-  return document.querySelector("ytmusic-player-bar");
+  return document.querySelector("ytmusic-player-bar, ytmusic-miniplayer");
 }
 
 function video() {
@@ -111,7 +121,8 @@ function likeButton() {
   if (!bar) return null;
   return (
     bar.querySelector("ytmusic-like-button-renderer #button-shape-like button") ??
-    bar.querySelector('ytmusic-like-button-renderer button[aria-label*="like" i]')
+    bar.querySelector('ytmusic-like-button-renderer button[aria-label*="like" i]') ??
+    bar.querySelector("like-button-view-model button")
   );
 }
 
@@ -120,16 +131,27 @@ function dislikeButton() {
   if (!bar) return null;
   return (
     bar.querySelector("ytmusic-like-button-renderer #button-shape-dislike button") ??
-    bar.querySelector('ytmusic-like-button-renderer button[aria-label*="dislike" i]')
+    bar.querySelector('ytmusic-like-button-renderer button[aria-label*="dislike" i]') ??
+    bar.querySelector("dislike-button-view-model button")
   );
 }
 
 // Class selectors first - aria-labels are localized (Czech UI says "Další",
 // not "Next"), so label matching is only a last-resort fallback.
-function barButton(className, labelPattern) {
+const BAR_BUTTONS = {
+  playPause: [".play-pause-button, .ytmusicPlayerControlsPlayPauseButton button", "^(play|pause)$"],
+  next: [".next-button, .ytmusicPlayerControlsNextButton button", "^next"],
+  previous: [".previous-button, .ytmusicPlayerControlsPreviousButton button", "^previous"],
+  shuffle: [".shuffle, .ytmusicPlayerControlsShuffleButton button", "shuffle"],
+  repeat: [".repeat, .ytmusicPlayerControlsRepeatButton button", "repeat"],
+  mute: [".volume, .ytMusicMiniPlayerMuteButton button", "^mute"],
+};
+
+function barButton(name) {
   const bar = playerBar();
   if (!bar) return null;
-  const byClass = bar.querySelector(`.${className}`);
+  const [selector, labelPattern] = BAR_BUTTONS[name];
+  const byClass = bar.querySelector(selector);
   if (byClass) return byClass;
   const re = new RegExp(labelPattern, "i");
   for (const btn of bar.querySelectorAll("button, tp-yt-paper-icon-button")) {
@@ -142,27 +164,35 @@ function barButton(className, labelPattern) {
 // The app's volume slider is the authoritative volume state; its value is
 // reflected into an attribute, which the isolated world can read directly.
 function sliderVolume() {
-  const slider = playerBar()?.querySelector("#volume-slider");
+  const slider = playerBar()?.querySelector("#volume-slider, .ytMusicMiniPlayerVolumeWrapper input");
   const value = Number(slider?.getAttribute("aria-valuenow"));
   return Number.isFinite(value) ? value : null;
 }
 
 // From the progress bar, not <video> - the first video element can go stale
-// across track changes.
+// across track changes. The miniplayer's is a range input: value/max.
 function progressInfo() {
-  const slider = playerBar()?.querySelector("#progress-bar");
-  const position = Number(slider?.getAttribute("aria-valuenow"));
-  const duration = Number(slider?.getAttribute("aria-valuemax"));
+  const bar = playerBar();
+  const slider = bar?.querySelector("#progress-bar");
+  const range = bar?.querySelector("input.ytMusicMiniPlayerProgressBar");
+  const position = Number(slider ? slider.getAttribute("aria-valuenow") : range?.value);
+  const duration = Number(slider ? slider.getAttribute("aria-valuemax") : range?.max);
   if (!Number.isFinite(position) || !Number.isFinite(duration) || duration <= 0) return null;
   return { position, duration };
 }
 
-// repeat-mode attribute: NONE/ALL/ONE; null = unknown.
+// repeat-mode attribute: NONE/ALL/ONE; null = unknown. The miniplayer only
+// has localized labels, so its mode comes from the bridge's store read.
 function repeatMode() {
   const bar = playerBar();
-  const raw = bar?.getAttribute("repeat-mode_") ?? bar?.getAttribute("repeat-mode");
+  const raw =
+    bar?.getAttribute("repeat-mode_") ?? bar?.getAttribute("repeat-mode") ?? pageStatus?.repeatMode;
   if (!raw) return null;
   return { NONE: "off", ALL: "all", ONE: "one" }[raw] ?? "off";
+}
+
+function barArtwork() {
+  return playerBar()?.querySelector("img.image, img.ytmusicTrackInfoThumbnail")?.src ?? "";
 }
 
 // Album art URLs carry a size suffix (=w60-h60 or =s60); request a larger one.
@@ -184,7 +214,7 @@ ext.storage.local
   .get("settings")
   .then((stored) => {
     accentAuto = stored.settings?.accent === "auto";
-    if (accentAuto) maybeExtractAccent(playerBar()?.querySelector("img.image")?.src ?? "");
+    if (accentAuto) maybeExtractAccent(barArtwork());
   })
   .catch(() => {});
 
@@ -194,7 +224,7 @@ ext.storage.onChanged.addListener((changes, area) => {
   accentAuto = changes.settings.newValue?.accent === "auto";
   if (accentAuto && !was) {
     accentArtUrl = null; // flipping in re-extracts the current art
-    maybeExtractAccent(playerBar()?.querySelector("img.image")?.src ?? "");
+    maybeExtractAccent(barArtwork());
   }
 });
 
@@ -289,11 +319,11 @@ function corsSafeArtUrl(url) {
 function readState() {
   const bar = playerBar();
   const media = video();
-  const title = bar?.querySelector(".title")?.textContent?.trim() ?? "";
+  const title = bar?.querySelector(".title, .ytmusicTrackInfoTitle")?.textContent?.trim() ?? "";
 
   // Byline: "Artist • Album • Year" - album trusted only when its link exists
   // (music videos have none).
-  const bylineEl = bar?.querySelector(".byline");
+  const bylineEl = bar?.querySelector(".byline, .ytmusicTrackInfoBylineItem");
   const links = bylineEl ? [...bylineEl.querySelectorAll("a")] : [];
   const bylineParts = (bylineEl?.getAttribute("title") ?? bylineEl?.textContent ?? "")
     .split("•")
@@ -340,12 +370,14 @@ function readState() {
     setTimeout(prefetchLyrics, 2500);
   }
 
-  const artworkSrc = bar?.querySelector("img.image")?.src ?? "";
+  const artworkSrc = barArtwork();
   maybeExtractAccent(artworkSrc); // no-op unless accent is "auto" and the art changed
   // like-status carries LIKE / DISLIKE / INDIFFERENT in one attribute.
   const likeStatus = bar
     ?.querySelector("ytmusic-like-button-renderer")
     ?.getAttribute("like-status");
+  const like = likeButton();
+  const dislike = dislikeButton();
 
   // An ad is never a track: some leave the bar's title empty, others put the
   // ad's own title there. The page's <video> plays the ad itself. Not every
@@ -388,10 +420,16 @@ function readState() {
     duration: progressInfo()?.duration ?? (Number.isFinite(media?.duration) ? media.duration : 0),
     volume: sliderVolume() ?? pageStatus?.volume ?? (media ? Math.round(media.volume * 100) : 100),
     muted: pageStatus?.muted ?? media?.muted ?? false,
-    liked: likeStatus ? likeStatus === "LIKE" : likeButton()?.getAttribute("aria-pressed") === "true",
+    liked: likeStatus
+      ? likeStatus === "LIKE"
+      : like
+        ? like.getAttribute("aria-pressed") === "true"
+        : pageStatus?.rating === "LIKE",
     disliked: likeStatus
       ? likeStatus === "DISLIKE"
-      : dislikeButton()?.getAttribute("aria-pressed") === "true",
+      : dislike
+        ? dislike.getAttribute("aria-pressed") === "true"
+        : pageStatus?.rating === "DISLIKE",
     repeat: repeatMode(),
     inLibrary: libraryState,
     libraryAvailable,
@@ -414,7 +452,9 @@ function isPlaying() {
 // Opens the player-bar menu invisibly; workers key on language-independent
 // traits (hrefs, icon paths) - labels are localized.
 async function withHiddenMenu(worker) {
-  const menuButton = playerBar()?.querySelector("ytmusic-menu-renderer #button-shape button");
+  const menuButton = playerBar()?.querySelector(
+    "ytmusic-menu-renderer #button-shape button, .ytMusicMiniPlayerMenuButton button"
+  );
   if (!menuButton) return false;
   const veil = document.createElement("style");
   veil.textContent =
@@ -701,7 +741,7 @@ const commands = {
     // When in doubt, try to PLAY: a stuck-buffering tab used to take the
     // pause branch, which did nothing and said nothing.
     if (isPlaying()) {
-      const pageButton = barButton("play-pause-button", "^(play|pause)$");
+      const pageButton = barButton("playPause");
       if (pageButton) return clickIfFound(pageButton);
       video()?.pause();
       return true;
@@ -711,17 +751,17 @@ const commands = {
     if (result === true) return true;
     if (result === null) {
       // Bridge unavailable - fall back to the plain button click.
-      const pageButton = barButton("play-pause-button", "^(play|pause)$");
+      const pageButton = barButton("playPause");
       if (pageButton) return clickIfFound(pageButton);
       return false;
     }
     notifyPorts("noticeAutoplayBlocked");
     return false;
   },
-  next: () => clickIfFound(barButton("next-button", "^next")),
-  previous: () => clickIfFound(barButton("previous-button", "^previous")),
-  shuffle: () => clickIfFound(barButton("shuffle", "shuffle")),
-  toggleRepeat: () => clickIfFound(barButton("repeat", "repeat")),
+  next: () => clickIfFound(barButton("next")),
+  previous: () => clickIfFound(barButton("previous")),
+  shuffle: () => clickIfFound(barButton("shuffle")),
+  toggleRepeat: () => clickIfFound(barButton("repeat")),
   startRadio: () =>
     Promise.resolve(startRadio()).then((ok) => {
       if (!ok) notifyPorts("noticeRadioFailed");
@@ -884,13 +924,13 @@ const commands = {
     // playPause toggle - on a stuck-buffering tab that toggle deliberately
     // takes the PLAY branch, which is the last thing a sleep timer wants.
     if (!isPlaying()) return true;
-    const pageButton = barButton("play-pause-button", "^(play|pause)$");
+    const pageButton = barButton("playPause");
     if (pageButton) return clickIfFound(pageButton);
     video()?.pause();
     return true;
   },
-  toggleLike: () => clickIfFound(likeButton()),
-  toggleDislike: () => clickIfFound(dislikeButton()),
+  toggleLike: () => clickIfFound(likeButton()) || rateCurrent("LIKE"),
+  toggleDislike: () => clickIfFound(dislikeButton()) || rateCurrent("DISLIKE"),
   seek(payload) {
     // Clamp: out-of-range seeks make YTM skip; 1s margin avoids the end race.
     const progress = progressInfo();
@@ -919,7 +959,7 @@ const commands = {
   },
   toggleMute() {
     // YTM's own mute button keeps the app state consistent, same as the slider.
-    const pageMute = barButton("volume", "^mute");
+    const pageMute = barButton("mute");
     if (pageMute) return clickIfFound(pageMute);
     if (pageStatus) {
       askBridge("toggleMute");
@@ -931,6 +971,20 @@ const commands = {
     return true;
   },
 };
+
+// The signed-in miniplayer has no thumbs to click; rate the way the queue
+// rows do.
+function rateCurrent(rating) {
+  const videoId = pageStatus?.videoId;
+  if (!videoId) return false;
+  const previous = pageStatus.rating ?? "INDIFFERENT";
+  return commands.rateVideo({
+    videoId,
+    rating: previous === rating ? "INDIFFERENT" : rating,
+    previous,
+    exact: false,
+  });
+}
 
 function runCommand(name, payload = {}) {
   const handler = commands[name];
