@@ -525,6 +525,19 @@ function clickIfFound(el) {
   return true;
 }
 
+// YouTube NonStop drops video.pause() unless the tab saw pointer or key
+// input in the last 5s, which a popup user never gives it; YTM then reads
+// paused while the audio plays on. A real click starts with pointer events.
+function pressIfFound(el) {
+  if (!el) return false;
+  const target = el.querySelector?.("button") ?? el;
+  for (const type of ["pointerdown", "pointerup"]) {
+    target.dispatchEvent(new PointerEvent(type, { bubbles: true, composed: true }));
+  }
+  target.click();
+  return true;
+}
+
 // ---- queue ----
 
 // Wrapper entries hold a visible primary and a hidden counterpart item;
@@ -742,7 +755,7 @@ const commands = {
     // pause branch, which did nothing and said nothing.
     if (isPlaying()) {
       const pageButton = barButton("playPause");
-      if (pageButton) return clickIfFound(pageButton);
+      if (pageButton) return pressIfFound(pageButton);
       video()?.pause();
       return true;
     }
@@ -925,7 +938,7 @@ const commands = {
     // takes the PLAY branch, which is the last thing a sleep timer wants.
     if (!isPlaying()) return true;
     const pageButton = barButton("playPause");
-    if (pageButton) return clickIfFound(pageButton);
+    if (pageButton) return pressIfFound(pageButton);
     video()?.pause();
     return true;
   },
