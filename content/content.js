@@ -749,27 +749,52 @@ function queuePlaylist(command, payload) {
     return ok;
   });
 }
+function pausePlayback() {
+  if (!isPlaying()) return true;
+  const pageButton = barButton("playPause");
+  if (pageButton) return pressIfFound(pageButton);
+  video()?.pause();
+  return true;
+}
+
+async function startPlayback() {
+  // Play can hit the autoplay policy; the bridge tries the muted-start trick.
+  const result = await askBridgeAsync("forcePlay", {}, 3000);
+  if (result === true) return true;
+  if (result === null) {
+    // Bridge unavailable - fall back to the plain button click.
+    const pageButton = barButton("playPause");
+    if (pageButton) return clickIfFound(pageButton);
+    return false;
+  }
+  notifyPorts("noticeAutoplayBlocked");
+  return false;
+}
+
+// forcePlay reads a pause inside its start check as an autoplay block and
+// replays muted, so while a start is in flight a toggle only flips the
+// target; the start's caller applies the last one once it settles.
+let wantPlaying = null;
+
 const commands = {
   async playPause() {
-    // When in doubt, try to PLAY: a stuck-buffering tab used to take the
-    // pause branch, which did nothing and said nothing.
-    if (isPlaying()) {
-      const pageButton = barButton("playPause");
-      if (pageButton) return pressIfFound(pageButton);
-      video()?.pause();
+    if (wantPlaying !== null) {
+      wantPlaying = !wantPlaying;
       return true;
     }
-    // Play can hit the autoplay policy; the bridge tries the muted-start trick.
-    const result = await askBridgeAsync("forcePlay", {}, 3000);
-    if (result === true) return true;
-    if (result === null) {
-      // Bridge unavailable - fall back to the plain button click.
-      const pageButton = barButton("playPause");
-      if (pageButton) return clickIfFound(pageButton);
-      return false;
+    // When in doubt, try to PLAY: a stuck-buffering tab used to take the
+    // pause branch, which did nothing and said nothing.
+    let target = (wantPlaying = !isPlaying());
+    try {
+      let result = await (target ? startPlayback() : pausePlayback());
+      while (wantPlaying !== target) {
+        target = wantPlaying;
+        result = await (target ? startPlayback() : pausePlayback());
+      }
+      return result;
+    } finally {
+      wantPlaying = null;
     }
-    notifyPorts("noticeAutoplayBlocked");
-    return false;
   },
   next: () => clickIfFound(barButton("next")),
   previous: () => clickIfFound(barButton("previous")),
@@ -936,11 +961,11 @@ const commands = {
     // One-way pause (sleep timer): no-op when nothing is audible. Not the
     // playPause toggle - on a stuck-buffering tab that toggle deliberately
     // takes the PLAY branch, which is the last thing a sleep timer wants.
-    if (!isPlaying()) return true;
-    const pageButton = barButton("playPause");
-    if (pageButton) return pressIfFound(pageButton);
-    video()?.pause();
-    return true;
+    if (wantPlaying !== null) {
+      wantPlaying = false;
+      return true;
+    }
+    return pausePlayback();
   },
   toggleLike: () => clickIfFound(likeButton()) || rateCurrent("LIKE"),
   toggleDislike: () => clickIfFound(dislikeButton()) || rateCurrent("DISLIKE"),
