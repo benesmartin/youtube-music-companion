@@ -1832,6 +1832,13 @@ body.light #artwork-idle {
   padding: 2px 8px;
 }
 
+.lyr-credit {
+  color: var(--text-dim);
+  opacity: 0.75;
+  font-size: 11px;
+  padding: 10px 8px 0;
+}
+
 #lyrics-enable {
   background: var(--accent);
   color: #fff;

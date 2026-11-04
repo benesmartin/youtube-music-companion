@@ -159,12 +159,14 @@ ext.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-// ---- lyrics (LRCLIB) ----
+// ---- lyrics (LRCLIB, then YouTube Music's own) ----
 // Fetching lives here so content can prefetch and the popup gets cache hits.
 
 const LYRICS_CACHE_LIMIT = 40;
 // Bump when matching logic changes to drop stale cached entries.
-const LYRICS_CACHE_VERSION = 3;
+const LYRICS_CACHE_VERSION = 4;
+// One budget for the whole get → search → title-only search chain.
+const LRCLIB_TIMEOUT_MS = 6000;
 
 async function readLyricsCache() {
   const stored = await ext.storage.local.get(["lyricsCache", "lyricsCacheVersion"]);
@@ -200,14 +202,17 @@ function pickLyricsHit(hits, track) {
   return Math.abs((candidates[0].duration ?? 0) - track.duration) <= 10 ? candidates[0] : null;
 }
 
-async function lrclibSearch(query) {
-  const res = await fetch(`https://lrclib.net/api/search?${new URLSearchParams(query)}`);
+async function lrclibSearch(query, signal) {
+  const res = await fetch(`https://lrclib.net/api/search?${new URLSearchParams(query)}`, {
+    signal,
+  });
   // A server error is not a miss - throw so the caller skips the cache.
   if (!res.ok) throw new Error(`lrclib search failed: ${res.status}`);
   return res.json();
 }
 
 async function lrclibLookup(track) {
+  const signal = AbortSignal.timeout(LRCLIB_TIMEOUT_MS);
   // Exact lookup first - duration (±2s server-side) is what makes it precise.
   const params = new URLSearchParams({
     track_name: track.title,
@@ -215,34 +220,48 @@ async function lrclibLookup(track) {
     duration: String(Math.round(track.duration)),
   });
   if (track.album) params.set("album_name", track.album);
-  const res = await fetch(`https://lrclib.net/api/get?${params}`);
+  const res = await fetch(`https://lrclib.net/api/get?${params}`, { signal });
   if (res.ok) return res.json();
   // Miss - search and take the closest duration within reason.
   let hit = pickLyricsHit(
-    await lrclibSearch({ track_name: track.title, artist_name: track.artist }),
+    await lrclibSearch({ track_name: track.title, artist_name: track.artist }, signal),
     track
   );
   if (!hit) {
     // Multi-artist bylines match no LRCLIB credit as a filter - retry on
     // title alone; pickLyricsHit still demands the artist overlap.
-    hit = pickLyricsHit(await lrclibSearch({ track_name: track.title }), track);
+    hit = pickLyricsHit(await lrclibSearch({ track_name: track.title }, signal), track);
   }
   return hit;
+}
+
+// The Lyrics tab YTM itself shows, read through the tab's bridge: plain
+// text only. { lyrics: "" } = YTM has none; null = couldn't ask.
+async function ytmLyrics(videoId, tabId) {
+  if (!videoId) return null;
+  try {
+    tabId ??= (await findMusicTab())?.id;
+    if (tabId == null) return null;
+    const result = await ext.tabs.sendMessage(tabId, { type: "getYtmLyrics", videoId });
+    return typeof result?.lyrics === "string" ? result : null;
+  } catch {
+    return null;
+  }
 }
 
 // One lookup per track at a time - the popup joins the in-flight prefetch.
 const lyricsInflight = new Map();
 
-function getLyrics(track) {
+function getLyrics(track, tabId) {
   if (!track?.title) return Promise.resolve(null);
   const key = track.videoId || `${track.title}|${track.artist}`;
   if (lyricsInflight.has(key)) return lyricsInflight.get(key);
-  const pending = doGetLyrics(track).finally(() => lyricsInflight.delete(key));
+  const pending = doGetLyrics(track, tabId).finally(() => lyricsInflight.delete(key));
   lyricsInflight.set(key, pending);
   return pending;
 }
 
-async function doGetLyrics(track) {
+async function doGetLyrics(track, tabId) {
   try {
     if (track.videoId) {
       const cache = await readLyricsCache();
@@ -257,14 +276,25 @@ async function doGetLyrics(track) {
       // next play retries instead of showing a permanent miss.
       lookupFailed = true;
     }
-    const entry = {
+    let entry = {
       synced: data?.syncedLyrics ?? "",
       plain: data?.plainLyrics ?? "",
       instrumental: Boolean(data?.instrumental),
       error: lookupFailed,
       at: Date.now(),
     };
-    if (track.videoId && !lookupFailed) {
+    let cacheable = !lookupFailed;
+    if (!entry.synced && !entry.plain && !entry.instrumental) {
+      const ytm = await ytmLyrics(track.videoId, tabId);
+      if (ytm?.lyrics) {
+        entry = { ...entry, plain: ytm.lyrics, provider: "ytm", source: ytm.source, error: false };
+      } else if (!ytm) {
+        cacheable = false;
+      }
+    }
+    // Behind an LRCLIB failure the fallback stays uncached too - LRCLIB may
+    // have synced lyrics once it's back.
+    if (track.videoId && cacheable) {
       const cache = await readLyricsCache();
       cache[track.videoId] = entry;
       const keys = Object.keys(cache);
@@ -283,9 +313,9 @@ async function doGetLyrics(track) {
   }
 }
 
-ext.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+ext.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.type === "fetchLyrics") {
-    getLyrics(msg.track).then(sendResponse);
+    getLyrics(msg.track, msg.tabId ?? sender.tab?.id).then(sendResponse);
     return true; // async response
   }
   return false;

@@ -1209,6 +1209,9 @@ ext.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   } else if (msg.type === "queryPlayback") {
     lastIndicator = null; // force a fresh notification
     broadcast();
+  } else if (msg.type === "getYtmLyrics") {
+    askBridgeAsync("getLyrics", { videoId: msg.videoId }).then(sendResponse);
+    return true;
   }
   return false;
 });

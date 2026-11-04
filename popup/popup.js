@@ -2656,6 +2656,12 @@ function showLyricsEntry(entry) {
     div.className = "lyr-plain";
     div.textContent = entry.plain.trim();
     pane.append(div);
+    if (entry.provider === "ytm") {
+      const credit = document.createElement("div");
+      credit.className = "lyr-credit";
+      credit.textContent = entry.source || t("lyricsFromYtm");
+      pane.append(credit);
+    }
     pane.scrollTop = 0;
     return;
   }
@@ -2735,6 +2741,7 @@ async function renderLyrics() {
   try {
     entry = await ext.runtime.sendMessage({
       type: "fetchLyrics",
+      tabId: currentTabId,
       track: {
         videoId: settled.videoId,
         title: settled.title,

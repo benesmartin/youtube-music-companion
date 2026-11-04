@@ -1611,6 +1611,41 @@
     }
   }
 
+  // ---- lyrics (YTM's own Lyrics tab, the fallback behind LRCLIB) ----
+  // next → the watch tab whose browseId starts MPLYt → browse → a
+  // musicDescriptionShelfRenderer (text + "Source: LyricFind" footer, both
+  // localized). No lyrics: the tab is missing or unselectable, or the browse
+  // answers with a messageRenderer. { lyrics: "" } is that definite miss;
+  // null means we couldn't tell.
+  async function getLyrics(videoId) {
+    try {
+      if (!videoId) return null;
+      const next = await innertubeRequest("next", { videoId });
+      const tabs =
+        next?.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer
+          ?.watchNextTabbedResultsRenderer?.tabs ?? [];
+      if (!tabs.length) return null;
+      const tab = tabs
+        .map((entry) => entry.tabRenderer)
+        .find((renderer) => renderer?.endpoint?.browseEndpoint?.browseId?.startsWith("MPLYt"));
+      if (!tab || tab.unselectable) return { lyrics: "", source: "" };
+      const data = await innertubeRequest("browse", {
+        browseId: tab.endpoint.browseEndpoint.browseId,
+      });
+      if (data?.contents?.messageRenderer) return { lyrics: "", source: "" };
+      const shelf = (data?.contents?.sectionListRenderer?.contents ?? []).find(
+        (section) => section.musicDescriptionShelfRenderer
+      )?.musicDescriptionShelfRenderer;
+      if (!shelf) return null;
+      return {
+        lyrics: runsText(shelf.description).replace(/\r\n?/g, "\n").trim(),
+        source: runsText(shelf.footer).trim(),
+      };
+    } catch (err) {
+      return null;
+    }
+  }
+
   // Whole-playlist play via the app router.
   async function playPlaylist(playlistId, shuffle) {
     const app = document.querySelector("ytmusic-app");
@@ -1759,6 +1794,7 @@
       command === "getPlaylists" ||
       command === "getPlaylistTracks" ||
       command === "getAlbum" ||
+      command === "getLyrics" ||
       command === "playPlaylist" ||
       command === "addToPlaylist" ||
       command === "removeFromPlaylist"
@@ -1767,6 +1803,7 @@
         getPlaylists: () => getPlaylists(payload.continuation),
         getPlaylistTracks: () => getPlaylistTracks(payload.browseId, payload.continuation),
         getAlbum: () => getAlbum(payload.browseId),
+        getLyrics: () => getLyrics(payload.videoId),
         playPlaylist: () => {
           userPlays++;
           return playPlaylist(payload.playlistId, payload.shuffle);

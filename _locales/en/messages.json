@@ -170,6 +170,7 @@
   "lyricsNothingPlaying": { "message": "Nothing is playing." },
   "lyricsSongsOnly": { "message": "Lyrics are available for official songs only." },
   "lyricsLooking": { "message": "Looking up lyrics…" },
+  "lyricsFromYtm": { "message": "Lyrics from YouTube Music" },
 
   "settingsAppearance": { "message": "Appearance" },
   "themeDark": { "message": "Dark" },

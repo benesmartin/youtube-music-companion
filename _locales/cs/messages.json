@@ -171,6 +171,7 @@
   "lyricsNothingPlaying": { "message": "Nic nehraje." },
   "lyricsSongsOnly": { "message": "Texty jsou dostupné jen pro oficiální skladby." },
   "lyricsLooking": { "message": "Hledám text…" },
+  "lyricsFromYtm": { "message": "Text z YouTube Music" },
 
   "settingsAppearance": { "message": "Vzhled" },
   "themeDark": { "message": "Tmavý" },
